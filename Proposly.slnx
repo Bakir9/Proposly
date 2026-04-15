@@ -1,3 +1,14 @@
 <Solution>
-  <Project Path="Proposly/Proposly.API.csproj" />
+  <Folder Name="/src/">
+    <Project Path="src/Proposly.Shared/Proposly.Shared.csproj" />
+    <Project Path="src/Proposly.Domain/Proposly.Domain.csproj" />
+    <Project Path="src/Proposly.Application/Proposly.Application.csproj" />
+    <Project Path="src/Proposly.Infrastructure/Proposly.Infrastructure.csproj" />
+    <Project Path="src/Proposly.API/Proposly.API.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Proposly.Domain.Tests/Proposly.Domain.Tests.csproj" />
+    <Project Path="tests/Proposly.Application.Tests/Proposly.Application.Tests.csproj" />
+    <Project Path="tests/Proposly.Integration.Tests/Proposly.Integration.Tests.csproj" />
+  </Folder>
 </Solution>

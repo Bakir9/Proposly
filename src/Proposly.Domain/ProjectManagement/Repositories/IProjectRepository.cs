@@ -1,0 +1,11 @@
+using Proposly.Domain.ProjectManagement.Entities;
+
+namespace Proposly.Domain.ProjectManagement.Repositories;
+
+public interface IProjectRepository
+{
+    Task<Project?> GetByIdAsync(Guid id, CancellationToken ct = default);
+    Task<IReadOnlyList<Project>> GetAllAsync(CancellationToken ct = default);
+    Task AddAsync(Project project, CancellationToken ct = default);
+    Task UpdateAsync(Project project, CancellationToken ct = default);
+}

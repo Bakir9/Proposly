@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dotnet add *)",
+      "Bash(mkdir -p src/Proposly.Shared/Primitives src/Proposly.Shared/ValueObjects src/Proposly.Shared/Interfaces)",
+      "Bash(rm src/Proposly.Shared/Class1.cs)",
+      "Bash(dotnet build *)",
+      "Bash(dotnet ef *)"
+    ]
+  }
+}
