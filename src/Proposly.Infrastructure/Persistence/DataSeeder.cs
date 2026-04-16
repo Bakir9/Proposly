@@ -181,4 +181,5 @@ file sealed class SeedCurrentUserService : ICurrentUserService
 {
     public Guid CompanyId => DataSeeder.SeedCompanyId;
     public Guid UserId    => DataSeeder.SeedUserId;
+    public string Role    => "Owner";
 }

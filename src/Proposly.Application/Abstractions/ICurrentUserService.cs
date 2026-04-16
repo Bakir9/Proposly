@@ -4,4 +4,5 @@ public interface ICurrentUserService
 {
     Guid CompanyId { get; }
     Guid UserId { get; }
+    string Role { get; }
 }

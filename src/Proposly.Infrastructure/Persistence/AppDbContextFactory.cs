@@ -25,4 +25,5 @@ file sealed class DesignTimeCurrentUserService : ICurrentUserService
 {
     public Guid CompanyId => Guid.Empty;
     public Guid UserId => Guid.Empty;
+    public string Role => string.Empty;
 }

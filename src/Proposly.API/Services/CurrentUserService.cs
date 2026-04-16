@@ -19,6 +19,10 @@ public sealed class CurrentUserService : ICurrentUserService
 
     public Guid UserId => GetGuidClaim(ClaimTypes.NameIdentifier);
 
+    public string Role =>
+        _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.Role)
+        ?? throw new UnauthorizedAccessException("Role claim is missing.");
+
     private Guid GetGuidClaim(string claimType)
     {
         var value = _httpContextAccessor.HttpContext?.User?.FindFirstValue(claimType)
