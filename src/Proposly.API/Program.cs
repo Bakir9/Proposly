@@ -4,6 +4,7 @@ using Proposly.API.Extensions;
 using Proposly.API.Middleware;
 using Proposly.API.Services;
 using Proposly.Infrastructure;
+using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,7 +22,7 @@ builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<TenantMiddleware>();
 
 builder.Services.AddJwtAuthentication(builder.Configuration);
-builder.Services.AddAuthorization();
+builder.Services.AddProposlyAuthorization();
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
@@ -31,6 +32,15 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.MapScalarApiReference(options =>
+    {
+        options.WithTitle("Proposly API")
+               .WithPreferredScheme("Bearer")
+               .WithHttpBearerAuthentication(bearer =>
+               {
+                   bearer.Token = string.Empty;
+               });
+    });
 
     using var scope = app.Services.CreateScope();
     var seeder = scope.ServiceProvider.GetRequiredService<Proposly.Infrastructure.Persistence.DataSeeder>();
