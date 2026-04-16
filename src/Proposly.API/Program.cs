@@ -43,8 +43,8 @@ if (app.Environment.IsDevelopment())
     app.MapScalarApiReference(options =>
     {
         options.WithTitle("Proposly API")
-               .WithPreferredScheme("Bearer")
-               .WithHttpBearerAuthentication(bearer =>
+               .AddPreferredSecuritySchemes("Bearer")
+               .AddHttpAuthentication("Bearer", bearer =>
                {
                    bearer.Token = string.Empty;
                });
