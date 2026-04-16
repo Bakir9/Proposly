@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Proposly.Application.Abstractions;
 using Proposly.Domain.CompanyManagement.Entities;
+using Proposly.Domain.OfferManagement.Entities;
 using Proposly.Domain.ProjectManagement.Entities;
 using Proposly.Shared.Interfaces;
 
@@ -11,7 +12,10 @@ public sealed class AppDbContext : DbContext
     private readonly ICurrentUserService _currentUserService;
 
     public DbSet<Company> Companies => Set<Company>();
+    public DbSet<User> Users => Set<User>();
     public DbSet<Project> Projects => Set<Project>();
+    public DbSet<Offer> Offers => Set<Offer>();
+    public DbSet<Client> Clients => Set<Client>();
 
     public AppDbContext(DbContextOptions<AppDbContext> options, ICurrentUserService currentUserService)
         : base(options)
