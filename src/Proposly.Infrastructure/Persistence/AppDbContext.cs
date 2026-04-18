@@ -34,19 +34,19 @@ public sealed class AppDbContext : DbContext
                 continue;
 
             var method = typeof(AppDbContext)
-                .GetMethod(nameof(SetTenantFilter), System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!
+                .GetMethod(nameof(SetTenantFilter), System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
                 .MakeGenericMethod(entityType.ClrType);
 
-            method.Invoke(null, [modelBuilder, _currentUserService]);
+            method.Invoke(this, [modelBuilder]);
         }
 
         base.OnModelCreating(modelBuilder);
     }
 
-    private static void SetTenantFilter<TEntity>(ModelBuilder modelBuilder, ICurrentUserService currentUserService)
+    private void SetTenantFilter<TEntity>(ModelBuilder modelBuilder)
         where TEntity : class, ITenantEntity
     {
-        modelBuilder.Entity<TEntity>().HasQueryFilter(e => e.CompanyId == currentUserService.CompanyId);
+        modelBuilder.Entity<TEntity>().HasQueryFilter(e => e.CompanyId == _currentUserService.CompanyId);
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

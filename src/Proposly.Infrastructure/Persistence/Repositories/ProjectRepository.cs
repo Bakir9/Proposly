@@ -21,6 +21,7 @@ public sealed class ProjectRepository : IProjectRepository
 
     public async Task<IReadOnlyList<Project>> GetAllAsync(CancellationToken ct = default)
         => await _context.Projects
+            .Include(p => p.Members)
             .OrderByDescending(p => p.CreatedAt)
             .ToListAsync(ct);
 
@@ -32,7 +33,6 @@ public sealed class ProjectRepository : IProjectRepository
 
     public async Task UpdateAsync(Project project, CancellationToken ct = default)
     {
-        _context.Projects.Update(project);
         await _context.SaveChangesAsync(ct);
     }
 }

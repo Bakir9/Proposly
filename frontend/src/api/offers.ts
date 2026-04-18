@@ -37,6 +37,18 @@ export interface CreateOfferRequest {
   validUntil?: string
 }
 
+export interface UpdateOfferRequest {
+  title: string
+  notes?: string
+  validUntil?: string
+}
+
+export interface AddOfferItemRequest {
+  description: string
+  quantity: number
+  unitPrice: number
+}
+
 export const getOffers = (status?: OfferStatus) =>
   api.get<OfferSummary[]>('/offers', { params: status ? { status } : {} }).then(r => r.data)
 
@@ -46,6 +58,9 @@ export const getOfferById = (id: string) =>
 export const createOffer = (data: CreateOfferRequest) =>
   api.post<string>('/offers', data).then(r => r.data)
 
+export const updateOffer = (id: string, data: UpdateOfferRequest) =>
+  api.put(`/offers/${id}`, data)
+
 export const sendOffer = (id: string) =>
   api.post(`/offers/${id}/send`)
 
@@ -54,3 +69,27 @@ export const acceptOffer = (id: string) =>
 
 export const rejectOffer = (id: string) =>
   api.post(`/offers/${id}/reject`)
+
+export const addOfferItem = (offerId: string, data: AddOfferItemRequest) =>
+  api.post<string>(`/offers/${offerId}/items`, data).then(r => r.data)
+
+export const updateOfferItem = (offerId: string, itemId: string, data: AddOfferItemRequest) =>
+  api.put(`/offers/${offerId}/items/${itemId}`, data)
+
+export const removeOfferItem = (offerId: string, itemId: string) =>
+  api.delete(`/offers/${offerId}/items/${itemId}`)
+
+export const downloadOfferPdf = async (id: string, title: string) => {
+  const response = await api.get(`/offers/${id}/pdf`, { responseType: 'blob' })
+  const url = URL.createObjectURL(response.data as Blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `Offer-${title.replace(/\s+/g, '_')}.pdf`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
+export const sendOfferEmail = (id: string) =>
+  api.post(`/offers/${id}/email`)

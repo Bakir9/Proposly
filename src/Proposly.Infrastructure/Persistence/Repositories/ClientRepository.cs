@@ -26,7 +26,6 @@ public sealed class ClientRepository : IClientRepository
 
     public async Task UpdateAsync(Client client, CancellationToken ct = default)
     {
-        _context.Clients.Update(client);
         await _context.SaveChangesAsync(ct);
     }
 }

@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import { getOffers } from '@/api/offers'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 const statusVariant: Record<string, 'default' | 'secondary' | 'success' | 'destructive' | 'warning' | 'outline'> = {
@@ -12,6 +14,7 @@ const statusVariant: Record<string, 'default' | 'secondary' | 'success' | 'destr
 }
 
 export function OffersPage() {
+  const navigate = useNavigate()
   const { data: offers, isLoading, isError } = useQuery({
     queryKey: ['offers'],
     queryFn: () => getOffers(),
@@ -21,6 +24,7 @@ export function OffersPage() {
     <div className="p-6 space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Offers</h1>
+        <Button onClick={() => navigate('/offers/new')}>New Offer</Button>
       </div>
 
       {isLoading && <p className="text-muted-foreground">Loading…</p>}
@@ -36,7 +40,11 @@ export function OffersPage() {
 
       <div className="grid gap-3">
         {offers?.map(offer => (
-          <Card key={offer.id}>
+          <Card
+            key={offer.id}
+            className="cursor-pointer hover:bg-muted/50 transition-colors"
+            onClick={() => navigate(`/offers/${offer.id}`)}
+          >
             <CardHeader className="pb-2">
               <div className="flex items-start justify-between">
                 <div>

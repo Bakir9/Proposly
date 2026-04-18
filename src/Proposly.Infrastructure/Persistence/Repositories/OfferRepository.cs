@@ -41,7 +41,6 @@ public sealed class OfferRepository : IOfferRepository
 
     public async Task UpdateAsync(Offer offer, CancellationToken ct = default)
     {
-        _context.Offers.Update(offer);
         await _context.SaveChangesAsync(ct);
     }
 }

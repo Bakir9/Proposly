@@ -1,13 +1,15 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, FileText, FolderKanban, Users, LogOut } from 'lucide-react'
+import { LayoutDashboard, FileText, FolderKanban, Users, LogOut, Building2 } from 'lucide-react'
 import { useAuth } from '@/features/auth/AuthContext'
 import { cn } from '@/lib/utils'
 import { Button } from './ui/button'
 
 const navItems = [
-  { to: '/offers',   label: 'Offers',   icon: FileText },
-  { to: '/projects', label: 'Projects', icon: FolderKanban },
-  { to: '/users',    label: 'Users',    icon: Users },
+  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/offers',    label: 'Offers',    icon: FileText },
+  { to: '/projects',  label: 'Projects',  icon: FolderKanban },
+  { to: '/clients',   label: 'Clients',   icon: Building2 },
+  { to: '/users',     label: 'Team',      icon: Users },
 ]
 
 export function AppShell() {

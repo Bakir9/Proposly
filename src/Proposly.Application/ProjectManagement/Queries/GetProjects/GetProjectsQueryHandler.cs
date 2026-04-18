@@ -23,6 +23,7 @@ public sealed class GetProjectsQueryHandler : IQueryHandler<GetProjectsQuery, IR
             p.Budget.Currency,
             p.StartDate,
             p.Deadline,
-            p.CreatedAt)).ToList();
+            p.CreatedAt,
+            p.Members.Count)).ToList();
     }
 }

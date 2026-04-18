@@ -55,7 +55,9 @@ if (app.Environment.IsDevelopment())
     await seeder.SeedAsync();
 }
 
-app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment())
+    app.UseHttpsRedirection();
+
 app.UseCors("Frontend");
 app.UseAuthentication();
 app.UseMiddleware<TenantMiddleware>();

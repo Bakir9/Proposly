@@ -22,30 +22,20 @@ public sealed class GetProjectByIdQueryHandler : IQueryHandler<GetProjectByIdQue
         var profit = project.CalculateProfitability();
 
         return new ProjectDetailResponse(
-            project.Id,
-            project.Name,
-            project.Description,
-            project.ClientName,
-            project.Status,
-            project.Budget.Amount,
-            project.Budget.Currency,
-            project.StartDate,
-            project.Deadline,
-            project.LinkedOfferId,
-            project.OfferedAmount?.Amount,
-            new ProfitabilityResponse(
-                laborCost.Amount,
-                expensesTotal.Amount,
-                totalCost.Amount,
-                revenue.Amount,
-                profit.Amount,
-                project.Budget.Currency),
-            project.Members.Select(m => new ProjectMemberResponse(
-                m.Id,
-                m.UserId,
-                m.Name,
-                m.Role,
-                m.HourlyRate.Amount,
-                m.HourlyRate.Currency)).ToList());
+            project.Id, project.Name, project.Description, project.ClientName, project.Status,
+            project.Budget.Amount, project.Budget.Currency,
+            project.StartDate, project.Deadline,
+            project.LinkedOfferId, project.OfferedAmount?.Amount,
+            new ProfitabilityResponse(laborCost.Amount, expensesTotal.Amount, totalCost.Amount, revenue.Amount, profit.Amount, project.Budget.Currency),
+            project.Members.Select(m => new ProjectMemberResponse(m.Id, m.UserId, m.Name, m.Role, m.HourlyRate.Amount, m.HourlyRate.Currency)).ToList(),
+            project.Tasks.Select(t => new ProjectTaskResponse(t.Id, t.Title, t.Description, t.Status, t.EstimatedHours, t.DueDate, t.MilestoneId)).ToList(),
+            project.Milestones.Select(m => new MilestoneResponse(m.Id, m.Title, m.DueDate, m.IsCompleted)).ToList(),
+            project.Expenses.Select(e => new ExpenseResponse(e.Id, e.Description, e.Amount.Amount, e.Amount.Currency, e.Category.ToString(), e.Date)).ToList(),
+            project.TimeEntries.Select(te => new TimeEntryResponse(
+                te.Id, te.MemberId,
+                project.Members.FirstOrDefault(m => m.Id == te.MemberId)?.Name ?? "Unknown",
+                te.HoursWorked, te.HourlyRateSnapshot.Amount, te.HourlyRateSnapshot.Currency,
+                te.Description, te.Date,
+                te.HoursWorked * te.HourlyRateSnapshot.Amount)).ToList());
     }
 }
