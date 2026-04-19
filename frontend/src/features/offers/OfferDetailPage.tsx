@@ -7,6 +7,7 @@ import {
   sendOffer,
   acceptOffer,
   rejectOffer,
+  expireOffer,
   addOfferItem,
   removeOfferItem,
   downloadOfferPdf,
@@ -59,6 +60,7 @@ export function OfferDetailPage() {
   const mutSend = useMutation({ mutationFn: () => sendOffer(id!), onSuccess: invalidate })
   const mutAccept = useMutation({ mutationFn: () => acceptOffer(id!), onSuccess: invalidate })
   const mutReject = useMutation({ mutationFn: () => rejectOffer(id!), onSuccess: invalidate })
+  const mutExpire = useMutation({ mutationFn: () => expireOffer(id!), onSuccess: invalidate })
   const mutSendEmail = useMutation({
     mutationFn: () => sendOfferEmail(id!),
     onSuccess: () => setEmailSent(true),
@@ -123,9 +125,7 @@ export function OfferDetailPage() {
             </div>
             <div className="flex items-center gap-2">
               <Badge variant={statusVariant[offer.status] ?? 'outline'}>{offer.status}</Badge>
-              {isDraft && (
-                <Button variant="outline" size="sm" onClick={handleEditOpen}>Edit</Button>
-              )}
+              <Button variant="outline" size="sm" onClick={handleEditOpen}>Edit</Button>
             </div>
           </div>
           <div className="flex gap-6 text-sm text-muted-foreground mt-2">
@@ -134,32 +134,44 @@ export function OfferDetailPage() {
             {offer.sentAt && <span>Sent {new Date(offer.sentAt).toLocaleDateString()}</span>}
           </div>
         </CardHeader>
-        <CardContent className="flex flex-wrap gap-2">
-          {isDraft && (
-            <Button onClick={() => mutSend.mutate()} disabled={mutSend.isPending}>
-              {mutSend.isPending ? 'Sending…' : 'Send Offer'}
+        <CardContent className="space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm text-muted-foreground w-28 shrink-0">Change status:</span>
+            {isDraft && (
+              <Button onClick={() => mutSend.mutate()} disabled={mutSend.isPending}>
+                {mutSend.isPending ? 'Sending…' : 'Mark as Sent'}
+              </Button>
+            )}
+            {isSent && (
+              <>
+                <Button variant="default" onClick={() => mutAccept.mutate()} disabled={mutAccept.isPending}>
+                  {mutAccept.isPending ? 'Accepting…' : 'Accept'}
+                </Button>
+                <Button variant="destructive" onClick={() => mutReject.mutate()} disabled={mutReject.isPending}>
+                  {mutReject.isPending ? 'Rejecting…' : 'Reject'}
+                </Button>
+                <Button variant="outline" onClick={() => mutExpire.mutate()} disabled={mutExpire.isPending}>
+                  {mutExpire.isPending ? 'Expiring…' : 'Expire'}
+                </Button>
+              </>
+            )}
+            {!isDraft && !isSent && (
+              <span className="text-sm text-muted-foreground">No transitions available for this status.</span>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm text-muted-foreground w-28 shrink-0">Export:</span>
+            <Button variant="outline" onClick={() => downloadOfferPdf(id!, offer.title)}>
+              Download PDF
             </Button>
-          )}
-          {isSent && (
-            <>
-              <Button variant="default" onClick={() => mutAccept.mutate()} disabled={mutAccept.isPending}>
-                {mutAccept.isPending ? 'Accepting…' : 'Accept'}
-              </Button>
-              <Button variant="destructive" onClick={() => mutReject.mutate()} disabled={mutReject.isPending}>
-                {mutReject.isPending ? 'Rejecting…' : 'Reject'}
-              </Button>
-            </>
-          )}
-          <Button variant="outline" onClick={() => downloadOfferPdf(id!, offer.title)}>
-            Download PDF
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => mutSendEmail.mutate()}
-            disabled={mutSendEmail.isPending}
-          >
-            {mutSendEmail.isPending ? 'Sending email…' : emailSent ? 'Email sent ✓' : 'Send by Email'}
-          </Button>
+            <Button
+              variant="outline"
+              onClick={() => mutSendEmail.mutate()}
+              disabled={mutSendEmail.isPending}
+            >
+              {mutSendEmail.isPending ? 'Sending email…' : emailSent ? 'Email sent ✓' : 'Send by Email'}
+            </Button>
+          </div>
         </CardContent>
       </Card>
 

@@ -10,6 +10,7 @@ public sealed class ProjectMemberConfiguration : IEntityTypeConfiguration<Projec
     {
         builder.ToTable("ProjectMembers");
         builder.HasKey(m => m.Id);
+        builder.Property(m => m.Id).ValueGeneratedNever();
 
         builder.Property(m => m.Name).HasMaxLength(200).IsRequired();
         builder.Property(m => m.Role).HasMaxLength(100).IsRequired();

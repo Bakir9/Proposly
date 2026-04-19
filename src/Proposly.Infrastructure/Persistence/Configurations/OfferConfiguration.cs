@@ -10,6 +10,7 @@ public sealed class OfferConfiguration : IEntityTypeConfiguration<Offer>
     {
         builder.ToTable("Offers");
         builder.HasKey(o => o.Id);
+        builder.Property(o => o.Id).ValueGeneratedNever();
 
         builder.Property(o => o.Title).HasMaxLength(300).IsRequired();
         builder.Property(o => o.Notes).HasMaxLength(4000);

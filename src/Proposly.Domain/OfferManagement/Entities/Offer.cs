@@ -134,7 +134,6 @@ public sealed class Offer : AggregateRoot<Guid>, ITenantEntity, IAuditableEntity
 
     public void UpdateDetails(string title, string? notes, DateOnly? validUntil)
     {
-        EnsureDraft();
         Title = title;
         Notes = notes;
         ValidUntil = validUntil;

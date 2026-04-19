@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   getProjectById,
+  updateProject,
   addTask,
   updateTaskStatus,
   addProjectMember,
@@ -62,8 +63,10 @@ export function ProjectDetailPage() {
   // Task dialog
   const [taskOpen, setTaskOpen] = useState(false)
   const [taskTitle, setTaskTitle] = useState('')
+  const [taskDesc, setTaskDesc] = useState('')
   const [taskHours, setTaskHours] = useState('')
   const [taskDue, setTaskDue] = useState('')
+  const [taskMilestoneId, setTaskMilestoneId] = useState('')
 
   // Member dialog
   const [memberOpen, setMemberOpen] = useState(false)
@@ -88,6 +91,15 @@ export function ProjectDetailPage() {
   const [expenseCategory, setExpenseCategory] = useState('')
   const [expenseDate, setExpenseDate] = useState('')
 
+  // Edit project dialog
+  const [editOpen, setEditOpen] = useState(false)
+  const [editName, setEditName] = useState('')
+  const [editDescription, setEditDescription] = useState('')
+  const [editDeadline, setEditDeadline] = useState('')
+  const [editStatus, setEditStatus] = useState('')
+  const [editBudget, setEditBudget] = useState('')
+  const [editCurrency, setEditCurrency] = useState('EUR')
+
   // Milestone dialog
   const [milestoneOpen, setMilestoneOpen] = useState(false)
   const [milestoneTitle, setMilestoneTitle] = useState('')
@@ -96,10 +108,20 @@ export function ProjectDetailPage() {
   const mutAddTask = useMutation({
     mutationFn: () => addTask(id!, {
       title: taskTitle,
+      description: taskDesc || undefined,
       estimatedHours: taskHours ? parseFloat(taskHours) : undefined,
       dueDate: taskDue || undefined,
+      milestoneId: taskMilestoneId || undefined,
     }),
-    onSuccess: () => { invalidate(); setTaskOpen(false); setTaskTitle(''); setTaskHours(''); setTaskDue('') },
+    onSuccess: () => {
+      invalidate()
+      setTaskOpen(false)
+      setTaskTitle('')
+      setTaskDesc('')
+      setTaskHours('')
+      setTaskDue('')
+      setTaskMilestoneId('')
+    },
   })
 
   const mutTaskStatus = useMutation({
@@ -149,6 +171,18 @@ export function ProjectDetailPage() {
     onSuccess: invalidate,
   })
 
+  const mutUpdateProject = useMutation({
+    mutationFn: () => updateProject(id!, {
+      name: editName,
+      description: editDescription || undefined,
+      deadline: editDeadline || undefined,
+      status: editStatus || undefined,
+      budgetAmount: editBudget ? parseFloat(editBudget) : undefined,
+      budgetCurrency: editBudget ? editCurrency : undefined,
+    }),
+    onSuccess: () => { invalidate(); setEditOpen(false) },
+  })
+
   if (isLoading) return <div className="p-6"><p className="text-muted-foreground">Loading…</p></div>
   if (isError || !project) return <div className="p-6"><p className="text-destructive">Failed to load project.</p></div>
 
@@ -168,7 +202,18 @@ export function ProjectDetailPage() {
           <h1 className="text-2xl font-semibold">{p.name}</h1>
           <p className="text-sm text-muted-foreground mt-1">{p.clientName}</p>
         </div>
-        <Badge variant={projectStatusVariant[p.status] ?? 'outline'}>{p.status}</Badge>
+        <div className="flex items-center gap-2">
+          <Badge variant={projectStatusVariant[p.status] ?? 'outline'}>{p.status}</Badge>
+          <Button size="sm" variant="outline" onClick={() => {
+            setEditName(p.name)
+            setEditDescription(p.description ?? '')
+            setEditDeadline(p.deadline ? p.deadline.slice(0, 10) : '')
+            setEditStatus(p.status)
+            setEditBudget(p.budgetAmount.toString())
+            setEditCurrency(p.currency)
+            setEditOpen(true)
+          }}>Edit</Button>
+        </div>
       </div>
 
       <Tabs tabs={TABS}>
@@ -349,6 +394,10 @@ export function ProjectDetailPage() {
             <Label>Title</Label>
             <Input value={taskTitle} onChange={e => setTaskTitle(e.target.value)} placeholder="Task title" />
           </div>
+          <div className="space-y-1">
+            <Label>Description (optional)</Label>
+            <Textarea value={taskDesc} onChange={e => setTaskDesc(e.target.value)} placeholder="What needs to be done?" />
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label>Estimated Hours (optional)</Label>
@@ -359,6 +408,17 @@ export function ProjectDetailPage() {
               <Input type="date" value={taskDue} onChange={e => setTaskDue(e.target.value)} />
             </div>
           </div>
+          {p.milestones.length > 0 && (
+            <div className="space-y-1">
+              <Label>Milestone (optional)</Label>
+              <Select value={taskMilestoneId} onChange={e => setTaskMilestoneId(e.target.value)}>
+                <option value="">No milestone</option>
+                {p.milestones.map(m => (
+                  <option key={m.id} value={m.id}>{m.title}</option>
+                ))}
+              </Select>
+            </div>
+          )}
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setTaskOpen(false)}>Cancel</Button>
             <Button onClick={() => mutAddTask.mutate()} disabled={mutAddTask.isPending || !taskTitle.trim()}>
@@ -476,11 +536,10 @@ export function ProjectDetailPage() {
               <Label>Category</Label>
               <Select value={expenseCategory} onChange={e => setExpenseCategory(e.target.value)}>
                 <option value="">Select category…</option>
+                <option value="Materials">Materials</option>
+                <option value="Equipment">Equipment</option>
+                <option value="Subcontractors">Subcontractors</option>
                 <option value="Travel">Travel</option>
-                <option value="Software">Software</option>
-                <option value="Hardware">Hardware</option>
-                <option value="Office">Office</option>
-                <option value="Marketing">Marketing</option>
                 <option value="Other">Other</option>
               </Select>
             </div>
@@ -493,6 +552,54 @@ export function ProjectDetailPage() {
             <Button variant="outline" onClick={() => setExpenseOpen(false)}>Cancel</Button>
             <Button onClick={() => mutAddExpense.mutate()} disabled={mutAddExpense.isPending || !expenseDesc.trim() || !expenseAmount || !expenseCategory || !expenseDate}>
               {mutAddExpense.isPending ? 'Adding…' : 'Add Expense'}
+            </Button>
+          </div>
+        </div>
+      </Dialog>
+
+      <Dialog open={editOpen} onClose={() => setEditOpen(false)} title="Edit Project">
+        <div className="space-y-4">
+          <div className="space-y-1">
+            <Label>Name</Label>
+            <Input value={editName} onChange={e => setEditName(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <Label>Description (optional)</Label>
+            <Textarea value={editDescription} onChange={e => setEditDescription(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <Label>Deadline (optional)</Label>
+            <Input type="date" value={editDeadline} onChange={e => setEditDeadline(e.target.value)} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label>Budget</Label>
+              <Input type="number" step="0.01" value={editBudget} onChange={e => setEditBudget(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label>Currency</Label>
+              <Select value={editCurrency} onChange={e => setEditCurrency(e.target.value)}>
+                <option value="EUR">EUR</option>
+                <option value="USD">USD</option>
+                <option value="GBP">GBP</option>
+                <option value="CHF">CHF</option>
+              </Select>
+            </div>
+          </div>
+          <div className="space-y-1">
+            <Label>Status</Label>
+            <Select value={editStatus} onChange={e => setEditStatus(e.target.value)}>
+              <option value="Planning">Planning</option>
+              <option value="Active">Active</option>
+              <option value="OnHold">On Hold</option>
+              <option value="Completed">Completed</option>
+              <option value="Cancelled">Cancelled</option>
+            </Select>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
+            <Button onClick={() => mutUpdateProject.mutate()} disabled={mutUpdateProject.isPending || !editName.trim()}>
+              {mutUpdateProject.isPending ? 'Saving…' : 'Save'}
             </Button>
           </div>
         </div>

@@ -10,6 +10,7 @@ public sealed class ProjectTaskConfiguration : IEntityTypeConfiguration<ProjectT
     {
         builder.ToTable("ProjectTasks");
         builder.HasKey(t => t.Id);
+        builder.Property(t => t.Id).ValueGeneratedNever();
 
         builder.Property(t => t.Title).HasMaxLength(300).IsRequired();
         builder.Property(t => t.Description).HasMaxLength(2000);

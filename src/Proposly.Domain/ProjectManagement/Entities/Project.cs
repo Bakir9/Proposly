@@ -110,11 +110,13 @@ public sealed class Project : AggregateRoot<Guid>, ITenantEntity, IAuditableEnti
         RaiseDomainEvent(new ProjectStatusChangedDomainEvent(Id, ProjectStatus.Cancelled));
     }
 
-    public void UpdateDetails(string name, string? description, DateOnly? deadline)
+    public void UpdateDetails(string name, string? description, DateOnly? deadline, Money? budget = null)
     {
         Name = name;
         Description = description;
         Deadline = deadline;
+        if (budget is not null)
+            Budget = budget;
         Touch();
     }
 

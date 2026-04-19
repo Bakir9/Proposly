@@ -10,6 +10,7 @@ public sealed class ExpenseConfiguration : IEntityTypeConfiguration<Expense>
     {
         builder.ToTable("Expenses");
         builder.HasKey(e => e.Id);
+        builder.Property(e => e.Id).ValueGeneratedNever();
 
         builder.Property(e => e.Description).HasMaxLength(500).IsRequired();
         builder.Property(e => e.Category).HasConversion<string>().HasMaxLength(30);

@@ -99,6 +99,8 @@ export interface UpdateProjectRequest {
   description?: string
   deadline?: string
   status?: string
+  budgetAmount?: number
+  budgetCurrency?: string
 }
 
 export const getProjects = () =>

@@ -10,6 +10,7 @@ public sealed class TimeEntryConfiguration : IEntityTypeConfiguration<TimeEntry>
     {
         builder.ToTable("TimeEntries");
         builder.HasKey(t => t.Id);
+        builder.Property(t => t.Id).ValueGeneratedNever();
 
         builder.Property(t => t.HoursWorked).HasColumnType("numeric(8,2)").IsRequired();
         builder.Property(t => t.Description).HasMaxLength(500);

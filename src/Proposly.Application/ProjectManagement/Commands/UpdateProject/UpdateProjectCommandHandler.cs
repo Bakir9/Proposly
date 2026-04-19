@@ -1,5 +1,6 @@
 using Proposly.Application.Abstractions;
 using Proposly.Domain.ProjectManagement.Repositories;
+using Proposly.Shared.ValueObjects;
 
 namespace Proposly.Application.ProjectManagement.Commands.UpdateProject;
 
@@ -33,7 +34,10 @@ public sealed class UpdateProjectCommandHandler : ICommandHandler<UpdateProjectC
             }
         }
 
-        project.UpdateDetails(command.Name, command.Description, command.Deadline);
+        var budget = command.BudgetAmount is not null && command.BudgetCurrency is not null
+            ? new Money(command.BudgetAmount.Value, command.BudgetCurrency)
+            : null;
+        project.UpdateDetails(command.Name, command.Description, command.Deadline, budget);
         await _repository.UpdateAsync(project, cancellationToken);
     }
 }

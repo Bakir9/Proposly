@@ -10,6 +10,7 @@ public sealed class MilestoneConfiguration : IEntityTypeConfiguration<Milestone>
     {
         builder.ToTable("Milestones");
         builder.HasKey(m => m.Id);
+        builder.Property(m => m.Id).ValueGeneratedNever();
 
         builder.Property(m => m.Title).HasMaxLength(300).IsRequired();
     }

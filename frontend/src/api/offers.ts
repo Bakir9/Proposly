@@ -70,6 +70,9 @@ export const acceptOffer = (id: string) =>
 export const rejectOffer = (id: string) =>
   api.post(`/offers/${id}/reject`)
 
+export const expireOffer = (id: string) =>
+  api.post(`/offers/${id}/expire`)
+
 export const addOfferItem = (offerId: string, data: AddOfferItemRequest) =>
   api.post<string>(`/offers/${offerId}/items`, data).then(r => r.data)
 

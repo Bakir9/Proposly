@@ -10,6 +10,7 @@ public sealed class OfferItemConfiguration : IEntityTypeConfiguration<OfferItem>
     {
         builder.ToTable("OfferItems");
         builder.HasKey(i => i.Id);
+        builder.Property(i => i.Id).ValueGeneratedNever();
 
         builder.Property(i => i.Description).HasMaxLength(500).IsRequired();
         builder.Property(i => i.Quantity).HasColumnType("numeric(18,4)").IsRequired();
