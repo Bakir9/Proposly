@@ -89,15 +89,14 @@ The two contexts communicate through a well-defined integration point: when an o
 
 | Layer | Technology |
 |---|---|
-| Backend | .NET 8, C# |
+| Backend | .NET 10, C# |
 | Frontend | React, TypeScript |
 | Database | PostgreSQL / SQL Server |
 | ORM | Entity Framework Core |
-| CQRS | MediatR |
+| CQRS |
 | Validation | FluentValidation |
 | PDF generation | QuestPDF |
 | Email | MailKit / SendGrid |
-| File storage | Local disk / S3-compatible (e.g. Hetzner Object Storage) |
 | Authentication | JWT Bearer tokens |
 | Logging | Serilog |
 
