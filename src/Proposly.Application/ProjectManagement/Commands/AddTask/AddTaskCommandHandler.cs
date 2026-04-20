@@ -14,7 +14,7 @@ public sealed class AddTaskCommandHandler : ICommandHandler<AddTaskCommand, Guid
         var project = await _repository.GetByIdAsync(command.ProjectId, cancellationToken)
             ?? throw new InvalidOperationException($"Project {command.ProjectId} not found.");
 
-        var task = project.AddTask(command.Title, command.Description, command.EstimatedHours, command.DueDate, command.MilestoneId);
+        var task = project.AddTask(command.Title, command.Description, command.EstimatedHours, command.DueDate, command.MilestoneId, command.AssignedMemberId);
         await _repository.UpdateAsync(project, cancellationToken);
         return task.Id;
     }

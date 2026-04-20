@@ -4,6 +4,7 @@ using Proposly.API.Authorization;
 using Proposly.Application.Abstractions;
 using Proposly.Application.OfferManagement.Commands.AcceptOffer;
 using Proposly.Application.OfferManagement.Commands.AddOfferItem;
+using Proposly.Application.OfferManagement.Commands.DeleteOffer;
 using Proposly.Application.OfferManagement.Commands.ExpireOffer;
 using Proposly.Application.OfferManagement.Commands.CreateOffer;
 using Proposly.Application.OfferManagement.Commands.RejectOffer;
@@ -88,6 +89,16 @@ public sealed class OffersController : ControllerBase
         CancellationToken ct)
     {
         await handler.HandleAsync(new ExpireOfferCommand(id), ct);
+        return NoContent();
+    }
+
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete(
+        Guid id,
+        [FromServices] ICommandHandler<DeleteOfferCommand> handler,
+        CancellationToken ct)
+    {
+        await handler.HandleAsync(new DeleteOfferCommand(id), ct);
         return NoContent();
     }
 

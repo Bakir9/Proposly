@@ -18,17 +18,20 @@ public sealed class OfferRepository : IOfferRepository
 
     public async Task<IReadOnlyList<Offer>> GetAllAsync(CancellationToken ct = default)
         => await _context.Offers
+            .Include(o => o.Items)
             .OrderByDescending(o => o.CreatedAt)
             .ToListAsync(ct);
 
     public async Task<IReadOnlyList<Offer>> GetByClientAsync(Guid clientId, CancellationToken ct = default)
         => await _context.Offers
+            .Include(o => o.Items)
             .Where(o => o.ClientId == clientId)
             .OrderByDescending(o => o.CreatedAt)
             .ToListAsync(ct);
 
     public async Task<IReadOnlyList<Offer>> GetByStatusAsync(OfferStatus status, CancellationToken ct = default)
         => await _context.Offers
+            .Include(o => o.Items)
             .Where(o => o.Status == status)
             .OrderByDescending(o => o.CreatedAt)
             .ToListAsync(ct);
@@ -41,6 +44,12 @@ public sealed class OfferRepository : IOfferRepository
 
     public async Task UpdateAsync(Offer offer, CancellationToken ct = default)
     {
+        await _context.SaveChangesAsync(ct);
+    }
+
+    public async Task DeleteAsync(Offer offer, CancellationToken ct = default)
+    {
+        _context.Offers.Remove(offer);
         await _context.SaveChangesAsync(ct);
     }
 }

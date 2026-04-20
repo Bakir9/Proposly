@@ -8,12 +8,14 @@ import {
   acceptOffer,
   rejectOffer,
   expireOffer,
+  deleteOffer,
   addOfferItem,
   removeOfferItem,
   downloadOfferPdf,
   sendOfferEmail,
   type AddOfferItemRequest,
 } from '@/api/offers'
+import { useAuth } from '@/features/auth/AuthContext'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -21,6 +23,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog } from '@/components/ui/dialog'
+import { ArrowLeft, Pencil, Trash2, Send, CheckCircle, XCircle, Clock, Download, Mail, Plus } from 'lucide-react'
 
 const statusVariant: Record<string, 'default' | 'secondary' | 'success' | 'destructive' | 'warning' | 'outline'> = {
   Draft: 'secondary',
@@ -34,6 +37,7 @@ export function OfferDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { user } = useAuth()
 
   const { data: offer, isLoading, isError } = useQuery({
     queryKey: ['offer', id],
@@ -56,14 +60,34 @@ export function OfferDetailPage() {
   }
 
   const [emailSent, setEmailSent] = useState(false)
+  const [statusError, setStatusError] = useState<string | null>(null)
 
-  const mutSend = useMutation({ mutationFn: () => sendOffer(id!), onSuccess: invalidate })
-  const mutAccept = useMutation({ mutationFn: () => acceptOffer(id!), onSuccess: invalidate })
-  const mutReject = useMutation({ mutationFn: () => rejectOffer(id!), onSuccess: invalidate })
-  const mutExpire = useMutation({ mutationFn: () => expireOffer(id!), onSuccess: invalidate })
+  const clearStatusError = () => setStatusError(null)
+  const onStatusError = (err: unknown) => {
+    const msg =
+      (err as { response?: { data?: { detail?: string; title?: string; message?: string } } })
+        ?.response?.data?.detail ??
+      (err as { response?: { data?: { title?: string } } })?.response?.data?.title ??
+      (err as { message?: string })?.message ??
+      'Status change failed.'
+    setStatusError(msg)
+  }
+
+  const mutSend = useMutation({ mutationFn: () => sendOffer(id!), onSuccess: () => { clearStatusError(); invalidate() }, onError: onStatusError })
+  const mutAccept = useMutation({ mutationFn: () => acceptOffer(id!), onSuccess: () => { clearStatusError(); invalidate() }, onError: onStatusError })
+  const mutReject = useMutation({ mutationFn: () => rejectOffer(id!), onSuccess: () => { clearStatusError(); invalidate() }, onError: onStatusError })
+  const mutExpire = useMutation({ mutationFn: () => expireOffer(id!), onSuccess: () => { clearStatusError(); invalidate() }, onError: onStatusError })
   const mutSendEmail = useMutation({
     mutationFn: () => sendOfferEmail(id!),
     onSuccess: () => setEmailSent(true),
+  })
+
+  const mutDelete = useMutation({
+    mutationFn: () => deleteOffer(id!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['offers'] })
+      navigate('/offers')
+    },
   })
 
   const mutUpdate = useMutation({
@@ -92,6 +116,8 @@ export function OfferDetailPage() {
 
   const isDraft = offer.status === 'Draft'
   const isSent = offer.status === 'Sent'
+  const isAdmin = user?.role === 'Admin'
+  const canDelete = isAdmin || offer.status === 'Draft' || offer.status === 'Expired'
 
   const handleEditOpen = () => {
     setEditTitle(offer.title)
@@ -112,7 +138,7 @@ export function OfferDetailPage() {
   return (
     <div className="p-6 space-y-4">
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>← Back</Button>
+        <Button variant="ghost" size="sm" onClick={() => navigate(-1)}><ArrowLeft className="h-4 w-4 mr-1" /> Back</Button>
       </div>
 
       <Card>
@@ -125,7 +151,16 @@ export function OfferDetailPage() {
             </div>
             <div className="flex items-center gap-2">
               <Badge variant={statusVariant[offer.status] ?? 'outline'}>{offer.status}</Badge>
-              <Button variant="outline" size="sm" onClick={handleEditOpen}>Edit</Button>
+              <Button variant="outline" size="sm" onClick={handleEditOpen}><Pencil className="h-3.5 w-3.5 mr-1" /> Edit</Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => { if (window.confirm('Delete this offer? This cannot be undone.')) mutDelete.mutate() }}
+                disabled={!canDelete || mutDelete.isPending}
+                title={!canDelete ? 'Only Draft or Expired offers can be deleted' : undefined}
+              >
+                <Trash2 className="h-3.5 w-3.5 mr-1" />{mutDelete.isPending ? 'Deleting…' : 'Delete'}
+              </Button>
             </div>
           </div>
           <div className="flex gap-6 text-sm text-muted-foreground mt-2">
@@ -138,20 +173,27 @@ export function OfferDetailPage() {
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm text-muted-foreground w-28 shrink-0">Change status:</span>
             {isDraft && (
-              <Button onClick={() => mutSend.mutate()} disabled={mutSend.isPending}>
-                {mutSend.isPending ? 'Sending…' : 'Mark as Sent'}
+              <Button
+                onClick={() => mutSend.mutate()}
+                disabled={mutSend.isPending || offer.items.length === 0}
+                title={offer.items.length === 0 ? 'Add at least one item before sending' : undefined}
+              >
+                <Send className="h-3.5 w-3.5 mr-1" />{mutSend.isPending ? 'Sending…' : 'Mark as Sent'}
               </Button>
+            )}
+            {isDraft && offer.items.length === 0 && (
+              <span className="text-xs text-muted-foreground">Add items first</span>
             )}
             {isSent && (
               <>
                 <Button variant="default" onClick={() => mutAccept.mutate()} disabled={mutAccept.isPending}>
-                  {mutAccept.isPending ? 'Accepting…' : 'Accept'}
+                  <CheckCircle className="h-3.5 w-3.5 mr-1" />{mutAccept.isPending ? 'Accepting…' : 'Accept'}
                 </Button>
                 <Button variant="destructive" onClick={() => mutReject.mutate()} disabled={mutReject.isPending}>
-                  {mutReject.isPending ? 'Rejecting…' : 'Reject'}
+                  <XCircle className="h-3.5 w-3.5 mr-1" />{mutReject.isPending ? 'Rejecting…' : 'Reject'}
                 </Button>
                 <Button variant="outline" onClick={() => mutExpire.mutate()} disabled={mutExpire.isPending}>
-                  {mutExpire.isPending ? 'Expiring…' : 'Expire'}
+                  <Clock className="h-3.5 w-3.5 mr-1" />{mutExpire.isPending ? 'Expiring…' : 'Expire'}
                 </Button>
               </>
             )}
@@ -159,17 +201,16 @@ export function OfferDetailPage() {
               <span className="text-sm text-muted-foreground">No transitions available for this status.</span>
             )}
           </div>
+          {statusError && (
+            <p className="text-sm text-destructive">{statusError}</p>
+          )}
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm text-muted-foreground w-28 shrink-0">Export:</span>
             <Button variant="outline" onClick={() => downloadOfferPdf(id!, offer.title)}>
-              Download PDF
+              <Download className="h-3.5 w-3.5 mr-1" /> Download PDF
             </Button>
-            <Button
-              variant="outline"
-              onClick={() => mutSendEmail.mutate()}
-              disabled={mutSendEmail.isPending}
-            >
-              {mutSendEmail.isPending ? 'Sending email…' : emailSent ? 'Email sent ✓' : 'Send by Email'}
+            <Button variant="outline" onClick={() => mutSendEmail.mutate()} disabled={mutSendEmail.isPending}>
+              <Mail className="h-3.5 w-3.5 mr-1" />{mutSendEmail.isPending ? 'Sending…' : emailSent ? 'Email sent ✓' : 'Send by Email'}
             </Button>
           </div>
         </CardContent>
@@ -179,7 +220,7 @@ export function OfferDetailPage() {
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle className="text-base">Line Items</CardTitle>
           {isDraft && (
-            <Button size="sm" onClick={() => setAddItemOpen(true)}>+ Add Item</Button>
+            <Button size="sm" onClick={() => setAddItemOpen(true)}><Plus className="h-3.5 w-3.5 mr-1" /> Add Item</Button>
           )}
         </CardHeader>
         <CardContent>

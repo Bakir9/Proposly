@@ -5,6 +5,7 @@ public record UserSummaryResponse(
     string FullName,
     string Email,
     string Role,
+    bool IsDisabled,
     DateTime CreatedAt);
 
 public record UserDetailResponse(

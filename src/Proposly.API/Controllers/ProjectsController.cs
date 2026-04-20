@@ -106,7 +106,7 @@ public sealed class ProjectsController : ControllerBase
         [FromServices] ICommandHandler<AddTaskCommand, Guid> handler,
         CancellationToken ct)
     {
-        var taskId = await handler.HandleAsync(new AddTaskCommand(id, body.Title, body.Description, body.EstimatedHours, body.DueDate, body.MilestoneId), ct);
+        var taskId = await handler.HandleAsync(new AddTaskCommand(id, body.Title, body.Description, body.EstimatedHours, body.DueDate, body.MilestoneId, body.AssignedMemberId), ct);
         return CreatedAtAction(nameof(GetById), new { id }, taskId);
     }
 
@@ -151,6 +151,6 @@ public record UpdateProjectBody(string Name, string? Description, DateOnly? Dead
 public record AddMemberBody(Guid UserId, string Name, string Role, decimal HourlyRate, string Currency);
 public record LogTimeBody(Guid MemberId, decimal HoursWorked, string? Description, DateOnly Date);
 public record AddExpenseBody(string Description, decimal Amount, string Currency, string Category, DateOnly Date);
-public record AddTaskBody(string Title, string? Description, decimal? EstimatedHours, DateOnly? DueDate, Guid? MilestoneId);
+public record AddTaskBody(string Title, string? Description, decimal? EstimatedHours, DateOnly? DueDate, Guid? MilestoneId, Guid? AssignedMemberId);
 public record UpdateTaskStatusBody(string Status);
 public record AddMilestoneBody(string Title, DateOnly DueDate);

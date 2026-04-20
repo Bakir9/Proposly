@@ -22,6 +22,7 @@ public sealed class ProjectRepository : IProjectRepository
     public async Task<IReadOnlyList<Project>> GetAllAsync(CancellationToken ct = default)
         => await _context.Projects
             .Include(p => p.Members)
+            .Include(p => p.TimeEntries)
             .OrderByDescending(p => p.CreatedAt)
             .ToListAsync(ct);
 

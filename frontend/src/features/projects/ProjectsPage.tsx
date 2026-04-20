@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog } from '@/components/ui/dialog'
+import { FolderKanban, Plus } from 'lucide-react'
 
 const statusVariant: Record<string, 'default' | 'secondary' | 'success' | 'destructive' | 'warning' | 'outline'> = {
   Planning: 'secondary',
@@ -64,8 +65,8 @@ export function ProjectsPage() {
   return (
     <div className="p-6 space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Projects</h1>
-        <Button onClick={() => setDialogOpen(true)}>New Project</Button>
+        <h1 className="text-2xl font-semibold flex items-center gap-2"><FolderKanban className="h-6 w-6" /> Projects</h1>
+        <Button onClick={() => setDialogOpen(true)}><Plus className="h-4 w-4 mr-1" /> New Project</Button>
       </div>
 
       {isLoading && <p className="text-muted-foreground">Loading…</p>}

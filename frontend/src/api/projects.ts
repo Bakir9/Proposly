@@ -33,6 +33,8 @@ export interface ProjectTask {
   estimatedHours: number | null
   dueDate: string | null
   milestoneId: string | null
+  assignedMemberId: string | null
+  assignedMemberName: string | null
 }
 
 export interface Milestone {
@@ -124,7 +126,7 @@ export const logTime = (projectId: string, data: { memberId: string; hoursWorked
 export const addExpense = (projectId: string, data: { description: string; amount: number; currency: string; category: string; date: string }) =>
   api.post<string>(`/projects/${projectId}/expenses`, data).then(r => r.data)
 
-export const addTask = (projectId: string, data: { title: string; description?: string; estimatedHours?: number; dueDate?: string; milestoneId?: string }) =>
+export const addTask = (projectId: string, data: { title: string; description?: string; estimatedHours?: number; dueDate?: string; milestoneId?: string; assignedMemberId?: string }) =>
   api.post<string>(`/projects/${projectId}/tasks`, data).then(r => r.data)
 
 export const updateTaskStatus = (projectId: string, taskId: string, status: string) =>

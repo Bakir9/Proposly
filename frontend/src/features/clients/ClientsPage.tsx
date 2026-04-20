@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog } from '@/components/ui/dialog'
+import { Building2, Plus } from 'lucide-react'
 
 export function ClientsPage() {
   const navigate = useNavigate()
@@ -38,8 +39,8 @@ export function ClientsPage() {
   return (
     <div className="p-6 space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Clients</h1>
-        <Button onClick={() => setDialogOpen(true)}>New Client</Button>
+        <h1 className="text-2xl font-semibold flex items-center gap-2"><Building2 className="h-6 w-6" /> Clients</h1>
+        <Button onClick={() => setDialogOpen(true)}><Plus className="h-4 w-4 mr-1" /> New Client</Button>
       </div>
 
       {isLoading && <p className="text-muted-foreground">Loading…</p>}

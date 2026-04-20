@@ -27,6 +27,12 @@ public sealed class UserRepository : IUserRepository
             .OrderBy(u => u.FirstName)
             .ToListAsync(ct);
 
+    public async Task<IReadOnlyList<User>> GetActiveAsync(CancellationToken ct = default)
+        => await _context.Users
+            .Where(u => !u.IsDisabled)
+            .OrderBy(u => u.FirstName)
+            .ToListAsync(ct);
+
     public async Task AddAsync(User user, CancellationToken ct = default)
     {
         await _context.Users.AddAsync(user, ct);

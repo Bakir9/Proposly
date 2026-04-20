@@ -162,10 +162,12 @@ public sealed class Project : AggregateRoot<Guid>, ITenantEntity, IAuditableEnti
         return expense;
     }
 
-    public ProjectTask AddTask(string title, string? description, decimal? estimatedHours, DateOnly? dueDate, Guid? milestoneId = null)
+    public ProjectTask AddTask(string title, string? description, decimal? estimatedHours, DateOnly? dueDate, Guid? milestoneId = null, Guid? assignedMemberId = null)
     {
-        var task = ProjectTask.Create(Id, title, description, estimatedHours, dueDate, milestoneId);
+        var task = ProjectTask.Create(Id, title, description, estimatedHours, dueDate, milestoneId, assignedMemberId);
         _tasks.Add(task);
+        if (assignedMemberId.HasValue)
+            RaiseDomainEvent(new Events.TaskAssignedDomainEvent(task.Id, Id, assignedMemberId.Value));
         Touch();
         return task;
     }

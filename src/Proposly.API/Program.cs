@@ -16,7 +16,9 @@ builder.Services.AddCors(options =>
               .AllowAnyMethod());
 });
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(o =>
+        o.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()));
 builder.Services.AddOpenApi();
 builder.Services.AddMemoryCache();
 
@@ -54,6 +56,25 @@ if (app.Environment.IsDevelopment())
     var seeder = scope.ServiceProvider.GetRequiredService<Proposly.Infrastructure.Persistence.DataSeeder>();
     await seeder.SeedAsync();
 }
+
+app.UseExceptionHandler(exceptionHandlerApp =>
+{
+    exceptionHandlerApp.Run(async context =>
+    {
+        var feature = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerPathFeature>();
+        var ex = feature?.Error;
+        context.Response.ContentType = "application/problem+json";
+        context.Response.StatusCode = ex is InvalidOperationException or ArgumentException ? 400 : 500;
+        await context.Response.WriteAsJsonAsync(new
+        {
+            status = context.Response.StatusCode,
+            title = ex is InvalidOperationException or ArgumentException
+                ? ex.Message
+                : "An unexpected error occurred.",
+            detail = ex?.Message
+        });
+    });
+});
 
 if (!app.Environment.IsDevelopment())
     app.UseHttpsRedirection();

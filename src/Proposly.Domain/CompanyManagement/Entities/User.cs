@@ -30,10 +30,20 @@ public sealed class User : Entity<Guid>, ITenantEntity, IAuditableEntity
     public string FirstName { get; private set; } = string.Empty;
     public string LastName { get; private set; } = string.Empty;
     public UserRole Role { get; private set; }
+    public bool IsDisabled { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime UpdatedAt { get; private set; }
 
     public string FullName => $"{FirstName} {LastName}";
 
     public void UpdateRole(UserRole role) => Role = role;
+
+    public void Disable()
+    {
+        if (Role == UserRole.Owner)
+            throw new InvalidOperationException("Cannot disable the company Owner.");
+        IsDisabled = true;
+    }
+
+    public void Enable() => IsDisabled = false;
 }

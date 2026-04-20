@@ -4,6 +4,7 @@ import { getOffers } from '@/api/offers'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { FileText, Plus } from 'lucide-react'
 
 const statusVariant: Record<string, 'default' | 'secondary' | 'success' | 'destructive' | 'warning' | 'outline'> = {
   Draft: 'secondary',
@@ -23,8 +24,8 @@ export function OffersPage() {
   return (
     <div className="p-6 space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Offers</h1>
-        <Button onClick={() => navigate('/offers/new')}>New Offer</Button>
+        <h1 className="text-2xl font-semibold flex items-center gap-2"><FileText className="h-6 w-6" /> Offers</h1>
+        <Button onClick={() => navigate('/offers/new')}><Plus className="h-4 w-4 mr-1" /> New Offer</Button>
       </div>
 
       {isLoading && <p className="text-muted-foreground">Loading…</p>}

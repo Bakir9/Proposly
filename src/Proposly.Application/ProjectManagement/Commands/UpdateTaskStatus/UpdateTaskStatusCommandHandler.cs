@@ -19,12 +19,17 @@ public sealed class UpdateTaskStatusCommandHandler : ICommandHandler<UpdateTaskS
 
         switch (command.Status)
         {
+            case "Todo":
+                task.Reopen();
+                break;
             case "InProgress":
                 task.Start();
                 break;
             case "Done":
                 task.Complete();
                 break;
+            default:
+                throw new InvalidOperationException($"Unknown task status '{command.Status}'.");
         }
 
         await _repository.UpdateAsync(project, cancellationToken);

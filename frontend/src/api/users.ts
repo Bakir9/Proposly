@@ -7,6 +7,7 @@ export interface UserSummary {
   fullName: string
   email: string
   role: UserRole
+  isDisabled: boolean
   createdAt: string
 }
 
@@ -30,6 +31,9 @@ export const getMe = () =>
 export const getUsers = () =>
   api.get<UserSummary[]>('/users').then(r => r.data)
 
+export const getActiveUsers = () =>
+  api.get<UserSummary[]>('/users/active').then(r => r.data)
+
 export const inviteUser = (data: InviteUserRequest) =>
   api.post<UserDetail>('/users', data).then(r => r.data)
 
@@ -38,3 +42,6 @@ export const updateUserRole = (id: string, role: string) =>
 
 export const removeUser = (id: string) =>
   api.delete(`/users/${id}`)
+
+export const toggleUserStatus = (id: string, disable: boolean) =>
+  api.put(`/users/${id}/status`, { disable })

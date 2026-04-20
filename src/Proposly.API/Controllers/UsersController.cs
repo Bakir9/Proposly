@@ -4,7 +4,9 @@ using Proposly.API.Authorization;
 using Proposly.Application.Abstractions;
 using Proposly.Application.UserManagement.Commands.InviteUser;
 using Proposly.Application.UserManagement.Commands.RemoveUser;
+using Proposly.Application.UserManagement.Commands.ToggleUserStatus;
 using Proposly.Application.UserManagement.Commands.UpdateUserRole;
+using Proposly.Application.UserManagement.Queries.GetActiveUsers;
 using Proposly.Application.UserManagement.Queries.GetCurrentUser;
 using Proposly.Application.UserManagement.Queries.GetUsers;
 using Proposly.Application.UserManagement.Responses;
@@ -22,6 +24,13 @@ public sealed class UsersController : ControllerBase
         [FromServices] IQueryHandler<GetCurrentUserQuery, UserDetailResponse> handler,
         CancellationToken ct)
         => await handler.HandleAsync(new GetCurrentUserQuery(), ct);
+
+    /// <summary>List active (non-disabled) users. Used for selection dropdowns.</summary>
+    [HttpGet("active")]
+    public async Task<IReadOnlyList<UserSummaryResponse>> GetActive(
+        [FromServices] IQueryHandler<GetActiveUsersQuery, IReadOnlyList<UserSummaryResponse>> handler,
+        CancellationToken ct)
+        => await handler.HandleAsync(new GetActiveUsersQuery(), ct);
 
     /// <summary>List all users in your company. Owner and Admin only.</summary>
     [HttpGet]
@@ -56,9 +65,22 @@ public sealed class UsersController : ControllerBase
         return NoContent();
     }
 
-    /// <summary>Remove a user from your company. Owner only.</summary>
+    /// <summary>Enable or disable a user. Admin and Owner only.</summary>
+    [HttpPut("{id:guid}/status")]
+    [Authorize(Policy = Policies.ManageUsers)]
+    public async Task<IActionResult> ToggleStatus(
+        Guid id,
+        [FromBody] ToggleStatusRequest request,
+        [FromServices] ICommandHandler<ToggleUserStatusCommand> handler,
+        CancellationToken ct)
+    {
+        await handler.HandleAsync(new ToggleUserStatusCommand(id, request.Disable), ct);
+        return NoContent();
+    }
+
+    /// <summary>Remove a user from your company. Admin and Owner only.</summary>
     [HttpDelete("{id:guid}")]
-    [Authorize(Policy = Policies.OwnerOnly)]
+    [Authorize(Policy = Policies.ManageUsers)]
     public async Task<IActionResult> Remove(
         Guid id,
         [FromServices] ICommandHandler<RemoveUserCommand> handler,
@@ -70,3 +92,4 @@ public sealed class UsersController : ControllerBase
 }
 
 public record UpdateRoleRequest(string Role);
+public record ToggleStatusRequest(bool Disable);

@@ -16,5 +16,6 @@ public sealed class ProjectTaskConfiguration : IEntityTypeConfiguration<ProjectT
         builder.Property(t => t.Description).HasMaxLength(2000);
         builder.Property(t => t.Status).HasConversion<string>().HasMaxLength(20);
         builder.Property(t => t.EstimatedHours).HasColumnType("numeric(8,2)");
+        builder.Property(t => t.AssignedMemberId);
     }
 }

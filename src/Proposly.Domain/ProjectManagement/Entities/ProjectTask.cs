@@ -14,7 +14,8 @@ public sealed class ProjectTask : Entity<Guid>
         string? description,
         decimal? estimatedHours,
         DateOnly? dueDate,
-        Guid? milestoneId)
+        Guid? milestoneId,
+        Guid? assignedMemberId)
         : base(id)
     {
         ProjectId = projectId;
@@ -23,6 +24,7 @@ public sealed class ProjectTask : Entity<Guid>
         EstimatedHours = estimatedHours;
         DueDate = dueDate;
         MilestoneId = milestoneId;
+        AssignedMemberId = assignedMemberId;
         Status = ProjectTaskStatus.Todo;
     }
 
@@ -32,11 +34,13 @@ public sealed class ProjectTask : Entity<Guid>
         string? description,
         decimal? estimatedHours,
         DateOnly? dueDate,
-        Guid? milestoneId = null)
-        => new(Guid.NewGuid(), projectId, title, description, estimatedHours, dueDate, milestoneId);
+        Guid? milestoneId = null,
+        Guid? assignedMemberId = null)
+        => new(Guid.NewGuid(), projectId, title, description, estimatedHours, dueDate, milestoneId, assignedMemberId);
 
     public Guid ProjectId { get; private set; }
     public Guid? MilestoneId { get; private set; }
+    public Guid? AssignedMemberId { get; private set; }
     public string Title { get; private set; } = string.Empty;
     public string? Description { get; private set; }
     public decimal? EstimatedHours { get; private set; }
@@ -45,8 +49,8 @@ public sealed class ProjectTask : Entity<Guid>
 
     public void Start()
     {
-        if (Status != ProjectTaskStatus.Todo)
-            throw new InvalidOperationException("Only todo tasks can be started.");
+        if (Status == ProjectTaskStatus.InProgress)
+            throw new InvalidOperationException("Task is already in progress.");
         Status = ProjectTaskStatus.InProgress;
     }
 
@@ -55,5 +59,12 @@ public sealed class ProjectTask : Entity<Guid>
         if (Status == ProjectTaskStatus.Done)
             throw new InvalidOperationException("Task is already completed.");
         Status = ProjectTaskStatus.Done;
+    }
+
+    public void Reopen()
+    {
+        if (Status == ProjectTaskStatus.Todo)
+            throw new InvalidOperationException("Task is already in todo.");
+        Status = ProjectTaskStatus.Todo;
     }
 }

@@ -12,7 +12,7 @@ import {
   addMilestone,
   completeMilestone,
 } from '@/api/projects'
-import { getUsers } from '@/api/users'
+import { getActiveUsers } from '@/api/users'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -22,12 +22,13 @@ import { Select } from '@/components/ui/select'
 import { Tabs } from '@/components/ui/tabs'
 import { Dialog } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
+import { ArrowLeft, Pencil, Plus, UserPlus, Clock, Receipt, Flag, CheckCircle2 } from 'lucide-react'
 
-const taskStatusVariant: Record<string, 'default' | 'secondary' | 'success' | 'outline'> = {
-  Todo: 'secondary',
-  InProgress: 'default',
-  Done: 'success',
-}
+const KANBAN_COLUMNS = [
+  { status: 'Todo', label: 'Not Started' },
+  { status: 'InProgress', label: 'In Progress' },
+  { status: 'Done', label: 'Finished' },
+]
 
 const projectStatusVariant: Record<string, 'default' | 'secondary' | 'success' | 'destructive' | 'warning' | 'outline'> = {
   Planning: 'secondary',
@@ -56,7 +57,7 @@ export function ProjectDetailPage() {
     queryFn: () => getProjectById(id!),
   })
 
-  const { data: users } = useQuery({ queryKey: ['users'], queryFn: getUsers })
+  const { data: users } = useQuery({ queryKey: ['users', 'active'], queryFn: getActiveUsers })
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['project', id] })
 
@@ -67,6 +68,7 @@ export function ProjectDetailPage() {
   const [taskHours, setTaskHours] = useState('')
   const [taskDue, setTaskDue] = useState('')
   const [taskMilestoneId, setTaskMilestoneId] = useState('')
+  const [taskAssignedMemberId, setTaskAssignedMemberId] = useState('')
 
   // Member dialog
   const [memberOpen, setMemberOpen] = useState(false)
@@ -105,6 +107,10 @@ export function ProjectDetailPage() {
   const [milestoneTitle, setMilestoneTitle] = useState('')
   const [milestoneDue, setMilestoneDue] = useState('')
 
+  // Kanban drag state
+  const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null)
+  const [dragOverColumn, setDragOverColumn] = useState<string | null>(null)
+
   const mutAddTask = useMutation({
     mutationFn: () => addTask(id!, {
       title: taskTitle,
@@ -112,6 +118,7 @@ export function ProjectDetailPage() {
       estimatedHours: taskHours ? parseFloat(taskHours) : undefined,
       dueDate: taskDue || undefined,
       milestoneId: taskMilestoneId || undefined,
+      assignedMemberId: taskAssignedMemberId || undefined,
     }),
     onSuccess: () => {
       invalidate()
@@ -121,6 +128,7 @@ export function ProjectDetailPage() {
       setTaskHours('')
       setTaskDue('')
       setTaskMilestoneId('')
+      setTaskAssignedMemberId('')
     },
   })
 
@@ -194,7 +202,7 @@ export function ProjectDetailPage() {
   return (
     <div className="p-6 space-y-4">
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>← Back</Button>
+        <Button variant="ghost" size="sm" onClick={() => navigate(-1)}><ArrowLeft className="h-4 w-4 mr-1" /> Back</Button>
       </div>
 
       <div className="flex items-start justify-between">
@@ -212,7 +220,7 @@ export function ProjectDetailPage() {
             setEditBudget(p.budgetAmount.toString())
             setEditCurrency(p.currency)
             setEditOpen(true)
-          }}>Edit</Button>
+          }}><Pencil className="h-3.5 w-3.5 mr-1" />Edit</Button>
         </div>
       </div>
 
@@ -253,40 +261,74 @@ export function ProjectDetailPage() {
             {activeTab === 'tasks' && (
               <div className="space-y-3">
                 <div className="flex justify-end">
-                  <Button size="sm" onClick={() => setTaskOpen(true)}>+ Add Task</Button>
+                  <Button size="sm" onClick={() => setTaskOpen(true)}><Plus className="h-3.5 w-3.5 mr-1" /> Add Task</Button>
                 </div>
-                {p.tasks.length === 0 && <p className="text-sm text-muted-foreground">No tasks yet.</p>}
-                {p.tasks.map(task => (
-                  <Card key={task.id}>
-                    <CardContent className="py-3 flex items-center justify-between gap-4">
-                      <div className="flex-1">
-                        <p className="font-medium text-sm">{task.title}</p>
-                        {task.description && <p className="text-xs text-muted-foreground">{task.description}</p>}
-                        <div className="flex gap-3 mt-1 text-xs text-muted-foreground">
-                          {task.estimatedHours && <span>{task.estimatedHours}h estimated</span>}
-                          {task.dueDate && <span>Due {new Date(task.dueDate).toLocaleDateString()}</span>}
+                {p.tasks.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No tasks yet.</p>
+                ) : (
+                  <div className="grid grid-cols-3 gap-4">
+                    {KANBAN_COLUMNS.map(col => (
+                      <div
+                        key={col.status}
+                        className={`rounded-lg border-2 border-dashed p-3 min-h-48 transition-colors ${dragOverColumn === col.status ? 'border-primary bg-primary/5' : 'border-muted'}`}
+                        onDragOver={e => { e.preventDefault(); setDragOverColumn(col.status) }}
+                        onDragLeave={e => {
+                          if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverColumn(null)
+                        }}
+                        onDrop={e => {
+                          e.preventDefault()
+                          if (draggedTaskId) {
+                            const task = p.tasks.find(t => t.id === draggedTaskId)
+                            if (task && task.status !== col.status)
+                              mutTaskStatus.mutate({ taskId: draggedTaskId, status: col.status })
+                          }
+                          setDraggedTaskId(null)
+                          setDragOverColumn(null)
+                        }}
+                      >
+                        <div className="flex items-center gap-2 mb-3">
+                          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{col.label}</span>
+                          <span className="text-xs bg-muted rounded-full px-1.5 py-0.5 font-medium">
+                            {p.tasks.filter(t => t.status === col.status).length}
+                          </span>
+                        </div>
+                        <div className="space-y-2">
+                          {p.tasks.filter(t => t.status === col.status).map(task => (
+                            <div
+                              key={task.id}
+                              draggable
+                              onDragStart={() => setDraggedTaskId(task.id)}
+                              onDragEnd={() => { setDraggedTaskId(null); setDragOverColumn(null) }}
+                              className={`bg-card border rounded-md p-3 cursor-grab active:cursor-grabbing shadow-sm transition-opacity select-none ${draggedTaskId === task.id ? 'opacity-40' : ''}`}
+                            >
+                              <p className="font-medium text-sm">{task.title}</p>
+                              {task.description && <p className="text-xs text-muted-foreground mt-0.5">{task.description}</p>}
+                              <div className="flex gap-3 mt-1.5 text-xs text-muted-foreground">
+                                {task.estimatedHours && <span>{task.estimatedHours}h</span>}
+                                {task.dueDate && <span>Due {new Date(task.dueDate).toLocaleDateString()}</span>}
+                              </div>
+                              {task.assignedMemberName && (
+                                <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1">
+                                  <span className="inline-block w-4 h-4 rounded-full bg-muted text-center leading-4 font-medium text-foreground">
+                                    {task.assignedMemberName.charAt(0)}
+                                  </span>
+                                  {task.assignedMemberName}
+                                </p>
+                              )}
+                            </div>
+                          ))}
                         </div>
                       </div>
-                      <Select
-                        className="w-32"
-                        value={task.status}
-                        onChange={e => mutTaskStatus.mutate({ taskId: task.id, status: e.target.value })}
-                      >
-                        <option value="Todo">Todo</option>
-                        <option value="InProgress">In Progress</option>
-                        <option value="Done">Done</option>
-                      </Select>
-                      <Badge variant={taskStatusVariant[task.status] ?? 'outline'}>{task.status}</Badge>
-                    </CardContent>
-                  </Card>
-                ))}
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
             {activeTab === 'team' && (
               <div className="space-y-3">
                 <div className="flex justify-end">
-                  <Button size="sm" onClick={() => setMemberOpen(true)}>+ Add Member</Button>
+                  <Button size="sm" onClick={() => setMemberOpen(true)}><UserPlus className="h-3.5 w-3.5 mr-1" /> Add Member</Button>
                 </div>
                 {p.members.length === 0 && <p className="text-sm text-muted-foreground">No team members yet.</p>}
                 {p.members.map(member => (
@@ -308,7 +350,7 @@ export function ProjectDetailPage() {
             {activeTab === 'timelog' && (
               <div className="space-y-3">
                 <div className="flex justify-end">
-                  <Button size="sm" onClick={() => setTimeOpen(true)}>+ Log Time</Button>
+                  <Button size="sm" onClick={() => setTimeOpen(true)}><Clock className="h-3.5 w-3.5 mr-1" /> Log Time</Button>
                 </div>
                 {p.timeEntries.length === 0 && <p className="text-sm text-muted-foreground">No time logged yet.</p>}
                 {p.timeEntries.map(entry => (
@@ -332,7 +374,7 @@ export function ProjectDetailPage() {
             {activeTab === 'expenses' && (
               <div className="space-y-3">
                 <div className="flex justify-end">
-                  <Button size="sm" onClick={() => setExpenseOpen(true)}>+ Add Expense</Button>
+                  <Button size="sm" onClick={() => setExpenseOpen(true)}><Receipt className="h-3.5 w-3.5 mr-1" /> Add Expense</Button>
                 </div>
                 {p.expenses.length === 0 && <p className="text-sm text-muted-foreground">No expenses yet.</p>}
                 {p.expenses.map(expense => (
@@ -352,7 +394,7 @@ export function ProjectDetailPage() {
             {activeTab === 'milestones' && (
               <div className="space-y-3">
                 <div className="flex justify-end">
-                  <Button size="sm" onClick={() => setMilestoneOpen(true)}>+ Add Milestone</Button>
+                  <Button size="sm" onClick={() => setMilestoneOpen(true)}><Flag className="h-3.5 w-3.5 mr-1" /> Add Milestone</Button>
                 </div>
                 {p.milestones.length === 0 && <p className="text-sm text-muted-foreground">No milestones yet.</p>}
                 {p.milestones.map(milestone => (
@@ -375,7 +417,7 @@ export function ProjectDetailPage() {
                             onClick={() => mutCompleteMilestone.mutate(milestone.id)}
                             disabled={mutCompleteMilestone.isPending}
                           >
-                            Mark Complete
+                            <CheckCircle2 className="h-3.5 w-3.5 mr-1" />Mark Complete
                           </Button>
                         )}
                       </div>
@@ -407,6 +449,15 @@ export function ProjectDetailPage() {
               <Label>Due Date (optional)</Label>
               <Input type="date" value={taskDue} onChange={e => setTaskDue(e.target.value)} />
             </div>
+          </div>
+          <div className="space-y-1">
+            <Label>Assign to (optional)</Label>
+            <Select value={taskAssignedMemberId} onChange={e => setTaskAssignedMemberId(e.target.value)}>
+              <option value="">No assignee</option>
+              {p.members.map(m => (
+                <option key={m.id} value={m.id}>{m.name}</option>
+              ))}
+            </Select>
           </div>
           {p.milestones.length > 0 && (
             <div className="space-y-1">

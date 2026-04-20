@@ -15,7 +15,7 @@ public record ProjectDetailResponse(
 
 public record ProfitabilityResponse(decimal LaborCost, decimal ExpensesTotal, decimal TotalCost, decimal Revenue, decimal Profit, string Currency);
 public record ProjectMemberResponse(Guid Id, Guid UserId, string Name, string Role, decimal HourlyRate, string Currency);
-public record ProjectTaskResponse(Guid Id, string Title, string? Description, ProjectTaskStatus Status, decimal? EstimatedHours, DateOnly? DueDate, Guid? MilestoneId);
+public record ProjectTaskResponse(Guid Id, string Title, string? Description, ProjectTaskStatus Status, decimal? EstimatedHours, DateOnly? DueDate, Guid? MilestoneId, Guid? AssignedMemberId, string? AssignedMemberName);
 public record MilestoneResponse(Guid Id, string Title, DateOnly DueDate, bool IsCompleted);
 public record ExpenseResponse(Guid Id, string Description, decimal Amount, string Currency, string Category, DateOnly Date);
 public record TimeEntryResponse(Guid Id, Guid MemberId, string MemberName, decimal HoursWorked, decimal HourlyRateSnapshot, string Currency, string? Description, DateOnly Date, decimal Cost);

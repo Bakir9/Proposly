@@ -11,4 +11,5 @@ public interface IOfferRepository
     Task<IReadOnlyList<Offer>> GetByStatusAsync(OfferStatus status, CancellationToken ct = default);
     Task AddAsync(Offer offer, CancellationToken ct = default);
     Task UpdateAsync(Offer offer, CancellationToken ct = default);
+    Task DeleteAsync(Offer offer, CancellationToken ct = default);
 }

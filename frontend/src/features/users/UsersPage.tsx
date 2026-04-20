@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getUsers, inviteUser } from '@/api/users'
+import { getUsers, inviteUser, toggleUserStatus, removeUser } from '@/api/users'
+import { useAuth } from '@/features/auth/AuthContext'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -8,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
 import { Dialog } from '@/components/ui/dialog'
+import { Users, UserPlus, UserX, UserCheck, Trash2 } from 'lucide-react'
 
 const roleVariant: Record<string, 'default' | 'secondary' | 'outline'> = {
   Owner: 'default',
@@ -17,6 +19,9 @@ const roleVariant: Record<string, 'default' | 'secondary' | 'outline'> = {
 
 export function UsersPage() {
   const queryClient = useQueryClient()
+  const { user: currentUser } = useAuth()
+
+  const canManage = currentUser?.role === 'Owner' || currentUser?.role === 'Admin'
 
   const { data: users, isLoading, isError } = useQuery({
     queryKey: ['users'],
@@ -43,11 +48,28 @@ export function UsersPage() {
     },
   })
 
+  const mutToggle = useMutation({
+    mutationFn: ({ id, disable }: { id: string; disable: boolean }) =>
+      toggleUserStatus(id, disable),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['users'] }),
+  })
+
+  const mutRemove = useMutation({
+    mutationFn: (id: string) => removeUser(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['users'] }),
+  })
+
   return (
     <div className="p-6 space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Team</h1>
-        <Button onClick={() => setDialogOpen(true)}>Invite User</Button>
+        <h1 className="text-2xl font-semibold flex items-center gap-2">
+          <Users className="h-6 w-6" /> Team
+        </h1>
+        {canManage && (
+          <Button onClick={() => setDialogOpen(true)}>
+            <UserPlus className="h-4 w-4 mr-1" /> Invite User
+          </Button>
+        )}
       </div>
 
       {isLoading && <p className="text-muted-foreground">Loading…</p>}
@@ -62,19 +84,61 @@ export function UsersPage() {
       )}
 
       <div className="grid gap-3">
-        {users?.map(user => (
-          <Card key={user.id}>
-            <CardHeader className="py-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-base">{user.fullName}</CardTitle>
-                  <p className="text-sm text-muted-foreground mt-0.5">{user.email}</p>
+        {users?.map(user => {
+          const isSelf = user.id === currentUser?.id
+          const isOwner = user.role === 'Owner'
+          const canAct = canManage && !isSelf && !isOwner
+
+          return (
+            <Card key={user.id} className={user.isDisabled ? 'opacity-60' : ''}>
+              <CardHeader className="py-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      {user.fullName}
+                      {user.isDisabled && (
+                        <span className="text-xs font-normal text-muted-foreground">(disabled)</span>
+                      )}
+                    </CardTitle>
+                    <p className="text-sm text-muted-foreground mt-0.5">{user.email}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={roleVariant[user.role] ?? 'outline'}>{user.role}</Badge>
+                    {canAct && (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => mutToggle.mutate({ id: user.id, disable: !user.isDisabled })}
+                          disabled={mutToggle.isPending}
+                          title={user.isDisabled ? 'Enable user' : 'Disable user'}
+                        >
+                          {user.isDisabled
+                            ? <UserCheck className="h-4 w-4" />
+                            : <UserX className="h-4 w-4" />}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                          onClick={() => {
+                            if (confirm(`Remove ${user.fullName} from the team?`)) {
+                              mutRemove.mutate(user.id)
+                            }
+                          }}
+                          disabled={mutRemove.isPending}
+                          title="Remove user"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </div>
-                <Badge variant={roleVariant[user.role] ?? 'outline'}>{user.role}</Badge>
-              </div>
-            </CardHeader>
-          </Card>
-        ))}
+              </CardHeader>
+            </Card>
+          )
+        })}
       </div>
 
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} title="Invite User">

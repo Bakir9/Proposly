@@ -5,6 +5,7 @@ import { getOffers } from '@/api/offers'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { ArrowLeft, FileText, Mail, Phone, User, MapPin } from 'lucide-react'
 
 const statusVariant: Record<string, 'default' | 'secondary' | 'success' | 'destructive' | 'warning' | 'outline'> = {
   Draft: 'secondary',
@@ -36,7 +37,7 @@ export function ClientDetailPage() {
   return (
     <div className="p-6 space-y-4">
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>← Back</Button>
+        <Button variant="ghost" size="sm" onClick={() => navigate(-1)}><ArrowLeft className="h-4 w-4 mr-1" /> Back</Button>
       </div>
 
       <Card>
@@ -45,16 +46,16 @@ export function ClientDetailPage() {
         </CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
           {client.contactPerson && (
-            <div><span className="text-muted-foreground">Contact Person</span><p className="font-medium">{client.contactPerson}</p></div>
+            <div><span className="text-muted-foreground flex items-center gap-1"><User className="h-3 w-3" /> Contact Person</span><p className="font-medium">{client.contactPerson}</p></div>
           )}
           {client.email && (
-            <div><span className="text-muted-foreground">Email</span><p className="font-medium">{client.email}</p></div>
+            <div><span className="text-muted-foreground flex items-center gap-1"><Mail className="h-3 w-3" /> Email</span><p className="font-medium">{client.email}</p></div>
           )}
           {client.phone && (
-            <div><span className="text-muted-foreground">Phone</span><p className="font-medium">{client.phone}</p></div>
+            <div><span className="text-muted-foreground flex items-center gap-1"><Phone className="h-3 w-3" /> Phone</span><p className="font-medium">{client.phone}</p></div>
           )}
           {client.street && (
-            <div><span className="text-muted-foreground">Street</span><p className="font-medium">{client.street}</p></div>
+            <div><span className="text-muted-foreground flex items-center gap-1"><MapPin className="h-3 w-3" /> Street</span><p className="font-medium">{client.street}</p></div>
           )}
           {client.city && (
             <div><span className="text-muted-foreground">City</span><p className="font-medium">{client.city}</p></div>
@@ -70,7 +71,7 @@ export function ClientDetailPage() {
       </Card>
 
       <div className="space-y-3">
-        <h2 className="text-lg font-semibold">Offers</h2>
+        <h2 className="text-lg font-semibold flex items-center gap-2"><FileText className="h-4 w-4" /> Offers</h2>
         {clientOffers.length === 0 && <p className="text-sm text-muted-foreground">No offers for this client yet.</p>}
         {clientOffers.map(offer => (
           <Card

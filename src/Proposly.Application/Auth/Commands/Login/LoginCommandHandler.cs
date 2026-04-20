@@ -28,6 +28,9 @@ public sealed class LoginCommandHandler : ICommandHandler<LoginCommand, AuthResp
         if (!_passwordHasher.Verify(command.Password, user.PasswordHash))
             throw new UnauthorizedAccessException("Invalid email or password.");
 
+        if (user.IsDisabled)
+            throw new UnauthorizedAccessException("This account has been disabled. Contact your administrator.");
+
         var token = _jwtService.GenerateToken(user);
 
         return new AuthResponse(token, user.Id, user.CompanyId, user.FullName, user.Email, user.Role.ToString());

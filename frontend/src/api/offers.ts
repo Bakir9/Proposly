@@ -61,6 +61,9 @@ export const createOffer = (data: CreateOfferRequest) =>
 export const updateOffer = (id: string, data: UpdateOfferRequest) =>
   api.put(`/offers/${id}`, data)
 
+export const deleteOffer = (id: string) =>
+  api.delete(`/offers/${id}`)
+
 export const sendOffer = (id: string) =>
   api.post(`/offers/${id}/send`)
 

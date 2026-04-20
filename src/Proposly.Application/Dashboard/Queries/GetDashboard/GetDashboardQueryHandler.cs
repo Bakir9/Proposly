@@ -41,8 +41,11 @@ public sealed class GetDashboardQueryHandler : IQueryHandler<GetDashboardQuery, 
 
         var activeProjectsCount = projects.Count(p => p.Status == ProjectStatus.Active);
 
-        // HoursThisMonth: GetAllAsync does not include TimeEntries — returning 0 to avoid N+1
-        const decimal hoursThisMonth = 0m;
+        var now = DateTime.UtcNow;
+        var hoursThisMonth = projects
+            .SelectMany(p => p.TimeEntries)
+            .Where(te => te.Date.Year == now.Year && te.Date.Month == now.Month)
+            .Sum(te => te.HoursWorked);
 
         var recentOffers = offers
             .OrderByDescending(o => o.CreatedAt)
