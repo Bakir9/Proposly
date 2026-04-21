@@ -25,6 +25,9 @@ public sealed class UpdateTaskStatusCommandHandler : ICommandHandler<UpdateTaskS
             case "InProgress":
                 task.Start();
                 break;
+            case "InReview":
+                task.MoveToReview();
+                break;
             case "Done":
                 task.Complete();
                 break;

@@ -162,14 +162,22 @@ public sealed class Project : AggregateRoot<Guid>, ITenantEntity, IAuditableEnti
         return expense;
     }
 
-    public ProjectTask AddTask(string title, string? description, decimal? estimatedHours, DateOnly? dueDate, Guid? milestoneId = null, Guid? assignedMemberId = null)
+    public ProjectTask AddTask(string title, string? description, decimal? estimatedHours, DateOnly? startDate, DateOnly? dueDate, Guid? milestoneId = null, Guid? assignedMemberId = null)
     {
-        var task = ProjectTask.Create(Id, title, description, estimatedHours, dueDate, milestoneId, assignedMemberId);
+        var task = ProjectTask.Create(Id, title, description, estimatedHours, startDate, dueDate, milestoneId, assignedMemberId);
         _tasks.Add(task);
         if (assignedMemberId.HasValue)
             RaiseDomainEvent(new Events.TaskAssignedDomainEvent(task.Id, Id, assignedMemberId.Value));
         Touch();
         return task;
+    }
+
+    public void UpdateTask(Guid taskId, string title, string? description, decimal? estimatedHours, DateOnly? startDate, DateOnly? dueDate, Guid? milestoneId, Guid? assignedMemberId)
+    {
+        var task = _tasks.FirstOrDefault(t => t.Id == taskId)
+            ?? throw new InvalidOperationException($"Task {taskId} not found in project.");
+        task.UpdateDetails(title, description, estimatedHours, startDate, dueDate, milestoneId, assignedMemberId);
+        Touch();
     }
 
     public Milestone AddMilestone(string title, DateOnly dueDate)

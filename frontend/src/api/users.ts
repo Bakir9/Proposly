@@ -45,3 +45,9 @@ export const removeUser = (id: string) =>
 
 export const toggleUserStatus = (id: string, disable: boolean) =>
   api.put(`/users/${id}/status`, { disable })
+
+export const updateProfile = (data: { firstName: string; lastName: string; email: string }) =>
+  api.put('/users/me', data)
+
+export const changePassword = (data: { currentPassword: string; newPassword: string }) =>
+  api.put('/users/me/password', data)

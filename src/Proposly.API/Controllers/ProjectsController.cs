@@ -10,6 +10,7 @@ using Proposly.Application.ProjectManagement.Commands.CompleteMilestone;
 using Proposly.Application.ProjectManagement.Commands.CreateProject;
 using Proposly.Application.ProjectManagement.Commands.LogTime;
 using Proposly.Application.ProjectManagement.Commands.UpdateProject;
+using Proposly.Application.ProjectManagement.Commands.UpdateTask;
 using Proposly.Application.ProjectManagement.Commands.UpdateTaskStatus;
 using Proposly.Application.ProjectManagement.Queries.GetProjectById;
 using Proposly.Application.ProjectManagement.Queries.GetProjects;
@@ -106,8 +107,21 @@ public sealed class ProjectsController : ControllerBase
         [FromServices] ICommandHandler<AddTaskCommand, Guid> handler,
         CancellationToken ct)
     {
-        var taskId = await handler.HandleAsync(new AddTaskCommand(id, body.Title, body.Description, body.EstimatedHours, body.DueDate, body.MilestoneId, body.AssignedMemberId), ct);
+        var taskId = await handler.HandleAsync(new AddTaskCommand(id, body.Title, body.Description, body.EstimatedHours, body.StartDate, body.DueDate, body.MilestoneId, body.AssignedMemberId), ct);
         return CreatedAtAction(nameof(GetById), new { id }, taskId);
+    }
+
+    [HttpPut("{id:guid}/tasks/{taskId:guid}")]
+    [Authorize(Policy = Policies.ManageProjects)]
+    public async Task<IActionResult> UpdateTask(
+        Guid id,
+        Guid taskId,
+        [FromBody] UpdateTaskBody body,
+        [FromServices] ICommandHandler<UpdateTaskCommand> handler,
+        CancellationToken ct)
+    {
+        await handler.HandleAsync(new UpdateTaskCommand(id, taskId, body.Title, body.Description, body.EstimatedHours, body.StartDate, body.DueDate, body.MilestoneId, body.AssignedMemberId), ct);
+        return NoContent();
     }
 
     [HttpPut("{id:guid}/tasks/{taskId:guid}/status")]
@@ -151,6 +165,7 @@ public record UpdateProjectBody(string Name, string? Description, DateOnly? Dead
 public record AddMemberBody(Guid UserId, string Name, string Role, decimal HourlyRate, string Currency);
 public record LogTimeBody(Guid MemberId, decimal HoursWorked, string? Description, DateOnly Date);
 public record AddExpenseBody(string Description, decimal Amount, string Currency, string Category, DateOnly Date);
-public record AddTaskBody(string Title, string? Description, decimal? EstimatedHours, DateOnly? DueDate, Guid? MilestoneId, Guid? AssignedMemberId);
+public record AddTaskBody(string Title, string? Description, decimal? EstimatedHours, DateOnly? StartDate, DateOnly? DueDate, Guid? MilestoneId, Guid? AssignedMemberId);
+public record UpdateTaskBody(string Title, string? Description, decimal? EstimatedHours, DateOnly? StartDate, DateOnly? DueDate, Guid? MilestoneId, Guid? AssignedMemberId);
 public record UpdateTaskStatusBody(string Status);
 public record AddMilestoneBody(string Title, DateOnly DueDate);

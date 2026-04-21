@@ -36,6 +36,20 @@ public sealed class User : Entity<Guid>, ITenantEntity, IAuditableEntity
 
     public string FullName => $"{FirstName} {LastName}";
 
+    public void ChangePassword(string newPasswordHash)
+    {
+        PasswordHash = newPasswordHash;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void UpdateProfile(string firstName, string lastName, string email)
+    {
+        FirstName = firstName;
+        LastName = lastName;
+        Email = email;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
     public void UpdateRole(UserRole role) => Role = role;
 
     public void Disable()

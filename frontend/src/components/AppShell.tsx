@@ -1,8 +1,10 @@
+import { useState, useEffect } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { LayoutDashboard, FileText, FolderKanban, Users, LogOut, Building2, Settings } from 'lucide-react'
 import { useAuth } from '@/features/auth/AuthContext'
 import { cn } from '@/lib/utils'
 import { Button } from './ui/button'
+import { getAvatarColor } from '@/features/profile/ProfilePage'
 
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -12,14 +14,30 @@ const navItems = [
   { to: '/users',     label: 'Team',      icon: Users },
 ]
 
+function getInitials(fullName: string) {
+  const parts = fullName.trim().split(' ')
+  return parts.length >= 2
+    ? `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
+    : fullName.slice(0, 2).toUpperCase()
+}
+
 export function AppShell() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
+  const [avatarColor, setAvatarColorState] = useState(getAvatarColor)
+
+  useEffect(() => {
+    const handler = () => setAvatarColorState(getAvatarColor())
+    window.addEventListener('avatarChanged', handler)
+    return () => window.removeEventListener('avatarChanged', handler)
+  }, [])
 
   const handleLogout = () => {
     logout()
     navigate('/login')
   }
+
+  const initials = user ? getInitials(user.fullName) : '?'
 
   return (
     <div className="flex h-screen bg-background">
@@ -67,10 +85,24 @@ export function AppShell() {
             <Settings className="h-4 w-4" />
             Settings
           </NavLink>
-          <div className="px-3 py-2">
-            <p className="text-sm font-medium truncate">{user?.fullName}</p>
-            <p className="text-xs text-muted-foreground truncate">{user?.role}</p>
-          </div>
+
+          <NavLink
+            to="/profile"
+            className={({ isActive }) =>
+              cn(
+                'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                isActive
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+              )
+            }
+          >
+            <div className={`${avatarColor} w-5 h-5 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0`}>
+              {initials}
+            </div>
+            My Profile
+          </NavLink>
+
           <Button variant="ghost" size="sm" className="w-full justify-start gap-3 text-muted-foreground" onClick={handleLogout}>
             <LogOut className="h-4 w-4" />
             Sign out

@@ -5,6 +5,8 @@ using Proposly.Application.Abstractions;
 using Proposly.Application.UserManagement.Commands.InviteUser;
 using Proposly.Application.UserManagement.Commands.RemoveUser;
 using Proposly.Application.UserManagement.Commands.ToggleUserStatus;
+using Proposly.Application.UserManagement.Commands.ChangePassword;
+using Proposly.Application.UserManagement.Commands.UpdateProfile;
 using Proposly.Application.UserManagement.Commands.UpdateUserRole;
 using Proposly.Application.UserManagement.Queries.GetActiveUsers;
 using Proposly.Application.UserManagement.Queries.GetCurrentUser;
@@ -24,6 +26,28 @@ public sealed class UsersController : ControllerBase
         [FromServices] IQueryHandler<GetCurrentUserQuery, UserDetailResponse> handler,
         CancellationToken ct)
         => await handler.HandleAsync(new GetCurrentUserQuery(), ct);
+
+    /// <summary>Update your own first and last name.</summary>
+    [HttpPut("me")]
+    public async Task<IActionResult> UpdateProfile(
+        [FromBody] UpdateProfileRequest request,
+        [FromServices] ICommandHandler<UpdateProfileCommand> handler,
+        CancellationToken ct)
+    {
+        await handler.HandleAsync(new UpdateProfileCommand(request.FirstName, request.LastName, request.Email), ct);
+        return NoContent();
+    }
+
+    /// <summary>Change your own password.</summary>
+    [HttpPut("me/password")]
+    public async Task<IActionResult> ChangePassword(
+        [FromBody] ChangePasswordRequest request,
+        [FromServices] ICommandHandler<ChangePasswordCommand> handler,
+        CancellationToken ct)
+    {
+        await handler.HandleAsync(new ChangePasswordCommand(request.CurrentPassword, request.NewPassword), ct);
+        return NoContent();
+    }
 
     /// <summary>List active (non-disabled) users. Used for selection dropdowns.</summary>
     [HttpGet("active")]
@@ -91,5 +115,7 @@ public sealed class UsersController : ControllerBase
     }
 }
 
+public record UpdateProfileRequest(string FirstName, string LastName, string Email);
+public record ChangePasswordRequest(string CurrentPassword, string NewPassword);
 public record UpdateRoleRequest(string Role);
 public record ToggleStatusRequest(bool Disable);

@@ -1,7 +1,7 @@
 import { api } from './client'
 
 export type ProjectStatus = 'Planning' | 'Active' | 'OnHold' | 'Completed' | 'Cancelled'
-export type TaskStatus = 'Todo' | 'InProgress' | 'Done'
+export type TaskStatus = 'Todo' | 'InProgress' | 'InReview' | 'Done'
 
 export interface ProjectSummary {
   id: string
@@ -31,6 +31,7 @@ export interface ProjectTask {
   description: string | null
   status: TaskStatus
   estimatedHours: number | null
+  startDate: string | null
   dueDate: string | null
   milestoneId: string | null
   assignedMemberId: string | null
@@ -126,8 +127,11 @@ export const logTime = (projectId: string, data: { memberId: string; hoursWorked
 export const addExpense = (projectId: string, data: { description: string; amount: number; currency: string; category: string; date: string }) =>
   api.post<string>(`/projects/${projectId}/expenses`, data).then(r => r.data)
 
-export const addTask = (projectId: string, data: { title: string; description?: string; estimatedHours?: number; dueDate?: string; milestoneId?: string; assignedMemberId?: string }) =>
+export const addTask = (projectId: string, data: { title: string; description?: string; estimatedHours?: number; startDate?: string; dueDate?: string; milestoneId?: string; assignedMemberId?: string }) =>
   api.post<string>(`/projects/${projectId}/tasks`, data).then(r => r.data)
+
+export const updateTask = (projectId: string, taskId: string, data: { title: string; description?: string; estimatedHours?: number; startDate?: string; dueDate?: string; milestoneId?: string; assignedMemberId?: string }) =>
+  api.put(`/projects/${projectId}/tasks/${taskId}`, data)
 
 export const updateTaskStatus = (projectId: string, taskId: string, status: string) =>
   api.put(`/projects/${projectId}/tasks/${taskId}/status`, { status })

@@ -69,11 +69,11 @@ public sealed class DataSeeder
         var frontendMilestone = project.AddMilestone("Frontend Integration",   today.AddDays(20));
         apiMilestone.Complete();
 
-        var t1 = project.AddTask("Set up project structure",       null, 8,  today.AddDays(-55), apiMilestone.Id);
-        var t2 = project.AddTask("Product catalog API",            null, 20, today.AddDays(-40), apiMilestone.Id);
-        var t3 = project.AddTask("Payment gateway integration",    null, 16, today.AddDays(-20), apiMilestone.Id);
-        var t4 = project.AddTask("Shopping cart frontend",         null, 24, today.AddDays(5),  frontendMilestone.Id);
-        var t5 = project.AddTask("Checkout flow",                  null, 20, today.AddDays(20), frontendMilestone.Id);
+        var t1 = project.AddTask("Set up project structure",       null, 8,  today.AddDays(-65), today.AddDays(-55), apiMilestone.Id);
+        var t2 = project.AddTask("Product catalog API",            null, 20, today.AddDays(-53), today.AddDays(-40), apiMilestone.Id);
+        var t3 = project.AddTask("Payment gateway integration",    null, 16, today.AddDays(-38), today.AddDays(-20), apiMilestone.Id);
+        var t4 = project.AddTask("Shopping cart frontend",         null, 24, today.AddDays(-14), today.AddDays(5),  frontendMilestone.Id);
+        var t5 = project.AddTask("Checkout flow",                  null, 20, today.AddDays(6),  today.AddDays(20), frontendMilestone.Id);
 
         CompleteTask(t1); CompleteTask(t2); CompleteTask(t3);
         t4.Start();
@@ -114,11 +114,11 @@ public sealed class DataSeeder
         project.AddMilestone("MVP Release",   today.AddDays(60));
         project.AddMilestone("Final Release", today.AddDays(115));
 
-        project.AddTask("Requirements workshop",           null, 16, today.AddDays(8));
-        project.AddTask("Technical architecture design",   null, 24, today.AddDays(20));
-        project.AddTask("Authentication module",           null, 20, today.AddDays(35));
-        project.AddTask("Core features development",       null, 80, today.AddDays(70));
-        project.AddTask("QA and performance testing",      null, 24, today.AddDays(100));
+        project.AddTask("Requirements workshop",           null, 16, today.AddDays(7),  today.AddDays(8));
+        project.AddTask("Technical architecture design",   null, 24, today.AddDays(9),  today.AddDays(20));
+        project.AddTask("Authentication module",           null, 20, today.AddDays(21), today.AddDays(35));
+        project.AddTask("Core features development",       null, 80, today.AddDays(36), today.AddDays(70));
+        project.AddTask("QA and performance testing",      null, 24, today.AddDays(71), today.AddDays(100));
 
         return project;
     }
@@ -148,11 +148,11 @@ public sealed class DataSeeder
         designPhase.Complete();
         devPhase.Complete();
 
-        var t1 = project.AddTask("Discovery and sitemap",    null, 8,  today.AddDays(-85), designPhase.Id);
-        var t2 = project.AddTask("UI mockups and prototype", null, 20, today.AddDays(-70), designPhase.Id);
-        var t3 = project.AddTask("CMS setup and templates",  null, 24, today.AddDays(-45), devPhase.Id);
-        var t4 = project.AddTask("Content migration",        null, 16, today.AddDays(-30), devPhase.Id);
-        var t5 = project.AddTask("Testing and deployment",   null, 12, today.AddDays(-16), devPhase.Id);
+        var t1 = project.AddTask("Discovery and sitemap",    null, 8,  today.AddDays(-90), today.AddDays(-85), designPhase.Id);
+        var t2 = project.AddTask("UI mockups and prototype", null, 20, today.AddDays(-84), today.AddDays(-70), designPhase.Id);
+        var t3 = project.AddTask("CMS setup and templates",  null, 24, today.AddDays(-69), today.AddDays(-45), devPhase.Id);
+        var t4 = project.AddTask("Content migration",        null, 16, today.AddDays(-44), today.AddDays(-30), devPhase.Id);
+        var t5 = project.AddTask("Testing and deployment",   null, 12, today.AddDays(-29), today.AddDays(-16), devPhase.Id);
 
         CompleteTask(t1); CompleteTask(t2); CompleteTask(t3); CompleteTask(t4); CompleteTask(t5);
 

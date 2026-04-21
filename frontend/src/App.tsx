@@ -13,6 +13,7 @@ import { UsersPage } from './features/users/UsersPage'
 import { ClientsPage } from './features/clients/ClientsPage'
 import { ClientDetailPage } from './features/clients/ClientDetailPage'
 import { SettingsPage } from './features/settings/SettingsPage'
+import { ProfilePage } from './features/profile/ProfilePage'
 
 export default function App() {
   return (
@@ -31,6 +32,7 @@ export default function App() {
         <Route path="/clients/:id" element={<ClientDetailPage />} />
         <Route path="/users" element={<UsersPage />} />
         <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
       </Route>
     </Routes>
   )

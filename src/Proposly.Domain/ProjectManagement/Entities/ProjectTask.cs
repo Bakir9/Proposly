@@ -13,6 +13,7 @@ public sealed class ProjectTask : Entity<Guid>
         string title,
         string? description,
         decimal? estimatedHours,
+        DateOnly? startDate,
         DateOnly? dueDate,
         Guid? milestoneId,
         Guid? assignedMemberId)
@@ -22,6 +23,7 @@ public sealed class ProjectTask : Entity<Guid>
         Title = title;
         Description = description;
         EstimatedHours = estimatedHours;
+        StartDate = startDate;
         DueDate = dueDate;
         MilestoneId = milestoneId;
         AssignedMemberId = assignedMemberId;
@@ -33,10 +35,11 @@ public sealed class ProjectTask : Entity<Guid>
         string title,
         string? description,
         decimal? estimatedHours,
+        DateOnly? startDate,
         DateOnly? dueDate,
         Guid? milestoneId = null,
         Guid? assignedMemberId = null)
-        => new(Guid.NewGuid(), projectId, title, description, estimatedHours, dueDate, milestoneId, assignedMemberId);
+        => new(Guid.NewGuid(), projectId, title, description, estimatedHours, startDate, dueDate, milestoneId, assignedMemberId);
 
     public Guid ProjectId { get; private set; }
     public Guid? MilestoneId { get; private set; }
@@ -45,13 +48,32 @@ public sealed class ProjectTask : Entity<Guid>
     public string? Description { get; private set; }
     public decimal? EstimatedHours { get; private set; }
     public ProjectTaskStatus Status { get; private set; }
+    public DateOnly? StartDate { get; private set; }
     public DateOnly? DueDate { get; private set; }
+
+    public void UpdateDetails(string title, string? description, decimal? estimatedHours, DateOnly? startDate, DateOnly? dueDate, Guid? milestoneId, Guid? assignedMemberId)
+    {
+        Title = title;
+        Description = description;
+        EstimatedHours = estimatedHours;
+        StartDate = startDate;
+        DueDate = dueDate;
+        MilestoneId = milestoneId;
+        AssignedMemberId = assignedMemberId;
+    }
 
     public void Start()
     {
         if (Status == ProjectTaskStatus.InProgress)
             throw new InvalidOperationException("Task is already in progress.");
         Status = ProjectTaskStatus.InProgress;
+    }
+
+    public void MoveToReview()
+    {
+        if (Status == ProjectTaskStatus.InReview)
+            throw new InvalidOperationException("Task is already in review.");
+        Status = ProjectTaskStatus.InReview;
     }
 
     public void Complete()
