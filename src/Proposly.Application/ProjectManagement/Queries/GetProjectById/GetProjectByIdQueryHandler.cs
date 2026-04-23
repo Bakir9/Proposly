@@ -28,7 +28,11 @@ public sealed class GetProjectByIdQueryHandler : IQueryHandler<GetProjectByIdQue
             project.LinkedOfferId, project.OfferedAmount?.Amount,
             new ProfitabilityResponse(laborCost.Amount, expensesTotal.Amount, totalCost.Amount, revenue.Amount, profit.Amount, project.Budget.Currency),
             project.Members.Select(m => new ProjectMemberResponse(m.Id, m.UserId, m.Name, m.Role, m.HourlyRate.Amount, m.HourlyRate.Currency)).ToList(),
-            project.Tasks.Select(t => new ProjectTaskResponse(t.Id, t.Title, t.Description, t.Status, t.EstimatedHours, t.StartDate, t.DueDate, t.MilestoneId, t.AssignedMemberId, t.AssignedMemberId.HasValue ? project.Members.FirstOrDefault(m => m.Id == t.AssignedMemberId)?.Name : null)).ToList(),
+            project.Tasks.Select(t => new ProjectTaskResponse(
+                t.Id, t.Title, t.Description, t.Status, t.EstimatedHours, t.StartDate, t.DueDate, t.MilestoneId, t.AssignedMemberId,
+                t.AssignedMemberId.HasValue ? project.Members.FirstOrDefault(m => m.Id == t.AssignedMemberId)?.Name : null,
+                t.Comments.OrderBy(c => c.CreatedAt).Select(c => new TaskCommentResponse(c.Id, c.AuthorId, c.AuthorName, c.Body, c.CreatedAt, c.UpdatedAt)).ToList()
+            )).ToList(),
             project.Milestones.Select(m => new MilestoneResponse(m.Id, m.Title, m.DueDate, m.IsCompleted)).ToList(),
             project.Expenses.Select(e => new ExpenseResponse(e.Id, e.Description, e.Amount.Amount, e.Amount.Currency, e.Category.ToString(), e.Date)).ToList(),
             project.TimeEntries.Select(te => new TimeEntryResponse(

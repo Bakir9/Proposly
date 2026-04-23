@@ -12,9 +12,13 @@ import {
   addExpense,
   addMilestone,
   completeMilestone,
+  addTaskComment,
+  editTaskComment,
+  deleteTaskComment,
 } from '@/api/projects'
 import type { ProjectTask } from '@/api/projects'
 import { getActiveUsers } from '@/api/users'
+import { useAuth } from '@/features/auth/AuthContext'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -24,7 +28,7 @@ import { Select } from '@/components/ui/select'
 import { Tabs } from '@/components/ui/tabs'
 import { Dialog } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
-import { ArrowLeft, Pencil, Plus, UserPlus, Clock, Receipt, Flag, CheckCircle2 } from 'lucide-react'
+import { ArrowLeft, Pencil, Plus, UserPlus, Clock, Receipt, Flag, CheckCircle2, MessageSquare, Send, Trash2, CalendarDays, SquareCheck, Maximize2, Minimize2 } from 'lucide-react'
 
 const KANBAN_COLUMNS = [
   { status: 'Todo', label: 'Not Started' },
@@ -56,6 +60,25 @@ const TASK_STATUS_COLOR: Record<string, string> = {
   InProgress: 'bg-blue-500',
   InReview: 'bg-amber-400',
   Done: 'bg-green-500',
+}
+
+const TASK_STATUS_BORDER_COLOR: Record<string, string> = {
+  Todo: '#94a3b8',
+  InProgress: '#3b82f6',
+  InReview: '#fbbf24',
+  Done: '#22c55e',
+}
+
+function timeAgo(dateStr: string) {
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const mins = Math.floor(diff / 60_000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  if (days < 7) return `${days}d ago`
+  return new Date(dateStr).toLocaleDateString('de-AT', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
 function GanttChart({ project }: { project: import('@/api/projects').ProjectDetail }) {
@@ -189,6 +212,8 @@ export function ProjectDetailPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
 
+  const { user: authUser } = useAuth()
+
   const { data: project, isLoading, isError } = useQuery({
     queryKey: ['project', id],
     queryFn: () => getProjectById(id!),
@@ -218,6 +243,7 @@ export function ProjectDetailPage() {
   const [editTaskDue, setEditTaskDue] = useState('')
   const [editTaskMilestoneId, setEditTaskMilestoneId] = useState('')
   const [editTaskAssignedMemberId, setEditTaskAssignedMemberId] = useState('')
+  const [editTaskStatus, setEditTaskStatus] = useState('')
 
   // Member dialog
   const [memberOpen, setMemberOpen] = useState(false)
@@ -260,6 +286,14 @@ export function ProjectDetailPage() {
   const [taskDateFilter, setTaskDateFilter] = useState<'all' | 'this-week' | 'this-month' | 'next-week' | 'next-month' | 'overdue'>('all')
   const [taskMemberFilter, setTaskMemberFilter] = useState<string>('all')
 
+  // Description expand state (shared across both task modals)
+  const [descExpanded, setDescExpanded] = useState(false)
+
+  // Comment state (within edit task dialog)
+  const [commentBody, setCommentBody] = useState('')
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null)
+  const [editingCommentBody, setEditingCommentBody] = useState('')
+
   // Kanban drag state
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null)
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null)
@@ -301,20 +335,52 @@ export function ProjectDetailPage() {
     setEditTaskDue(task.dueDate ? task.dueDate.slice(0, 10) : '')
     setEditTaskMilestoneId(task.milestoneId ?? '')
     setEditTaskAssignedMemberId(task.assignedMemberId ?? '')
+    setEditTaskStatus(task.status)
+    setCommentBody('')
+    setEditingCommentId(null)
+    setEditingCommentBody('')
+    setDescExpanded(false)
     setEditTaskOpen(true)
   }
 
   const mutUpdateTask = useMutation({
-    mutationFn: () => updateTask(id!, editingTask!.id, {
-      title: editTaskTitle,
-      description: editTaskDesc || undefined,
-      estimatedHours: editTaskHours ? parseFloat(editTaskHours) : undefined,
-      startDate: editTaskStart || undefined,
-      dueDate: editTaskDue || undefined,
-      milestoneId: editTaskMilestoneId || undefined,
-      assignedMemberId: editTaskAssignedMemberId || undefined,
-    }),
-    onSuccess: () => { invalidate(); setEditTaskOpen(false); setEditingTask(null) },
+    mutationFn: async () => {
+      await updateTask(id!, editingTask!.id, {
+        title: editTaskTitle,
+        description: editTaskDesc || undefined,
+        estimatedHours: editTaskHours ? parseFloat(editTaskHours) : undefined,
+        startDate: editTaskStart || undefined,
+        dueDate: editTaskDue || undefined,
+        milestoneId: editTaskMilestoneId || undefined,
+        assignedMemberId: editTaskAssignedMemberId || undefined,
+      })
+      if (editTaskStatus !== editingTask!.status) {
+        await updateTaskStatus(id!, editingTask!.id, editTaskStatus)
+      }
+    },
+    onSuccess: () => {
+      invalidate()
+      setEditTaskOpen(false)
+      setEditingTask(null)
+      setCommentBody('')
+      setEditingCommentId(null)
+      setEditingCommentBody('')
+    },
+  })
+
+  const mutAddComment = useMutation({
+    mutationFn: () => addTaskComment(id!, editingTask!.id, commentBody),
+    onSuccess: () => { invalidate(); setCommentBody('') },
+  })
+
+  const mutEditComment = useMutation({
+    mutationFn: ({ commentId }: { commentId: string }) => editTaskComment(id!, editingTask!.id, commentId, editingCommentBody),
+    onSuccess: () => { invalidate(); setEditingCommentId(null); setEditingCommentBody('') },
+  })
+
+  const mutDeleteComment = useMutation({
+    mutationFn: ({ commentId }: { commentId: string }) => deleteTaskComment(id!, editingTask!.id, commentId),
+    onSuccess: invalidate,
   })
 
   const mutAddMember = useMutation({
@@ -499,7 +565,7 @@ export function ProjectDetailPage() {
                       </button>
                     )}
                   </div>
-                  <Button size="sm" onClick={() => setTaskOpen(true)}><Plus className="h-3.5 w-3.5 mr-1" /> Add Task</Button>
+                  <Button size="sm" onClick={() => { setTaskOpen(true); setDescExpanded(false) }}><Plus className="h-3.5 w-3.5 mr-1" /> Add Task</Button>
                 </div>
                 {p.tasks.length === 0 ? (
                   <p className="text-sm text-muted-foreground">No tasks yet.</p>
@@ -540,16 +606,30 @@ export function ProjectDetailPage() {
                               onClick={() => { if (!draggedTaskId) openEditTask(task) }}
                               className={`bg-card border rounded-md p-3 cursor-pointer shadow-sm transition-opacity select-none ${draggedTaskId === task.id ? 'opacity-40 cursor-grabbing' : 'hover:border-primary/50'}`}
                             >
-                              <p className="font-medium text-sm">{task.title}</p>
-                              {task.description && <p className="text-xs text-muted-foreground mt-0.5">{task.description}</p>}
-                              <div className="flex gap-3 mt-1.5 text-xs text-muted-foreground">
-                                {task.estimatedHours && <span>{task.estimatedHours}h</span>}
-                                {task.dueDate && <span>Due {new Date(task.dueDate).toLocaleDateString()}</span>}
+                              <p className="font-medium text-sm leading-snug">{task.title}</p>
+                              {task.description && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{task.description}</p>}
+                              <div className="flex items-center flex-wrap gap-2.5 mt-2 text-xs text-muted-foreground">
+                                {task.estimatedHours && (
+                                  <span className="flex items-center gap-1">
+                                    <Clock className="h-3 w-3 shrink-0" />{task.estimatedHours}h
+                                  </span>
+                                )}
+                                {task.dueDate && (
+                                  <span className="flex items-center gap-1">
+                                    <CalendarDays className="h-3 w-3 shrink-0" />
+                                    {new Date(task.dueDate).toLocaleDateString('de-AT', { day: '2-digit', month: '2-digit' })}
+                                  </span>
+                                )}
+                                {task.comments.length > 0 && (
+                                  <span className="flex items-center gap-1">
+                                    <MessageSquare className="h-3 w-3 shrink-0" />{task.comments.length}
+                                  </span>
+                                )}
                               </div>
                               {task.assignedMemberName && (
-                                <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1">
-                                  <span className="inline-block w-4 h-4 rounded-full bg-muted text-center leading-4 font-medium text-foreground">
-                                    {task.assignedMemberName.charAt(0)}
+                                <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1.5">
+                                  <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-primary/15 text-primary font-semibold text-[10px] shrink-0">
+                                    {task.assignedMemberName.charAt(0).toUpperCase()}
                                   </span>
                                   {task.assignedMemberName}
                                 </p>
@@ -669,111 +749,330 @@ export function ProjectDetailPage() {
         )}
       </Tabs>
 
-      <Dialog open={editTaskOpen} onClose={() => { setEditTaskOpen(false); setEditingTask(null) }} title="Edit Task">
-        <div className="space-y-4">
-          <div className="space-y-1">
-            <Label>Title</Label>
-            <Input value={editTaskTitle} onChange={e => setEditTaskTitle(e.target.value)} placeholder="Task title" />
-          </div>
-          <div className="space-y-1">
-            <Label>Description (optional)</Label>
-            <Textarea value={editTaskDesc} onChange={e => setEditTaskDesc(e.target.value)} placeholder="What needs to be done?" />
-          </div>
-          <div className="grid grid-cols-3 gap-3">
-            <div className="space-y-1">
-              <Label>Estimated Hours (optional)</Label>
-              <Input type="number" step="0.5" value={editTaskHours} onChange={e => setEditTaskHours(e.target.value)} />
+      {/* Azure DevOps–style task detail modal */}
+      {editTaskOpen && editingTask && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/50" onClick={() => { setEditTaskOpen(false); setEditingTask(null); setCommentBody(''); setEditingCommentId(null) }} />
+          <div
+            className="relative z-50 bg-background w-full max-w-5xl flex flex-col rounded-lg shadow-2xl overflow-hidden border-l-4"
+            style={{
+              height: 'min(85vh, 800px)',
+              borderLeftColor: TASK_STATUS_BORDER_COLOR[editTaskStatus] ?? '#3b82f6',
+            }}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-3 border-b bg-muted/30 shrink-0">
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 bg-blue-100 dark:bg-blue-950 dark:text-blue-400 px-2 py-1 rounded shrink-0">
+                  <SquareCheck className="h-3.5 w-3.5" /> Task
+                </span>
+                <span className="text-xs text-muted-foreground truncate">{p.name}</span>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Button size="sm" onClick={() => mutUpdateTask.mutate()} disabled={mutUpdateTask.isPending || !editTaskTitle.trim()}>
+                  {mutUpdateTask.isPending ? 'Saving…' : 'Save'}
+                </Button>
+                <button
+                  className="text-muted-foreground hover:text-foreground text-xl leading-none w-7 h-7 flex items-center justify-center rounded hover:bg-muted"
+                  onClick={() => { setEditTaskOpen(false); setEditingTask(null); setCommentBody(''); setEditingCommentId(null) }}
+                >
+                  ×
+                </button>
+              </div>
             </div>
-            <div className="space-y-1">
-              <Label>Start Date (optional)</Label>
-              <Input type="date" value={editTaskStart} onChange={e => setEditTaskStart(e.target.value)} />
-            </div>
-            <div className="space-y-1">
-              <Label>Due Date (optional)</Label>
-              <Input type="date" value={editTaskDue} onChange={e => setEditTaskDue(e.target.value)} />
-            </div>
-          </div>
-          <div className="space-y-1">
-            <Label>Assign to (optional)</Label>
-            <Select value={editTaskAssignedMemberId} onChange={e => setEditTaskAssignedMemberId(e.target.value)}>
-              <option value="">No assignee</option>
-              {p.members.map(m => (
-                <option key={m.id} value={m.id}>{m.name}</option>
-              ))}
-            </Select>
-          </div>
-          {p.milestones.length > 0 && (
-            <div className="space-y-1">
-              <Label>Milestone (optional)</Label>
-              <Select value={editTaskMilestoneId} onChange={e => setEditTaskMilestoneId(e.target.value)}>
-                <option value="">No milestone</option>
-                {p.milestones.map(m => (
-                  <option key={m.id} value={m.id}>{m.title}</option>
-                ))}
-              </Select>
-            </div>
-          )}
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => { setEditTaskOpen(false); setEditingTask(null) }}>Cancel</Button>
-            <Button onClick={() => mutUpdateTask.mutate()} disabled={mutUpdateTask.isPending || !editTaskTitle.trim()}>
-              {mutUpdateTask.isPending ? 'Saving…' : 'Save'}
-            </Button>
-          </div>
-        </div>
-      </Dialog>
 
-      <Dialog open={taskOpen} onClose={() => setTaskOpen(false)} title="Add Task">
-        <div className="space-y-4">
-          <div className="space-y-1">
-            <Label>Title</Label>
-            <Input value={taskTitle} onChange={e => setTaskTitle(e.target.value)} placeholder="Task title" />
-          </div>
-          <div className="space-y-1">
-            <Label>Description (optional)</Label>
-            <Textarea value={taskDesc} onChange={e => setTaskDesc(e.target.value)} placeholder="What needs to be done?" />
-          </div>
-          <div className="grid grid-cols-3 gap-3">
-            <div className="space-y-1">
-              <Label>Estimated Hours (optional)</Label>
-              <Input type="number" step="0.5" value={taskHours} onChange={e => setTaskHours(e.target.value)} />
+            {/* Body */}
+            <div className="flex flex-1 overflow-hidden">
+              {/* Left: main content */}
+              <div className={`flex-1 flex flex-col min-w-0 p-6 ${descExpanded ? 'overflow-hidden gap-3' : 'overflow-y-auto gap-6'}`}>
+                {/* Title */}
+                <input
+                  value={editTaskTitle}
+                  onChange={e => setEditTaskTitle(e.target.value)}
+                  placeholder="Task title"
+                  className="w-full text-xl font-semibold bg-transparent border-0 border-b border-transparent hover:border-border focus:border-primary focus:outline-none py-1 transition-colors placeholder:text-muted-foreground/50 shrink-0"
+                />
+
+                {/* Description */}
+                <div className={`flex flex-col gap-2 ${descExpanded ? 'flex-1 min-h-0' : ''}`}>
+                  <div className="flex items-center justify-between shrink-0">
+                    <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Description</p>
+                    <button
+                      onClick={() => setDescExpanded(v => !v)}
+                      title={descExpanded ? 'Collapse description' : 'Expand description'}
+                      className="text-muted-foreground hover:text-foreground p-1 rounded hover:bg-muted transition-colors"
+                    >
+                      {descExpanded ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+                    </button>
+                  </div>
+                  <Textarea
+                    value={editTaskDesc}
+                    onChange={e => setEditTaskDesc(e.target.value)}
+                    placeholder="Add a description…"
+                    className={descExpanded ? 'flex-1 min-h-0 resize-none' : 'resize-y min-h-[180px]'}
+                  />
+                </div>
+
+                {/* Discussion — hidden when description is expanded */}
+                {!descExpanded && <div className="space-y-4">
+                  <div className="flex items-center gap-2 border-b pb-2">
+                    <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Discussion</p>
+                    {(p.tasks.find(t => t.id === editingTask.id)?.comments.length ?? 0) > 0 && (
+                      <span className="text-xs text-muted-foreground">
+                        ({p.tasks.find(t => t.id === editingTask.id)?.comments.length})
+                      </span>
+                    )}
+                  </div>
+
+                  {/* New comment input */}
+                  <div className="flex gap-3 items-start">
+                    <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-primary/15 text-primary font-semibold text-xs shrink-0 mt-0.5">
+                      {authUser?.fullName?.charAt(0).toUpperCase() ?? '?'}
+                    </span>
+                    <div className="flex-1 space-y-2">
+                      <Textarea
+                        value={commentBody}
+                        onChange={e => setCommentBody(e.target.value)}
+                        placeholder="Add a comment… (Ctrl+Enter to post)"
+                        rows={2}
+                        className="resize-none"
+                        onKeyDown={e => {
+                          if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && commentBody.trim()) {
+                            e.preventDefault()
+                            mutAddComment.mutate()
+                          }
+                        }}
+                      />
+                      {commentBody.trim() && (
+                        <div className="flex justify-end">
+                          <Button size="sm" onClick={() => mutAddComment.mutate()} disabled={mutAddComment.isPending}>
+                            <Send className="h-3.5 w-3.5 mr-1.5" />
+                            {mutAddComment.isPending ? 'Posting…' : 'Comment'}
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Comment list */}
+                  <div className="space-y-5">
+                    {(p.tasks.find(t => t.id === editingTask.id)?.comments ?? []).length === 0 && (
+                      <p className="text-sm text-muted-foreground">No comments yet. Be the first to add one.</p>
+                    )}
+                    {(p.tasks.find(t => t.id === editingTask.id)?.comments ?? []).map(comment => (
+                      <div key={comment.id} className="flex gap-3 group">
+                        <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-muted font-semibold text-xs shrink-0 mt-0.5">
+                          {comment.authorName.charAt(0).toUpperCase()}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium">{comment.authorName}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {timeAgo(comment.createdAt)}{comment.updatedAt ? ' · edited' : ''}
+                            </span>
+                            <div className="ml-auto flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              {comment.authorId === authUser?.userId && editingCommentId !== comment.id && (
+                                <button
+                                  className="text-muted-foreground hover:text-foreground p-1 rounded hover:bg-muted"
+                                  onClick={() => { setEditingCommentId(comment.id); setEditingCommentBody(comment.body) }}
+                                >
+                                  <Pencil className="h-3 w-3" />
+                                </button>
+                              )}
+                              {(comment.authorId === authUser?.userId || authUser?.role === 'Owner' || authUser?.role === 'Admin') && editingCommentId !== comment.id && (
+                                <button
+                                  className="text-muted-foreground hover:text-destructive p-1 rounded hover:bg-muted"
+                                  onClick={() => mutDeleteComment.mutate({ commentId: comment.id })}
+                                  disabled={mutDeleteComment.isPending}
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                          {editingCommentId === comment.id ? (
+                            <div className="mt-1.5 space-y-2">
+                              <Textarea
+                                value={editingCommentBody}
+                                onChange={e => setEditingCommentBody(e.target.value)}
+                                rows={2}
+                                className="resize-none"
+                              />
+                              <div className="flex gap-2">
+                                <Button size="sm" onClick={() => mutEditComment.mutate({ commentId: comment.id })} disabled={mutEditComment.isPending || !editingCommentBody.trim()}>
+                                  {mutEditComment.isPending ? 'Saving…' : 'Save'}
+                                </Button>
+                                <Button size="sm" variant="outline" onClick={() => { setEditingCommentId(null); setEditingCommentBody('') }}>Cancel</Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="text-sm mt-1 whitespace-pre-wrap break-words text-foreground/90">{comment.body}</p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>}
+              </div>
+
+              {/* Right: details sidebar */}
+              <div className="w-64 shrink-0 border-l overflow-y-auto p-5 space-y-5 bg-muted/10">
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Details</p>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground font-normal">State</Label>
+                  <Select value={editTaskStatus} onChange={e => setEditTaskStatus(e.target.value)}>
+                    <option value="Todo">To Do</option>
+                    <option value="InProgress">In Progress</option>
+                    <option value="InReview">In Review</option>
+                    <option value="Done">Done</option>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground font-normal">Assigned To</Label>
+                  <Select value={editTaskAssignedMemberId} onChange={e => setEditTaskAssignedMemberId(e.target.value)}>
+                    <option value="">Unassigned</option>
+                    {p.members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                  </Select>
+                </div>
+
+                {p.milestones.length > 0 && (
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground font-normal">Milestone</Label>
+                    <Select value={editTaskMilestoneId} onChange={e => setEditTaskMilestoneId(e.target.value)}>
+                      <option value="">None</option>
+                      {p.milestones.map(m => <option key={m.id} value={m.id}>{m.title}</option>)}
+                    </Select>
+                  </div>
+                )}
+
+                <div className="w-full h-px bg-border" />
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground font-normal">Estimated Hours</Label>
+                  <Input type="number" step="0.5" min="0" value={editTaskHours} onChange={e => setEditTaskHours(e.target.value)} placeholder="—" />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground font-normal">Start Date</Label>
+                  <Input type="date" value={editTaskStart} onChange={e => setEditTaskStart(e.target.value)} />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground font-normal">Due Date</Label>
+                  <Input type="date" value={editTaskDue} onChange={e => setEditTaskDue(e.target.value)} />
+                </div>
+              </div>
             </div>
-            <div className="space-y-1">
-              <Label>Start Date (optional)</Label>
-              <Input type="date" value={taskStart} onChange={e => setTaskStart(e.target.value)} />
-            </div>
-            <div className="space-y-1">
-              <Label>Due Date (optional)</Label>
-              <Input type="date" value={taskDue} onChange={e => setTaskDue(e.target.value)} />
-            </div>
-          </div>
-          <div className="space-y-1">
-            <Label>Assign to (optional)</Label>
-            <Select value={taskAssignedMemberId} onChange={e => setTaskAssignedMemberId(e.target.value)}>
-              <option value="">No assignee</option>
-              {p.members.map(m => (
-                <option key={m.id} value={m.id}>{m.name}</option>
-              ))}
-            </Select>
-          </div>
-          {p.milestones.length > 0 && (
-            <div className="space-y-1">
-              <Label>Milestone (optional)</Label>
-              <Select value={taskMilestoneId} onChange={e => setTaskMilestoneId(e.target.value)}>
-                <option value="">No milestone</option>
-                {p.milestones.map(m => (
-                  <option key={m.id} value={m.id}>{m.title}</option>
-                ))}
-              </Select>
-            </div>
-          )}
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setTaskOpen(false)}>Cancel</Button>
-            <Button onClick={() => mutAddTask.mutate()} disabled={mutAddTask.isPending || !taskTitle.trim()}>
-              {mutAddTask.isPending ? 'Adding…' : 'Add Task'}
-            </Button>
           </div>
         </div>
-      </Dialog>
+      )}
+
+      {/* Azure DevOps–style new task modal */}
+      {taskOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/50" onClick={() => setTaskOpen(false)} />
+          <div
+            className="relative z-50 bg-background w-full max-w-5xl flex flex-col rounded-lg shadow-2xl overflow-hidden border-l-4 border-l-slate-400"
+            style={{ height: 'min(75vh, 700px)' }}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-3 border-b bg-muted/30 shrink-0">
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 bg-blue-100 dark:bg-blue-950 dark:text-blue-400 px-2 py-1 rounded shrink-0">
+                  <SquareCheck className="h-3.5 w-3.5" /> New Task
+                </span>
+                <span className="text-xs text-muted-foreground truncate">{p.name}</span>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Button size="sm" onClick={() => mutAddTask.mutate()} disabled={mutAddTask.isPending || !taskTitle.trim()}>
+                  {mutAddTask.isPending ? 'Creating…' : 'Create Task'}
+                </Button>
+                <button
+                  className="text-muted-foreground hover:text-foreground text-xl leading-none w-7 h-7 flex items-center justify-center rounded hover:bg-muted"
+                  onClick={() => setTaskOpen(false)}
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div className="flex flex-1 overflow-hidden">
+              {/* Left: main content */}
+              <div className={`flex-1 flex flex-col min-w-0 p-6 ${descExpanded ? 'overflow-hidden gap-3' : 'overflow-y-auto gap-6'}`}>
+                <input
+                  value={taskTitle}
+                  onChange={e => setTaskTitle(e.target.value)}
+                  placeholder="Task title"
+                  autoFocus
+                  className="w-full text-xl font-semibold bg-transparent border-0 border-b border-transparent hover:border-border focus:border-primary focus:outline-none py-1 transition-colors placeholder:text-muted-foreground/50 shrink-0"
+                />
+
+                <div className={`flex flex-col gap-2 ${descExpanded ? 'flex-1 min-h-0' : ''}`}>
+                  <div className="flex items-center justify-between shrink-0">
+                    <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Description</p>
+                    <button
+                      onClick={() => setDescExpanded(v => !v)}
+                      title={descExpanded ? 'Collapse description' : 'Expand description'}
+                      className="text-muted-foreground hover:text-foreground p-1 rounded hover:bg-muted transition-colors"
+                    >
+                      {descExpanded ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+                    </button>
+                  </div>
+                  <Textarea
+                    value={taskDesc}
+                    onChange={e => setTaskDesc(e.target.value)}
+                    placeholder="Add a description…"
+                    className={descExpanded ? 'flex-1 min-h-0 resize-none' : 'resize-y min-h-[180px]'}
+                  />
+                </div>
+              </div>
+
+              {/* Right: details sidebar */}
+              <div className="w-64 shrink-0 border-l overflow-y-auto p-5 space-y-5 bg-muted/10">
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Details</p>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground font-normal">Assigned To</Label>
+                  <Select value={taskAssignedMemberId} onChange={e => setTaskAssignedMemberId(e.target.value)}>
+                    <option value="">Unassigned</option>
+                    {p.members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                  </Select>
+                </div>
+
+                {p.milestones.length > 0 && (
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground font-normal">Milestone</Label>
+                    <Select value={taskMilestoneId} onChange={e => setTaskMilestoneId(e.target.value)}>
+                      <option value="">None</option>
+                      {p.milestones.map(m => <option key={m.id} value={m.id}>{m.title}</option>)}
+                    </Select>
+                  </div>
+                )}
+
+                <div className="w-full h-px bg-border" />
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground font-normal">Estimated Hours</Label>
+                  <Input type="number" step="0.5" min="0" value={taskHours} onChange={e => setTaskHours(e.target.value)} placeholder="—" />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground font-normal">Start Date</Label>
+                  <Input type="date" value={taskStart} onChange={e => setTaskStart(e.target.value)} />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground font-normal">Due Date</Label>
+                  <Input type="date" value={taskDue} onChange={e => setTaskDue(e.target.value)} />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Dialog open={memberOpen} onClose={() => setMemberOpen(false)} title="Add Team Member">
         <div className="space-y-4">

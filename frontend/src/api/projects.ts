@@ -25,6 +25,15 @@ export interface ProjectMember {
   currency: string
 }
 
+export interface TaskComment {
+  id: string
+  authorId: string
+  authorName: string
+  body: string
+  createdAt: string
+  updatedAt: string | null
+}
+
 export interface ProjectTask {
   id: string
   title: string
@@ -36,6 +45,7 @@ export interface ProjectTask {
   milestoneId: string | null
   assignedMemberId: string | null
   assignedMemberName: string | null
+  comments: TaskComment[]
 }
 
 export interface Milestone {
@@ -141,3 +151,12 @@ export const addMilestone = (projectId: string, data: { title: string; dueDate: 
 
 export const completeMilestone = (projectId: string, milestoneId: string) =>
   api.put(`/projects/${projectId}/milestones/${milestoneId}/complete`, {})
+
+export const addTaskComment = (projectId: string, taskId: string, body: string) =>
+  api.post<string>(`/projects/${projectId}/tasks/${taskId}/comments`, { body }).then(r => r.data)
+
+export const editTaskComment = (projectId: string, taskId: string, commentId: string, body: string) =>
+  api.put(`/projects/${projectId}/tasks/${taskId}/comments/${commentId}`, { body })
+
+export const deleteTaskComment = (projectId: string, taskId: string, commentId: string) =>
+  api.delete(`/projects/${projectId}/tasks/${taskId}/comments/${commentId}`)

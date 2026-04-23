@@ -7,6 +7,7 @@ using Proposly.Domain.OfferManagement.Repositories;
 using Proposly.Domain.ProjectManagement.Repositories;
 using Proposly.Infrastructure.Persistence;
 using Proposly.Infrastructure.Persistence.Repositories;
+using Proposly.Infrastructure.Services;
 using Proposly.Infrastructure.Services.Auth;
 using Proposly.Infrastructure.Services.Email;
 using Proposly.Infrastructure.Services.Pdf;
@@ -37,6 +38,7 @@ public static class DependencyInjection
         services.AddScoped<IEmailService, MailKitEmailService>();
 
         services.AddScoped<DataSeeder>();
+        services.AddHostedService<OfferExpiryJob>();
 
         return services;
     }

@@ -180,6 +180,31 @@ public sealed class Project : AggregateRoot<Guid>, ITenantEntity, IAuditableEnti
         Touch();
     }
 
+    public TaskComment AddTaskComment(Guid taskId, Guid authorId, string authorName, string body)
+    {
+        var task = _tasks.FirstOrDefault(t => t.Id == taskId)
+            ?? throw new InvalidOperationException($"Task {taskId} not found in project.");
+        var comment = task.AddComment(authorId, authorName, body);
+        Touch();
+        return comment;
+    }
+
+    public void EditTaskComment(Guid taskId, Guid commentId, Guid editorId, string newBody)
+    {
+        var task = _tasks.FirstOrDefault(t => t.Id == taskId)
+            ?? throw new InvalidOperationException($"Task {taskId} not found in project.");
+        task.EditComment(commentId, editorId, newBody);
+        Touch();
+    }
+
+    public void DeleteTaskComment(Guid taskId, Guid commentId, Guid userId, bool isAdmin)
+    {
+        var task = _tasks.FirstOrDefault(t => t.Id == taskId)
+            ?? throw new InvalidOperationException($"Task {taskId} not found in project.");
+        task.DeleteComment(commentId, userId, isAdmin);
+        Touch();
+    }
+
     public Milestone AddMilestone(string title, DateOnly dueDate)
     {
         var milestone = Milestone.Create(Id, title, dueDate);

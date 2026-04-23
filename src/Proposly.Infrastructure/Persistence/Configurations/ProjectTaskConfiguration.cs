@@ -18,5 +18,12 @@ public sealed class ProjectTaskConfiguration : IEntityTypeConfiguration<ProjectT
         builder.Property(t => t.EstimatedHours).HasColumnType("numeric(8,2)");
         builder.Property(t => t.StartDate);
         builder.Property(t => t.AssignedMemberId);
+
+        builder.HasMany(t => t.Comments)
+            .WithOne()
+            .HasForeignKey(c => c.TaskId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Navigation(t => t.Comments).UsePropertyAccessMode(PropertyAccessMode.Field);
     }
 }

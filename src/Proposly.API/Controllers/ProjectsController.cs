@@ -6,8 +6,11 @@ using Proposly.Application.ProjectManagement.Commands.AddExpense;
 using Proposly.Application.ProjectManagement.Commands.AddMilestone;
 using Proposly.Application.ProjectManagement.Commands.AddProjectMember;
 using Proposly.Application.ProjectManagement.Commands.AddTask;
+using Proposly.Application.ProjectManagement.Commands.AddTaskComment;
 using Proposly.Application.ProjectManagement.Commands.CompleteMilestone;
 using Proposly.Application.ProjectManagement.Commands.CreateProject;
+using Proposly.Application.ProjectManagement.Commands.DeleteTaskComment;
+using Proposly.Application.ProjectManagement.Commands.EditTaskComment;
 using Proposly.Application.ProjectManagement.Commands.LogTime;
 using Proposly.Application.ProjectManagement.Commands.UpdateProject;
 using Proposly.Application.ProjectManagement.Commands.UpdateTask;
@@ -136,6 +139,43 @@ public sealed class ProjectsController : ControllerBase
         return NoContent();
     }
 
+    [HttpPost("{id:guid}/tasks/{taskId:guid}/comments")]
+    public async Task<ActionResult<Guid>> AddTaskComment(
+        Guid id,
+        Guid taskId,
+        [FromBody] AddTaskCommentBody body,
+        [FromServices] ICommandHandler<AddTaskCommentCommand, Guid> handler,
+        CancellationToken ct)
+    {
+        var commentId = await handler.HandleAsync(new AddTaskCommentCommand(id, taskId, body.Body), ct);
+        return CreatedAtAction(nameof(GetById), new { id }, commentId);
+    }
+
+    [HttpPut("{id:guid}/tasks/{taskId:guid}/comments/{commentId:guid}")]
+    public async Task<IActionResult> EditTaskComment(
+        Guid id,
+        Guid taskId,
+        Guid commentId,
+        [FromBody] EditTaskCommentBody body,
+        [FromServices] ICommandHandler<EditTaskCommentCommand> handler,
+        CancellationToken ct)
+    {
+        await handler.HandleAsync(new EditTaskCommentCommand(id, taskId, commentId, body.Body), ct);
+        return NoContent();
+    }
+
+    [HttpDelete("{id:guid}/tasks/{taskId:guid}/comments/{commentId:guid}")]
+    public async Task<IActionResult> DeleteTaskComment(
+        Guid id,
+        Guid taskId,
+        Guid commentId,
+        [FromServices] ICommandHandler<DeleteTaskCommentCommand> handler,
+        CancellationToken ct)
+    {
+        await handler.HandleAsync(new DeleteTaskCommentCommand(id, taskId, commentId), ct);
+        return NoContent();
+    }
+
     [HttpPost("{id:guid}/milestones")]
     [Authorize(Policy = Policies.ManageProjects)]
     public async Task<ActionResult<Guid>> AddMilestone(
@@ -169,3 +209,5 @@ public record AddTaskBody(string Title, string? Description, decimal? EstimatedH
 public record UpdateTaskBody(string Title, string? Description, decimal? EstimatedHours, DateOnly? StartDate, DateOnly? DueDate, Guid? MilestoneId, Guid? AssignedMemberId);
 public record UpdateTaskStatusBody(string Status);
 public record AddMilestoneBody(string Title, DateOnly DueDate);
+public record AddTaskCommentBody(string Body);
+public record EditTaskCommentBody(string Body);

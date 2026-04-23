@@ -13,7 +13,7 @@ public sealed class ProjectRepository : IProjectRepository
     public async Task<Project?> GetByIdAsync(Guid id, CancellationToken ct = default)
         => await _context.Projects
             .Include(p => p.Members)
-            .Include(p => p.Tasks)
+            .Include(p => p.Tasks).ThenInclude(t => t.Comments)
             .Include(p => p.Milestones)
             .Include(p => p.Expenses)
             .Include(p => p.TimeEntries)
