@@ -13,6 +13,6 @@ public sealed class GetUsersQueryHandler : IQueryHandler<GetUsersQuery, IReadOnl
     public async Task<IReadOnlyList<UserSummaryResponse>> HandleAsync(GetUsersQuery query, CancellationToken ct = default)
     {
         var users = await _repository.GetAllAsync(ct);
-        return users.Select(u => new UserSummaryResponse(u.Id, u.FullName, u.Email, u.Role.ToString(), u.IsDisabled, u.CreatedAt)).ToList();
+        return users.Select(u => new UserSummaryResponse(u.Id, u.FullName, u.Email, u.Role.ToString(), u.IsDisabled, u.IsPendingInvite, u.CreatedAt)).ToList();
     }
 }

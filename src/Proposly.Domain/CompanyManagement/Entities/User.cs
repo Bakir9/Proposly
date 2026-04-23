@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using Proposly.Domain.CompanyManagement.Enums;
 using Proposly.Shared.Interfaces;
 using Proposly.Shared.Primitives;
@@ -24,6 +25,16 @@ public sealed class User : Entity<Guid>, ITenantEntity, IAuditableEntity
     public static User Create(Guid companyId, string email, string passwordHash, string firstName, string lastName, UserRole role = UserRole.Member)
         => new(Guid.NewGuid(), companyId, email, passwordHash, firstName, lastName, role);
 
+    public static User CreateInvited(Guid companyId, string email, string firstName, string lastName, UserRole role, string inviteToken, DateTime inviteTokenExpiry)
+    {
+        // Placeholder hash — cannot be used to log in; replaced when invite is accepted
+        var placeholder = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
+        var user = new User(Guid.NewGuid(), companyId, email, placeholder, firstName, lastName, role);
+        user.InviteToken = inviteToken;
+        user.InviteTokenExpiry = inviteTokenExpiry;
+        return user;
+    }
+
     public Guid CompanyId { get; private set; }
     public string Email { get; private set; } = string.Empty;
     public string PasswordHash { get; private set; } = string.Empty;
@@ -31,6 +42,9 @@ public sealed class User : Entity<Guid>, ITenantEntity, IAuditableEntity
     public string LastName { get; private set; } = string.Empty;
     public UserRole Role { get; private set; }
     public bool IsDisabled { get; private set; }
+    public string? InviteToken { get; private set; }
+    public DateTime? InviteTokenExpiry { get; private set; }
+    public bool IsPendingInvite => InviteToken is not null;
     public string? PasswordResetToken { get; private set; }
     public DateTime? PasswordResetTokenExpiry { get; private set; }
     public DateTime CreatedAt { get; private set; }
@@ -41,6 +55,16 @@ public sealed class User : Entity<Guid>, ITenantEntity, IAuditableEntity
     public void ChangePassword(string newPasswordHash)
     {
         PasswordHash = newPasswordHash;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void AcceptInvite(string passwordHash)
+    {
+        if (InviteToken is null)
+            throw new InvalidOperationException("This account is already active.");
+        PasswordHash = passwordHash;
+        InviteToken = null;
+        InviteTokenExpiry = null;
         UpdatedAt = DateTime.UtcNow;
     }
 

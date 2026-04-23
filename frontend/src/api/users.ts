@@ -8,6 +8,7 @@ export interface UserSummary {
   email: string
   role: UserRole
   isDisabled: boolean
+  isPendingInvite: boolean
   createdAt: string
 }
 
@@ -21,7 +22,6 @@ export interface InviteUserRequest {
   firstName: string
   lastName: string
   email: string
-  password: string
   role: string
 }
 
@@ -35,7 +35,10 @@ export const getActiveUsers = () =>
   api.get<UserSummary[]>('/users/active').then(r => r.data)
 
 export const inviteUser = (data: InviteUserRequest) =>
-  api.post<UserDetail>('/users', data).then(r => r.data)
+  api.post('/users', data)
+
+export const acceptInvite = (token: string, newPassword: string) =>
+  api.post('/auth/accept-invite', { token, newPassword })
 
 export const updateUserRole = (id: string, role: string) =>
   api.put(`/users/${id}/role`, { role })

@@ -7,6 +7,7 @@ public interface IUserRepository
     Task<User?> GetByIdAsync(Guid id, CancellationToken ct = default);
     Task<User?> GetByEmailAsync(string email, CancellationToken ct = default);
     Task<User?> GetByResetTokenAsync(string token, CancellationToken ct = default);
+    Task<User?> GetByInviteTokenAsync(string token, CancellationToken ct = default);
     Task<bool> ExistsByEmailAsync(string email, CancellationToken ct = default);
     Task<IReadOnlyList<User>> GetAllAsync(CancellationToken ct = default);
     Task<IReadOnlyList<User>> GetActiveAsync(CancellationToken ct = default);

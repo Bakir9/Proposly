@@ -32,18 +32,16 @@ export function UsersPage() {
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
   const [role, setRole] = useState('Member')
 
   const mutInvite = useMutation({
-    mutationFn: () => inviteUser({ firstName, lastName, email, password, role }),
+    mutationFn: () => inviteUser({ firstName, lastName, email, role }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] })
       setDialogOpen(false)
       setFirstName('')
       setLastName('')
       setEmail('')
-      setPassword('')
       setRole('Member')
     },
   })
@@ -96,7 +94,10 @@ export function UsersPage() {
                   <div>
                     <CardTitle className="text-base flex items-center gap-2">
                       {user.fullName}
-                      {user.isDisabled && (
+                      {user.isPendingInvite && (
+                        <span className="text-xs font-normal text-amber-500">(invite pending)</span>
+                      )}
+                      {user.isDisabled && !user.isPendingInvite && (
                         <span className="text-xs font-normal text-muted-foreground">(disabled)</span>
                       )}
                     </CardTitle>
@@ -158,21 +159,20 @@ export function UsersPage() {
             <Input type="email" value={email} onChange={e => setEmail(e.target.value)} />
           </div>
           <div className="space-y-1">
-            <Label>Password</Label>
-            <Input type="password" value={password} onChange={e => setPassword(e.target.value)} />
-          </div>
-          <div className="space-y-1">
             <Label>Role</Label>
             <Select value={role} onChange={e => setRole(e.target.value)}>
               <option value="Admin">Admin</option>
               <option value="Member">Member</option>
             </Select>
           </div>
+          {mutInvite.isError && (
+            <p className="text-sm text-destructive">Failed to invite user. Email may already be registered.</p>
+          )}
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
             <Button
               onClick={() => mutInvite.mutate()}
-              disabled={mutInvite.isPending || !firstName.trim() || !lastName.trim() || !email.trim() || !password.trim()}
+              disabled={mutInvite.isPending || !firstName.trim() || !lastName.trim() || !email.trim()}
             >
               {mutInvite.isPending ? 'Inviting…' : 'Invite'}
             </Button>

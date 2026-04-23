@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Proposly.Application.Abstractions;
+using Proposly.Application.Auth.Commands.AcceptInvite;
 using Proposly.Application.Auth.Commands.ForgotPassword;
 using Proposly.Application.Auth.Commands.Login;
 using Proposly.Application.Auth.Commands.Register;
@@ -50,6 +51,17 @@ public sealed class AuthController : ControllerBase
     public async Task<IActionResult> ResetPassword(
         [FromBody] ResetPasswordCommand command,
         [FromServices] ICommandHandler<ResetPasswordCommand> handler,
+        CancellationToken ct)
+    {
+        await handler.HandleAsync(command, ct);
+        return Ok();
+    }
+
+    /// <summary>Accept an invite and set a password to activate the account.</summary>
+    [HttpPost("accept-invite")]
+    public async Task<IActionResult> AcceptInvite(
+        [FromBody] AcceptInviteCommand command,
+        [FromServices] ICommandHandler<AcceptInviteCommand> handler,
         CancellationToken ct)
     {
         await handler.HandleAsync(command, ct);

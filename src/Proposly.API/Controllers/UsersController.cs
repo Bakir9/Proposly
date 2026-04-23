@@ -64,16 +64,16 @@ public sealed class UsersController : ControllerBase
         CancellationToken ct)
         => await handler.HandleAsync(new GetUsersQuery(), ct);
 
-    /// <summary>Add a new user to your company. Owner and Admin only.</summary>
+    /// <summary>Invite a new user to your company. Owner and Admin only.</summary>
     [HttpPost]
     [Authorize(Policy = Policies.ManageUsers)]
-    public async Task<ActionResult<UserDetailResponse>> Invite(
+    public async Task<IActionResult> Invite(
         [FromBody] InviteUserCommand command,
-        [FromServices] ICommandHandler<InviteUserCommand, UserDetailResponse> handler,
+        [FromServices] ICommandHandler<InviteUserCommand> handler,
         CancellationToken ct)
     {
-        var result = await handler.HandleAsync(command, ct);
-        return CreatedAtAction(nameof(GetMe), result);
+        await handler.HandleAsync(command, ct);
+        return Ok();
     }
 
     /// <summary>Change a user's role. Owner and Admin only.</summary>

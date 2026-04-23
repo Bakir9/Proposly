@@ -28,6 +28,9 @@ public sealed class LoginCommandHandler : ICommandHandler<LoginCommand, AuthResp
         if (!_passwordHasher.Verify(command.Password, user.PasswordHash))
             throw new UnauthorizedAccessException("Invalid email or password.");
 
+        if (user.IsPendingInvite)
+            throw new UnauthorizedAccessException("Please accept your invite first. Check your email for the activation link.");
+
         if (user.IsDisabled)
             throw new UnauthorizedAccessException("This account has been disabled. Contact your administrator.");
 

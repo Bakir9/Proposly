@@ -6,6 +6,7 @@ public record UserSummaryResponse(
     string Email,
     string Role,
     bool IsDisabled,
+    bool IsPendingInvite,
     DateTime CreatedAt);
 
 public record UserDetailResponse(
