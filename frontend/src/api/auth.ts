@@ -27,3 +27,9 @@ export const register = (data: RegisterRequest) =>
 
 export const login = (data: LoginRequest) =>
   api.post<AuthResponse>('/auth/login', data).then(r => r.data)
+
+export const forgotPassword = (email: string) =>
+  api.post('/auth/forgot-password', { email })
+
+export const resetPassword = (token: string, newPassword: string) =>
+  api.post('/auth/reset-password', { token, newPassword })

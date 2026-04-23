@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using Proposly.Application.Abstractions;
+using Proposly.Application.Auth.Commands.ForgotPassword;
 using Proposly.Application.Auth.Commands.Login;
 using Proposly.Application.Auth.Commands.Register;
+using Proposly.Application.Auth.Commands.ResetPassword;
 using Proposly.Application.Auth.Responses;
 
 namespace Proposly.API.Controllers;
@@ -30,5 +32,27 @@ public sealed class AuthController : ControllerBase
     {
         var result = await handler.HandleAsync(command, ct);
         return Ok(result);
+    }
+
+    /// <summary>Request a password reset email.</summary>
+    [HttpPost("forgot-password")]
+    public async Task<IActionResult> ForgotPassword(
+        [FromBody] ForgotPasswordCommand command,
+        [FromServices] ICommandHandler<ForgotPasswordCommand> handler,
+        CancellationToken ct)
+    {
+        await handler.HandleAsync(command, ct);
+        return Ok(); // Always 200 — never reveal whether the email exists
+    }
+
+    /// <summary>Reset password using a token from email.</summary>
+    [HttpPost("reset-password")]
+    public async Task<IActionResult> ResetPassword(
+        [FromBody] ResetPasswordCommand command,
+        [FromServices] ICommandHandler<ResetPasswordCommand> handler,
+        CancellationToken ct)
+    {
+        await handler.HandleAsync(command, ct);
+        return Ok();
     }
 }

@@ -18,6 +18,10 @@ public sealed class UserRepository : IUserRepository
         => await _context.Users.IgnoreQueryFilters()
             .FirstOrDefaultAsync(u => u.Email == email.ToLowerInvariant(), ct);
 
+    public async Task<User?> GetByResetTokenAsync(string token, CancellationToken ct = default)
+        => await _context.Users.IgnoreQueryFilters()
+            .FirstOrDefaultAsync(u => u.PasswordResetToken == token, ct);
+
     public async Task<bool> ExistsByEmailAsync(string email, CancellationToken ct = default)
         => await _context.Users.IgnoreQueryFilters()
             .AnyAsync(u => u.Email == email.ToLowerInvariant(), ct);

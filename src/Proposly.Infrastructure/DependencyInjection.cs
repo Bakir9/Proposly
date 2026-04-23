@@ -32,6 +32,7 @@ public static class DependencyInjection
         services.AddScoped<IOfferRepository, OfferRepository>();
         services.AddScoped<IClientRepository, ClientRepository>();
 
+        services.AddSingleton<IAppSettings, AppSettings>();
         services.AddSingleton<IPasswordHasher, PasswordHasher>();
         services.AddScoped<IJwtService, JwtService>();
         services.AddSingleton<IPdfService, OfferPdfService>();

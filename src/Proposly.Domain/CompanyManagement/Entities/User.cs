@@ -31,6 +31,8 @@ public sealed class User : Entity<Guid>, ITenantEntity, IAuditableEntity
     public string LastName { get; private set; } = string.Empty;
     public UserRole Role { get; private set; }
     public bool IsDisabled { get; private set; }
+    public string? PasswordResetToken { get; private set; }
+    public DateTime? PasswordResetTokenExpiry { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime UpdatedAt { get; private set; }
 
@@ -40,6 +42,18 @@ public sealed class User : Entity<Guid>, ITenantEntity, IAuditableEntity
     {
         PasswordHash = newPasswordHash;
         UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void SetPasswordResetToken(string token, DateTime expiry)
+    {
+        PasswordResetToken = token;
+        PasswordResetTokenExpiry = expiry;
+    }
+
+    public void ClearPasswordResetToken()
+    {
+        PasswordResetToken = null;
+        PasswordResetTokenExpiry = null;
     }
 
     public void UpdateProfile(string firstName, string lastName, string email)
