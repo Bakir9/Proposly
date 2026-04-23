@@ -52,6 +52,7 @@ public sealed class ProjectTask : Entity<Guid>
     public ProjectTaskStatus Status { get; private set; }
     public DateOnly? StartDate { get; private set; }
     public DateOnly? DueDate { get; private set; }
+    public DateOnly? CompletedAt { get; private set; }
     public IReadOnlyCollection<TaskComment> Comments => _comments.AsReadOnly();
 
     public void UpdateDetails(string title, string? description, decimal? estimatedHours, DateOnly? startDate, DateOnly? dueDate, Guid? milestoneId, Guid? assignedMemberId)
@@ -84,6 +85,7 @@ public sealed class ProjectTask : Entity<Guid>
         if (Status == ProjectTaskStatus.Done)
             throw new InvalidOperationException("Task is already completed.");
         Status = ProjectTaskStatus.Done;
+        CompletedAt = DateOnly.FromDateTime(DateTime.UtcNow);
     }
 
     public void Reopen()
@@ -91,6 +93,7 @@ public sealed class ProjectTask : Entity<Guid>
         if (Status == ProjectTaskStatus.Todo)
             throw new InvalidOperationException("Task is already in todo.");
         Status = ProjectTaskStatus.Todo;
+        CompletedAt = null;
     }
 
     public TaskComment AddComment(Guid authorId, string authorName, string body)

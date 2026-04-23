@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   getProjectById,
+  getBurndown,
   updateProject,
   addTask,
   updateTask,
@@ -16,6 +17,9 @@ import {
   editTaskComment,
   deleteTaskComment,
 } from '@/api/projects'
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+} from 'recharts'
 import type { ProjectTask } from '@/api/projects'
 import { getActiveUsers } from '@/api/users'
 import { useAuth } from '@/features/auth/AuthContext'
@@ -49,6 +53,7 @@ const TABS = [
   { id: 'overview', label: 'Overview' },
   { id: 'tasks', label: 'Tasks' },
   { id: 'gantt', label: 'Gantt' },
+  { id: 'burndown', label: 'Burndown' },
   { id: 'team', label: 'Team' },
   { id: 'timelog', label: 'Time Log' },
   { id: 'expenses', label: 'Expenses' },
@@ -203,6 +208,61 @@ function GanttChart({ project }: { project: import('@/api/projects').ProjectDeta
           <span className="flex items-center gap-1"><span className="border-l-2 border-red-400 h-3 inline-block" />Today</span>
         </div>
       </div>
+    </div>
+  )
+}
+
+function BurndownTab({ projectId }: { projectId: string }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ['burndown', projectId],
+    queryFn: () => getBurndown(projectId),
+  })
+
+  const fmtDay = (s: string) => {
+    const [, m, d] = s.split('-')
+    return `${d}/${m}`
+  }
+
+  if (isLoading) return <p className="text-sm text-muted-foreground py-8 text-center">Loading...</p>
+  if (!data || data.totalTasks === 0) return <p className="text-sm text-muted-foreground py-8 text-center">No tasks yet — add tasks to see the burndown chart.</p>
+
+  const chartData = data.actual.map((point, i) => ({
+    date: point.date,
+    actual: point.count,
+    ideal: data.ideal[i]?.count ?? 0,
+  }))
+
+  const completedCount = data.totalTasks - (chartData[chartData.length - 1]?.actual ?? data.totalTasks)
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-3 gap-3 text-sm">
+        <Card><CardContent className="py-3"><span className="text-muted-foreground text-xs">Total tasks</span><p className="font-semibold text-lg">{data.totalTasks}</p></CardContent></Card>
+        <Card><CardContent className="py-3"><span className="text-muted-foreground text-xs">Completed</span><p className="font-semibold text-lg text-green-600">{completedCount}</p></CardContent></Card>
+        <Card><CardContent className="py-3"><span className="text-muted-foreground text-xs">Remaining</span><p className="font-semibold text-lg text-blue-600">{data.totalTasks - completedCount}</p></CardContent></Card>
+      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Remaining Tasks Over Time</CardTitle>
+          <p className="text-xs text-muted-foreground">{data.startDate} → {data.endDate}</p>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={320}>
+            <LineChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+              <XAxis dataKey="date" tick={{ fontSize: 11 }} tickFormatter={fmtDay} minTickGap={30} />
+              <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+              <Tooltip
+                labelFormatter={l => String(l)}
+                formatter={(value: number, name: string) => [value, name === 'actual' ? 'Actual remaining' : 'Ideal remaining']}
+              />
+              <Legend formatter={v => v === 'actual' ? 'Actual' : 'Ideal'} />
+              <Line type="monotone" dataKey="ideal" stroke="#94a3b8" strokeDasharray="5 5" dot={false} strokeWidth={1.5} />
+              <Line type="monotone" dataKey="actual" stroke="#3b82f6" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
     </div>
   )
 }
@@ -536,6 +596,10 @@ export function ProjectDetailPage() {
               <div className="space-y-3">
                 <GanttChart project={p} />
               </div>
+            )}
+
+            {activeTab === 'burndown' && (
+              <BurndownTab projectId={p.id} />
             )}
 
             {activeTab === 'tasks' && (

@@ -42,10 +42,24 @@ export interface ProjectTask {
   estimatedHours: number | null
   startDate: string | null
   dueDate: string | null
+  completedAt: string | null
   milestoneId: string | null
   assignedMemberId: string | null
   assignedMemberName: string | null
   comments: TaskComment[]
+}
+
+export interface BurndownDataPoint {
+  date: string
+  count: number
+}
+
+export interface BurndownData {
+  totalTasks: number
+  startDate: string
+  endDate: string
+  actual: BurndownDataPoint[]
+  ideal: BurndownDataPoint[]
 }
 
 export interface Milestone {
@@ -160,3 +174,6 @@ export const editTaskComment = (projectId: string, taskId: string, commentId: st
 
 export const deleteTaskComment = (projectId: string, taskId: string, commentId: string) =>
   api.delete(`/projects/${projectId}/tasks/${taskId}/comments/${commentId}`)
+
+export const getBurndown = (projectId: string) =>
+  api.get<BurndownData>(`/projects/${projectId}/burndown`).then(r => r.data)

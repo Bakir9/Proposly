@@ -15,6 +15,7 @@ using Proposly.Application.ProjectManagement.Commands.LogTime;
 using Proposly.Application.ProjectManagement.Commands.UpdateProject;
 using Proposly.Application.ProjectManagement.Commands.UpdateTask;
 using Proposly.Application.ProjectManagement.Commands.UpdateTaskStatus;
+using Proposly.Application.ProjectManagement.Queries.GetBurndown;
 using Proposly.Application.ProjectManagement.Queries.GetProjectById;
 using Proposly.Application.ProjectManagement.Queries.GetProjects;
 using Proposly.Application.ProjectManagement.Responses;
@@ -174,6 +175,16 @@ public sealed class ProjectsController : ControllerBase
     {
         await handler.HandleAsync(new DeleteTaskCommentCommand(id, taskId, commentId), ct);
         return NoContent();
+    }
+
+    [HttpGet("{id:guid}/burndown")]
+    public async Task<ActionResult<BurndownResponse>> GetBurndown(
+        Guid id,
+        [FromServices] IQueryHandler<GetBurndownQuery, BurndownResponse?> handler,
+        CancellationToken ct)
+    {
+        var result = await handler.HandleAsync(new GetBurndownQuery(id), ct);
+        return result is null ? NotFound() : Ok(result);
     }
 
     [HttpPost("{id:guid}/milestones")]

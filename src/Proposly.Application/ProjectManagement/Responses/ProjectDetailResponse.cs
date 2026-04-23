@@ -15,7 +15,10 @@ public record ProjectDetailResponse(
 
 public record ProfitabilityResponse(decimal LaborCost, decimal ExpensesTotal, decimal TotalCost, decimal Revenue, decimal Profit, string Currency);
 public record ProjectMemberResponse(Guid Id, Guid UserId, string Name, string Role, decimal HourlyRate, string Currency);
-public record ProjectTaskResponse(Guid Id, string Title, string? Description, ProjectTaskStatus Status, decimal? EstimatedHours, DateOnly? StartDate, DateOnly? DueDate, Guid? MilestoneId, Guid? AssignedMemberId, string? AssignedMemberName, IReadOnlyList<TaskCommentResponse> Comments);
+public record ProjectTaskResponse(Guid Id, string Title, string? Description, ProjectTaskStatus Status, decimal? EstimatedHours, DateOnly? StartDate, DateOnly? DueDate, DateOnly? CompletedAt, Guid? MilestoneId, Guid? AssignedMemberId, string? AssignedMemberName, IReadOnlyList<TaskCommentResponse> Comments);
+
+public record BurndownDataPoint(DateOnly Date, int Count);
+public record BurndownResponse(int TotalTasks, DateOnly StartDate, DateOnly EndDate, IReadOnlyList<BurndownDataPoint> Actual, IReadOnlyList<BurndownDataPoint> Ideal);
 public record TaskCommentResponse(Guid Id, Guid AuthorId, string AuthorName, string Body, DateTime CreatedAt, DateTime? UpdatedAt);
 public record MilestoneResponse(Guid Id, string Title, DateOnly DueDate, bool IsCompleted);
 public record ExpenseResponse(Guid Id, string Description, decimal Amount, string Currency, string Category, DateOnly Date);
