@@ -5,13 +5,14 @@ import { useAuth } from '@/features/auth/AuthContext'
 import { cn } from '@/lib/utils'
 import { Button } from './ui/button'
 import { getAvatarColor } from '@/features/profile/ProfilePage'
+import proposlyLogo from '@/assets/proposly.png'
 
-const navItems = [
-  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/offers',    label: 'Offers',    icon: FileText },
-  { to: '/projects',  label: 'Projects',  icon: FolderKanban },
-  { to: '/clients',   label: 'Clients',   icon: Building2 },
-  { to: '/users',     label: 'Team',      icon: Users },
+const ALL_NAV_ITEMS = [
+  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, adminOnly: false },
+  { to: '/offers',    label: 'Offers',    icon: FileText,        adminOnly: true  },
+  { to: '/projects',  label: 'Projects',  icon: FolderKanban,   adminOnly: false },
+  { to: '/clients',   label: 'Clients',   icon: Building2,      adminOnly: true  },
+  { to: '/users',     label: 'Team',      icon: Users,          adminOnly: true  },
 ]
 
 function getInitials(fullName: string) {
@@ -25,6 +26,9 @@ export function AppShell() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const [avatarColor, setAvatarColorState] = useState(getAvatarColor)
+
+  const isAdminOrOwner = user?.role === 'Owner' || user?.role === 'Admin'
+  const navItems = ALL_NAV_ITEMS.filter(item => !item.adminOnly || isAdminOrOwner)
 
   useEffect(() => {
     const handler = () => setAvatarColorState(getAvatarColor())
@@ -43,10 +47,13 @@ export function AppShell() {
     <div className="flex h-screen bg-background">
       {/* Sidebar */}
       <aside className="w-56 flex flex-col border-r bg-card">
-        <div className="px-4 py-5 border-b">
-          <div className="flex items-center gap-2">
-            <LayoutDashboard className="h-5 w-5 text-primary" />
-            <span className="font-semibold text-lg">Proposly</span>
+        <div className="px-4 py-4 border-b">
+          <div className="flex items-center gap-3">
+            <img src={proposlyLogo} alt="Proposly" className="h-9 w-9 object-contain rounded-xl shadow-sm shrink-0" />
+            <div className="min-w-0">
+              <p className="font-bold text-base leading-tight tracking-tight">Proposly</p>
+              <p className="text-[11px] text-muted-foreground leading-tight">Business Suite</p>
+            </div>
           </div>
         </div>
 
