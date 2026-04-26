@@ -64,6 +64,19 @@ app.UseExceptionHandler(exceptionHandlerApp =>
         var feature = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerPathFeature>();
         var ex = feature?.Error;
         context.Response.ContentType = "application/problem+json";
+
+        if (ex is CommandValidationException validationEx)
+        {
+            context.Response.StatusCode = 422;
+            await context.Response.WriteAsJsonAsync(new
+            {
+                status = 422,
+                title = "Validation failed.",
+                errors = validationEx.Errors
+            });
+            return;
+        }
+
         context.Response.StatusCode = ex is InvalidOperationException or ArgumentException ? 400 : 500;
         await context.Response.WriteAsJsonAsync(new
         {

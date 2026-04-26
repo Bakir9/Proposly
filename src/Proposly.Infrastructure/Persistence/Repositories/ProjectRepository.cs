@@ -26,6 +26,15 @@ public sealed class ProjectRepository : IProjectRepository
             .OrderByDescending(p => p.CreatedAt)
             .ToListAsync(ct);
 
+    public async Task<IReadOnlyList<Project>> SearchAsync(string term, CancellationToken ct = default)
+        => await _context.Projects
+            .Where(p => EF.Functions.ILike(p.Name, $"%{term}%") ||
+                        EF.Functions.ILike(p.ClientName, $"%{term}%") ||
+                        (p.Description != null && EF.Functions.ILike(p.Description, $"%{term}%")))
+            .OrderByDescending(p => p.CreatedAt)
+            .Take(5)
+            .ToListAsync(ct);
+
     public async Task AddAsync(Project project, CancellationToken ct = default)
     {
         await _context.Projects.AddAsync(project, ct);

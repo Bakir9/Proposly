@@ -167,7 +167,11 @@ public sealed class Project : AggregateRoot<Guid>, ITenantEntity, IAuditableEnti
         var task = ProjectTask.Create(Id, title, description, estimatedHours, startDate, dueDate, milestoneId, assignedMemberId);
         _tasks.Add(task);
         if (assignedMemberId.HasValue)
-            RaiseDomainEvent(new Events.TaskAssignedDomainEvent(task.Id, Id, assignedMemberId.Value));
+        {
+            var member = _members.FirstOrDefault(m => m.Id == assignedMemberId.Value);
+            if (member is not null)
+                RaiseDomainEvent(new Events.TaskAssignedDomainEvent(task.Id, task.Title, Id, Name, assignedMemberId.Value, member.UserId, CompanyId));
+        }
         Touch();
         return task;
     }
@@ -176,7 +180,16 @@ public sealed class Project : AggregateRoot<Guid>, ITenantEntity, IAuditableEnti
     {
         var task = _tasks.FirstOrDefault(t => t.Id == taskId)
             ?? throw new InvalidOperationException($"Task {taskId} not found in project.");
+
+        var previousAssignee = task.AssignedMemberId;
         task.UpdateDetails(title, description, estimatedHours, startDate, dueDate, milestoneId, assignedMemberId);
+
+        if (assignedMemberId.HasValue && assignedMemberId != previousAssignee)
+        {
+            var member = _members.FirstOrDefault(m => m.Id == assignedMemberId.Value);
+            if (member is not null)
+                RaiseDomainEvent(new Events.TaskAssignedDomainEvent(task.Id, task.Title, Id, Name, assignedMemberId.Value, member.UserId, CompanyId));
+        }
         Touch();
     }
 

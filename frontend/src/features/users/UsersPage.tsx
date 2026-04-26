@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
+import { getApiErrorMessage } from '@/lib/api-errors'
 import { Dialog } from '@/components/ui/dialog'
 import { Users, UserPlus, UserX, UserCheck, Trash2 } from 'lucide-react'
 
@@ -166,7 +167,7 @@ export function UsersPage() {
             </Select>
           </div>
           {mutInvite.isError && (
-            <p className="text-sm text-destructive">Failed to invite user. Email may already be registered.</p>
+            <p className="text-sm text-destructive">{getApiErrorMessage(mutInvite.error)}</p>
           )}
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>

@@ -1,5 +1,6 @@
-import { useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
+import { useNotificationTask } from '@/contexts/NotificationTaskContext'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   getProjectById,
@@ -270,6 +271,8 @@ function BurndownTab({ projectId }: { projectId: string }) {
 export function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const { pendingTaskId, setPendingTaskId } = useNotificationTask()
   const queryClient = useQueryClient()
 
   const { user: authUser } = useAuth()
@@ -282,6 +285,28 @@ export function ProjectDetailPage() {
   const { data: users } = useQuery({ queryKey: ['users', 'active'], queryFn: getActiveUsers })
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['project', id] })
+
+  // Notification click: task ID passed via context
+  useEffect(() => {
+    if (!project || !pendingTaskId) return
+    const task = project.tasks.find(t => t.id === pendingTaskId)
+    if (task) {
+      setPendingTaskId(null)
+      openEditTask(task)
+    }
+  }, [project, pendingTaskId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Direct link: task ID in URL ?task= param
+  useEffect(() => {
+    if (!project) return
+    const taskId = searchParams.get('task')
+    if (!taskId) return
+    const task = project.tasks.find(t => t.id === taskId)
+    if (task) {
+      setSearchParams(p => { const n = new URLSearchParams(p); n.delete('task'); return n }, { replace: true })
+      openEditTask(task)
+    }
+  }, [project, searchParams]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Task dialog
   const [taskOpen, setTaskOpen] = useState(false)

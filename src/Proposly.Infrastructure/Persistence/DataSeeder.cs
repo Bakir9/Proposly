@@ -4,6 +4,7 @@ using Proposly.Application.Abstractions;
 using Proposly.Domain.CompanyManagement.Entities;
 using Proposly.Domain.ProjectManagement.Entities;
 using Proposly.Domain.ProjectManagement.Enums;
+using Proposly.Shared.Primitives;
 using Proposly.Shared.ValueObjects;
 
 namespace Proposly.Infrastructure.Persistence;
@@ -24,7 +25,7 @@ public sealed class DataSeeder
             .UseNpgsql(_configuration.GetConnectionString("DefaultConnection"))
             .Options;
 
-        await using var context = new AppDbContext(options, new SeedCurrentUserService());
+        await using var context = new AppDbContext(options, new SeedCurrentUserService(), new NoOpDispatcher());
 
         if (await context.Companies.AnyAsync(ct))
             return;
@@ -182,4 +183,9 @@ file sealed class SeedCurrentUserService : ICurrentUserService
     public Guid CompanyId => DataSeeder.SeedCompanyId;
     public Guid UserId    => DataSeeder.SeedUserId;
     public string Role    => "Owner";
+}
+
+file sealed class NoOpDispatcher : IDomainEventDispatcher
+{
+    public Task DispatchAsync(IDomainEvent domainEvent, CancellationToken ct = default) => Task.CompletedTask;
 }

@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Check } from 'lucide-react'
+import { getApiErrorMessage } from '@/lib/api-errors'
 
 const AVATAR_COLORS = [
   'bg-blue-500',
@@ -94,7 +95,7 @@ export function ProfilePage() {
       setPasswordSuccess(true)
       setTimeout(() => setPasswordSuccess(false), 3000)
     },
-    onError: () => setPasswordError('Current password is incorrect.'),
+    onError: (err: unknown) => setPasswordError(getApiErrorMessage(err)),
   })
 
   const handleChangePassword = () => {

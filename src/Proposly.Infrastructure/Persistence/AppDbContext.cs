@@ -1,33 +1,40 @@
 using Microsoft.EntityFrameworkCore;
 using Proposly.Application.Abstractions;
 using Proposly.Domain.CompanyManagement.Entities;
+using Proposly.Domain.Notifications;
 using Proposly.Domain.OfferManagement.Entities;
 using Proposly.Domain.ProjectManagement.Entities;
 using Proposly.Shared.Interfaces;
+using Proposly.Shared.Primitives;
 
 namespace Proposly.Infrastructure.Persistence;
 
 public sealed class AppDbContext : DbContext
 {
     private readonly ICurrentUserService _currentUserService;
+    private readonly IDomainEventDispatcher _dispatcher;
 
     public DbSet<Company> Companies => Set<Company>();
     public DbSet<User> Users => Set<User>();
     public DbSet<Project> Projects => Set<Project>();
     public DbSet<Offer> Offers => Set<Offer>();
     public DbSet<Client> Clients => Set<Client>();
+    public DbSet<Notification> Notifications => Set<Notification>();
 
-    public AppDbContext(DbContextOptions<AppDbContext> options, ICurrentUserService currentUserService)
+    public AppDbContext(
+        DbContextOptions<AppDbContext> options,
+        ICurrentUserService currentUserService,
+        IDomainEventDispatcher dispatcher)
         : base(options)
     {
         _currentUserService = currentUserService;
+        _dispatcher = dispatcher;
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
 
-        // Apply global tenant filter to every entity that implements ITenantEntity
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())
         {
             if (!typeof(ITenantEntity).IsAssignableFrom(entityType.ClrType))
@@ -49,10 +56,29 @@ public sealed class AppDbContext : DbContext
         modelBuilder.Entity<TEntity>().HasQueryFilter(e => e.CompanyId == _currentUserService.CompanyId);
     }
 
-    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         UpdateAuditFields();
-        return base.SaveChangesAsync(cancellationToken);
+
+        var domainEvents = ChangeTracker.Entries<object>()
+            .Select(e => e.Entity)
+            .OfType<IHasDomainEvents>()
+            .SelectMany(e => e.DomainEvents)
+            .ToList();
+
+        foreach (var aggregate in ChangeTracker.Entries<object>()
+            .Select(e => e.Entity)
+            .OfType<IHasDomainEvents>())
+        {
+            aggregate.ClearDomainEvents();
+        }
+
+        var result = await base.SaveChangesAsync(cancellationToken);
+
+        foreach (var domainEvent in domainEvents)
+            await _dispatcher.DispatchAsync(domainEvent, cancellationToken);
+
+        return result;
     }
 
     private void UpdateAuditFields()

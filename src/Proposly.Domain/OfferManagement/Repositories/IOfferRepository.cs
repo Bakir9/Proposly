@@ -7,6 +7,7 @@ public interface IOfferRepository
 {
     Task<Offer?> GetByIdAsync(Guid id, CancellationToken ct = default);
     Task<IReadOnlyList<Offer>> GetAllAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<Offer>> SearchAsync(string term, CancellationToken ct = default);
     Task<IReadOnlyList<Offer>> GetByClientAsync(Guid clientId, CancellationToken ct = default);
     Task<IReadOnlyList<Offer>> GetByStatusAsync(OfferStatus status, CancellationToken ct = default);
     Task AddAsync(Offer offer, CancellationToken ct = default);

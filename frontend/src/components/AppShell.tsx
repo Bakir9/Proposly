@@ -2,10 +2,13 @@ import { useState, useEffect } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { LayoutDashboard, FileText, FolderKanban, Users, LogOut, Building2, Settings } from 'lucide-react'
 import { useAuth } from '@/features/auth/AuthContext'
+import { useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import { Button } from './ui/button'
 import { getAvatarColor } from '@/features/profile/ProfilePage'
+import { TopBar } from './TopBar'
 import proposlyLogo from '@/assets/proposly.png'
+import { NotificationTaskProvider } from '@/contexts/NotificationTaskContext'
 
 const ALL_NAV_ITEMS = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, adminOnly: false },
@@ -25,6 +28,7 @@ function getInitials(fullName: string) {
 export function AppShell() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [avatarColor, setAvatarColorState] = useState(getAvatarColor)
 
   const isAdminOrOwner = user?.role === 'Owner' || user?.role === 'Admin'
@@ -38,12 +42,14 @@ export function AppShell() {
 
   const handleLogout = () => {
     logout()
+    queryClient.clear()
     navigate('/login')
   }
 
   const initials = user ? getInitials(user.fullName) : '?'
 
   return (
+    <NotificationTaskProvider>
     <div className="flex h-screen bg-background">
       {/* Sidebar */}
       <aside className="w-56 flex flex-col border-r bg-card">
@@ -118,9 +124,13 @@ export function AppShell() {
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 overflow-auto">
-        <Outlet />
+      <main className="flex-1 flex flex-col overflow-hidden">
+        <TopBar />
+        <div className="flex-1 overflow-auto">
+          <Outlet />
+        </div>
       </main>
     </div>
+    </NotificationTaskProvider>
   )
 }

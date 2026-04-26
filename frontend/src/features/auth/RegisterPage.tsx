@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { getApiErrorMessage } from '@/lib/api-errors'
 
 const schema = z.object({
   companyName: z.string().min(2, 'Company name is required'),
@@ -73,7 +74,7 @@ export function RegisterPage() {
               {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
             </div>
             {mutation.isError && (
-              <p className="text-sm text-destructive">Registration failed. Email may already be in use.</p>
+              <p className="text-sm text-destructive">{getApiErrorMessage(mutation.error)}</p>
             )}
             <Button type="submit" className="w-full" disabled={mutation.isPending}>
               {mutation.isPending ? 'Creating account…' : 'Create account'}

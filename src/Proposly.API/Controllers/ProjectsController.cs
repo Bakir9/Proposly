@@ -104,7 +104,6 @@ public sealed class ProjectsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/tasks")]
-    [Authorize(Policy = Policies.ManageProjects)]
     public async Task<ActionResult<Guid>> AddTask(
         Guid id,
         [FromBody] AddTaskBody body,
@@ -116,7 +115,6 @@ public sealed class ProjectsController : ControllerBase
     }
 
     [HttpPut("{id:guid}/tasks/{taskId:guid}")]
-    [Authorize(Policy = Policies.ManageProjects)]
     public async Task<IActionResult> UpdateTask(
         Guid id,
         Guid taskId,

@@ -22,6 +22,13 @@ public sealed class OfferRepository : IOfferRepository
             .OrderByDescending(o => o.CreatedAt)
             .ToListAsync(ct);
 
+    public async Task<IReadOnlyList<Offer>> SearchAsync(string term, CancellationToken ct = default)
+        => await _context.Offers
+            .Where(o => EF.Functions.ILike(o.Title, $"%{term}%"))
+            .OrderByDescending(o => o.CreatedAt)
+            .Take(5)
+            .ToListAsync(ct);
+
     public async Task<IReadOnlyList<Offer>> GetByClientAsync(Guid clientId, CancellationToken ct = default)
         => await _context.Offers
             .Include(o => o.Items)

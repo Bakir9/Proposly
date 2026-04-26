@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { getApiErrorMessage } from '@/lib/api-errors'
 
 const schema = z.object({
   email: z.string().email('Invalid email'),
@@ -56,7 +57,7 @@ export function LoginPage() {
               {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
             </div>
             {mutation.isError && (
-              <p className="text-sm text-destructive">Invalid email or password.</p>
+              <p className="text-sm text-destructive">{getApiErrorMessage(mutation.error)}</p>
             )}
             <Button type="submit" className="w-full" disabled={mutation.isPending}>
               {mutation.isPending ? 'Signing in…' : 'Sign in'}

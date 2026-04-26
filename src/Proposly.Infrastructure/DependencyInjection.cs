@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Proposly.Application.Abstractions;
 using Proposly.Domain.CompanyManagement.Repositories;
+using Proposly.Domain.Notifications;
 using Proposly.Domain.OfferManagement.Repositories;
 using Proposly.Domain.ProjectManagement.Repositories;
 using Proposly.Infrastructure.Persistence;
@@ -10,6 +11,7 @@ using Proposly.Infrastructure.Persistence.Repositories;
 using Proposly.Infrastructure.Services;
 using Proposly.Infrastructure.Services.Auth;
 using Proposly.Infrastructure.Services.Email;
+using Proposly.Infrastructure.Services.Events;
 using Proposly.Infrastructure.Services.Pdf;
 using QuestPDF.Infrastructure;
 
@@ -26,11 +28,14 @@ public static class DependencyInjection
         services.AddDbContext<AppDbContext>(options =>
             options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
 
+        services.AddScoped<IDomainEventDispatcher, DomainEventDispatcher>();
+
         services.AddScoped<ICompanyRepository, CompanyRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IProjectRepository, ProjectRepository>();
         services.AddScoped<IOfferRepository, OfferRepository>();
         services.AddScoped<IClientRepository, ClientRepository>();
+        services.AddScoped<INotificationRepository, NotificationRepository>();
 
         services.AddSingleton<IAppSettings, AppSettings>();
         services.AddSingleton<IPasswordHasher, PasswordHasher>();

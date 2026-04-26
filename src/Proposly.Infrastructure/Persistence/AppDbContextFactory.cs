@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Proposly.Application.Abstractions;
+using Proposly.Shared.Primitives;
 
 namespace Proposly.Infrastructure.Persistence;
 
@@ -16,14 +17,18 @@ public sealed class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbConte
             .UseNpgsql("Host=localhost;Port=5432;Database=proposly;Username=postgres;Password=1234")
             .Options;
 
-        return new AppDbContext(options, new DesignTimeCurrentUserService());
+        return new AppDbContext(options, new DesignTimeCurrentUserService(), new NoOpDispatcher());
     }
 }
 
-/// <summary>Stub used only during migration generation — never called at runtime.</summary>
 file sealed class DesignTimeCurrentUserService : ICurrentUserService
 {
     public Guid CompanyId => Guid.Empty;
     public Guid UserId => Guid.Empty;
     public string Role => string.Empty;
+}
+
+file sealed class NoOpDispatcher : IDomainEventDispatcher
+{
+    public Task DispatchAsync(IDomainEvent domainEvent, CancellationToken ct = default) => Task.CompletedTask;
 }
