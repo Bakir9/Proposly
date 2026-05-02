@@ -7,6 +7,11 @@ using Proposly.Application.ProjectManagement.Commands.AddMilestone;
 using Proposly.Application.ProjectManagement.Commands.AddProjectMember;
 using Proposly.Application.ProjectManagement.Commands.AddTask;
 using Proposly.Application.ProjectManagement.Commands.AddTaskComment;
+using Proposly.Application.ProjectManagement.Commands.AddProjectNote;
+using Proposly.Application.ProjectManagement.Commands.DeleteProjectNote;
+using Proposly.Application.ProjectManagement.Commands.UpdateProjectNote;
+using Proposly.Application.ProjectManagement.Commands.AddTaskDependency;
+using Proposly.Application.ProjectManagement.Commands.RemoveTaskDependency;
 using Proposly.Application.ProjectManagement.Commands.CompleteMilestone;
 using Proposly.Application.ProjectManagement.Commands.CreateProject;
 using Proposly.Application.ProjectManagement.Commands.DeleteTaskComment;
@@ -134,7 +139,65 @@ public sealed class ProjectsController : ControllerBase
         [FromServices] ICommandHandler<UpdateTaskStatusCommand> handler,
         CancellationToken ct)
     {
-        await handler.HandleAsync(new UpdateTaskStatusCommand(id, taskId, body.Status), ct);
+        await handler.HandleAsync(new UpdateTaskStatusCommand(id, taskId, body.Status, body.ActualHours), ct);
+        return NoContent();
+    }
+
+    [HttpPost("{id:guid}/notes")]
+    public async Task<ActionResult<Guid>> AddNote(
+        Guid id,
+        [FromBody] NoteBody body,
+        [FromServices] ICommandHandler<AddProjectNoteCommand, Guid> handler,
+        CancellationToken ct)
+    {
+        var noteId = await handler.HandleAsync(new AddProjectNoteCommand(id, body.Title, body.Content), ct);
+        return CreatedAtAction(nameof(GetById), new { id }, noteId);
+    }
+
+    [HttpPut("{id:guid}/notes/{noteId:guid}")]
+    public async Task<IActionResult> UpdateNote(
+        Guid id,
+        Guid noteId,
+        [FromBody] NoteBody body,
+        [FromServices] ICommandHandler<UpdateProjectNoteCommand> handler,
+        CancellationToken ct)
+    {
+        await handler.HandleAsync(new UpdateProjectNoteCommand(id, noteId, body.Title, body.Content), ct);
+        return NoContent();
+    }
+
+    [HttpDelete("{id:guid}/notes/{noteId:guid}")]
+    public async Task<IActionResult> DeleteNote(
+        Guid id,
+        Guid noteId,
+        [FromServices] ICommandHandler<DeleteProjectNoteCommand> handler,
+        CancellationToken ct)
+    {
+        await handler.HandleAsync(new DeleteProjectNoteCommand(id, noteId), ct);
+        return NoContent();
+    }
+
+    [HttpPost("{id:guid}/tasks/{taskId:guid}/dependencies")]
+    public async Task<IActionResult> AddTaskDependency(
+        Guid id,
+        Guid taskId,
+        [FromBody] AddTaskDependencyBody body,
+        [FromServices] ICommandHandler<AddTaskDependencyCommand> handler,
+        CancellationToken ct)
+    {
+        await handler.HandleAsync(new AddTaskDependencyCommand(id, taskId, body.BlockingTaskId), ct);
+        return NoContent();
+    }
+
+    [HttpDelete("{id:guid}/tasks/{taskId:guid}/dependencies/{blockingTaskId:guid}")]
+    public async Task<IActionResult> RemoveTaskDependency(
+        Guid id,
+        Guid taskId,
+        Guid blockingTaskId,
+        [FromServices] ICommandHandler<RemoveTaskDependencyCommand> handler,
+        CancellationToken ct)
+    {
+        await handler.HandleAsync(new RemoveTaskDependencyCommand(id, taskId, blockingTaskId), ct);
         return NoContent();
     }
 
@@ -216,7 +279,9 @@ public record LogTimeBody(Guid MemberId, decimal HoursWorked, string? Descriptio
 public record AddExpenseBody(string Description, decimal Amount, string Currency, string Category, DateOnly Date);
 public record AddTaskBody(string Title, string? Description, decimal? EstimatedHours, DateOnly? StartDate, DateOnly? DueDate, Guid? MilestoneId, Guid? AssignedMemberId);
 public record UpdateTaskBody(string Title, string? Description, decimal? EstimatedHours, DateOnly? StartDate, DateOnly? DueDate, Guid? MilestoneId, Guid? AssignedMemberId);
-public record UpdateTaskStatusBody(string Status);
+public record UpdateTaskStatusBody(string Status, decimal? ActualHours);
 public record AddMilestoneBody(string Title, DateOnly DueDate);
+public record NoteBody(string Title, string Content);
+public record AddTaskDependencyBody(Guid BlockingTaskId);
 public record AddTaskCommentBody(string Body);
 public record EditTaskCommentBody(string Body);

@@ -17,6 +17,8 @@ import {
   addTaskComment,
   editTaskComment,
   deleteTaskComment,
+  addTaskDependency,
+  removeTaskDependency,
 } from '@/api/projects'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -33,7 +35,11 @@ import { Select } from '@/components/ui/select'
 import { Tabs } from '@/components/ui/tabs'
 import { Dialog } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
-import { ArrowLeft, Pencil, Plus, UserPlus, Clock, Receipt, Flag, CheckCircle2, MessageSquare, Send, Trash2, CalendarDays, SquareCheck, Maximize2, Minimize2 } from 'lucide-react'
+import { ArrowLeft, Pencil, Plus, UserPlus, Clock, Receipt, Flag, CheckCircle2, MessageSquare, Send, Trash2, CalendarDays, SquareCheck, Maximize2, Minimize2, Lock, X } from 'lucide-react'
+import { RichTextEditor } from '@/components/ui/rich-text-editor'
+import { NotesTab } from './NotesTab'
+import { GanttChart } from './GanttChart'
+import { stripHtml, hasRichContent } from '@/lib/utils'
 
 const KANBAN_COLUMNS = [
   { status: 'Todo', label: 'Not Started' },
@@ -59,6 +65,7 @@ const TABS = [
   { id: 'timelog', label: 'Time Log' },
   { id: 'expenses', label: 'Expenses' },
   { id: 'milestones', label: 'Milestones' },
+  { id: 'notes', label: 'Notes' },
 ]
 
 const TASK_STATUS_COLOR: Record<string, string> = {
@@ -87,131 +94,6 @@ function timeAgo(dateStr: string) {
   return new Date(dateStr).toLocaleDateString('de-AT', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
-function GanttChart({ project }: { project: import('@/api/projects').ProjectDetail }) {
-  const parseDate = (s: string) => new Date(s)
-  const toMs = (d: Date) => d.getTime()
-
-  const tasksWithDates = project.tasks.filter(t => t.startDate && t.dueDate)
-  const milestones = project.milestones
-
-  const allDates = [
-    parseDate(project.startDate),
-    ...(project.deadline ? [parseDate(project.deadline)] : []),
-    ...tasksWithDates.flatMap(t => [parseDate(t.startDate!), parseDate(t.dueDate!)]),
-    ...milestones.map(m => parseDate(m.dueDate)),
-  ]
-
-  if (allDates.length === 0) return <p className="text-sm text-muted-foreground">No tasks with dates to display.</p>
-
-  const minMs = Math.min(...allDates.map(toMs))
-  const maxMs = Math.max(...allDates.map(toMs))
-  const rangeMs = maxMs - minMs || 1
-
-  const pct = (d: Date) => ((toMs(d) - minMs) / rangeMs) * 100
-
-  const DAY_MS = 86_400_000
-  const totalDays = Math.ceil(rangeMs / DAY_MS)
-  const step = totalDays <= 30 ? 7 : totalDays <= 90 ? 14 : 30
-  const ticks: Date[] = []
-  for (let i = 0; i * DAY_MS <= rangeMs; i += step) {
-    ticks.push(new Date(minMs + i * DAY_MS))
-  }
-
-  return (
-    <div className="overflow-x-auto">
-      <div style={{ minWidth: 600 }}>
-        {/* Date axis */}
-        <div className="relative h-6 mb-1 ml-40">
-          {ticks.map((tick, i) => (
-            <span
-              key={i}
-              className="absolute text-xs text-muted-foreground -translate-x-1/2"
-              style={{ left: `${pct(tick)}%` }}
-            >
-              {tick.toLocaleDateString('de-AT', { day: '2-digit', month: '2-digit' })}
-            </span>
-          ))}
-        </div>
-
-        {/* Gridlines + rows */}
-        <div className="relative">
-          {/* Vertical grid ticks */}
-          <div className="absolute inset-0 ml-40 pointer-events-none">
-            {ticks.map((tick, i) => (
-              <div
-                key={i}
-                className="absolute top-0 bottom-0 border-l border-dashed border-muted"
-                style={{ left: `${pct(tick)}%` }}
-              />
-            ))}
-          </div>
-
-          {/* Today marker */}
-          {(() => {
-            const todayMs = new Date().setHours(0, 0, 0, 0)
-            if (todayMs >= minMs && todayMs <= maxMs) {
-              return (
-                <div
-                  className="absolute top-0 bottom-0 border-l-2 border-red-400 ml-40 pointer-events-none z-10"
-                  style={{ left: `${((todayMs - minMs) / rangeMs) * 100}%` }}
-                />
-              )
-            }
-          })()}
-
-          {/* Task rows */}
-          {project.tasks.map(task => (
-            <div key={task.id} className="flex items-center h-8 mb-1">
-              <div className="w-40 shrink-0 pr-3 text-xs text-right text-foreground truncate" title={task.title}>
-                {task.title}
-              </div>
-              <div className="relative flex-1 h-5 bg-muted rounded">
-                {task.startDate && task.dueDate ? (
-                  <div
-                    className={`absolute top-0 h-full rounded ${TASK_STATUS_COLOR[task.status] ?? 'bg-slate-400'} opacity-80`}
-                    style={{
-                      left: `${pct(parseDate(task.startDate))}%`,
-                      width: `${Math.max(pct(parseDate(task.dueDate)) - pct(parseDate(task.startDate)), 1)}%`,
-                    }}
-                    title={`${task.status} · ${task.startDate} → ${task.dueDate}`}
-                  />
-                ) : (
-                  <span className="absolute left-1 top-0 h-full flex items-center text-xs text-muted-foreground">no dates</span>
-                )}
-              </div>
-            </div>
-          ))}
-
-          {/* Milestone markers */}
-          {milestones.map(m => (
-            <div key={m.id} className="flex items-center h-8 mb-1">
-              <div className="w-40 shrink-0 pr-3 text-xs text-right text-muted-foreground truncate" title={m.title}>
-                ◆ {m.title}
-              </div>
-              <div className="relative flex-1 h-5">
-                <div
-                  className={`absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3 h-3 rotate-45 ${m.isCompleted ? 'bg-green-500' : 'bg-amber-400'}`}
-                  style={{ left: `${pct(parseDate(m.dueDate))}%` }}
-                  title={`${m.title} · ${m.dueDate}${m.isCompleted ? ' (done)' : ''}`}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Legend */}
-        <div className="flex items-center gap-4 mt-3 ml-40 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-slate-400 inline-block" />Todo</span>
-          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-blue-500 inline-block" />In Progress</span>
-          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-amber-400 inline-block" />In Review</span>
-          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-green-500 inline-block" />Done</span>
-          <span className="flex items-center gap-1"><span className="w-3 h-3 rotate-45 bg-amber-400 inline-block" />Milestone</span>
-          <span className="flex items-center gap-1"><span className="border-l-2 border-red-400 h-3 inline-block" />Today</span>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 function BurndownTab({ projectId }: { projectId: string }) {
   const { data, isLoading } = useQuery({
@@ -379,6 +261,10 @@ export function ProjectDetailPage() {
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null)
   const [editingCommentBody, setEditingCommentBody] = useState('')
 
+  // Dependency state (within edit task dialog)
+  const [addingDependency, setAddingDependency] = useState(false)
+  const [pendingBlockerId, setPendingBlockerId] = useState('')
+
   // Kanban drag state
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null)
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null)
@@ -424,6 +310,8 @@ export function ProjectDetailPage() {
     setCommentBody('')
     setEditingCommentId(null)
     setEditingCommentBody('')
+    setAddingDependency(false)
+    setPendingBlockerId('')
     setDescExpanded(false)
     setEditTaskOpen(true)
   }
@@ -468,6 +356,18 @@ export function ProjectDetailPage() {
     onSuccess: invalidate,
   })
 
+  const mutAddDependency = useMutation({
+    mutationFn: ({ blockingTaskId }: { blockingTaskId: string }) =>
+      addTaskDependency(id!, editingTask!.id, blockingTaskId),
+    onSuccess: () => { invalidate(); setAddingDependency(false); setPendingBlockerId('') },
+  })
+
+  const mutRemoveDependency = useMutation({
+    mutationFn: ({ blockingTaskId }: { blockingTaskId: string }) =>
+      removeTaskDependency(id!, editingTask!.id, blockingTaskId),
+    onSuccess: invalidate,
+  })
+
   const mutAddMember = useMutation({
     mutationFn: () => addProjectMember(id!, {
       userId: memberUserId,
@@ -507,6 +407,23 @@ export function ProjectDetailPage() {
 
   const mutCompleteMilestone = useMutation({
     mutationFn: (milestoneId: string) => completeMilestone(id!, milestoneId),
+    onSuccess: invalidate,
+  })
+
+  const mutGanttDrag = useMutation({
+    mutationFn: ({ taskId, startDate, dueDate }: { taskId: string; startDate: string; dueDate: string }) => {
+      const task = p?.tasks.find(t => t.id === taskId)
+      if (!task) throw new Error('task not found')
+      return updateTask(id!, taskId, {
+        title: task.title,
+        description: task.description || undefined,
+        estimatedHours: task.estimatedHours ?? undefined,
+        startDate,
+        dueDate,
+        milestoneId: task.milestoneId || undefined,
+        assignedMemberId: task.assignedMemberId || undefined,
+      })
+    },
     onSuccess: invalidate,
   })
 
@@ -619,7 +536,12 @@ export function ProjectDetailPage() {
 
             {activeTab === 'gantt' && (
               <div className="space-y-3">
-                <GanttChart project={p} />
+                <GanttChart
+                  project={p}
+                  onTaskDatesChange={(taskId, startDate, dueDate) =>
+                    mutGanttDrag.mutate({ taskId, startDate, dueDate })
+                  }
+                />
               </div>
             )}
 
@@ -695,8 +617,16 @@ export function ProjectDetailPage() {
                               onClick={() => { if (!draggedTaskId) openEditTask(task) }}
                               className={`bg-card border rounded-md p-3 cursor-pointer shadow-sm transition-opacity select-none ${draggedTaskId === task.id ? 'opacity-40 cursor-grabbing' : 'hover:border-primary/50'}`}
                             >
-                              <p className="font-medium text-sm leading-snug">{task.title}</p>
-                              {task.description && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{task.description}</p>}
+                              <div className="flex items-start gap-1.5">
+                                <p className="font-medium text-sm leading-snug flex-1">{task.title}</p>
+                                {task.blockedByTaskIds.length > 0 && task.blockedByTaskIds.some(bid => {
+                                  const blocker = p.tasks.find(t => t.id === bid)
+                                  return blocker && blocker.status !== 'Done'
+                                }) && (
+                                  <Lock className="h-3 w-3 shrink-0 mt-0.5 text-amber-500" title="Has incomplete dependencies" />
+                                )}
+                              </div>
+                              {hasRichContent(task.description) && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{stripHtml(task.description!)}</p>}
                               <div className="flex items-center flex-wrap gap-2.5 mt-2 text-xs text-muted-foreground">
                                 {task.estimatedHours && (
                                   <span className="flex items-center gap-1">
@@ -799,6 +729,10 @@ export function ProjectDetailPage() {
               </div>
             )}
 
+            {activeTab === 'notes' && (
+              <NotesTab projectId={p.id} notes={p.notes} />
+            )}
+
             {activeTab === 'milestones' && (
               <div className="space-y-3">
                 <div className="flex justify-end">
@@ -894,11 +828,12 @@ export function ProjectDetailPage() {
                       {descExpanded ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
                     </button>
                   </div>
-                  <Textarea
+                  <RichTextEditor
                     value={editTaskDesc}
-                    onChange={e => setEditTaskDesc(e.target.value)}
+                    onChange={setEditTaskDesc}
                     placeholder="Add a description…"
-                    className={descExpanded ? 'flex-1 min-h-0 resize-none' : 'resize-y min-h-[180px]'}
+                    className={descExpanded ? 'flex-1 min-h-0' : ''}
+                    editorClassName={descExpanded ? 'min-h-0' : 'min-h-[160px]'}
                   />
                 </div>
 
@@ -1052,6 +987,83 @@ export function ProjectDetailPage() {
                   <Label className="text-xs text-muted-foreground font-normal">Due Date</Label>
                   <Input type="date" value={editTaskDue} onChange={e => setEditTaskDue(e.target.value)} />
                 </div>
+
+                <div className="w-full h-px bg-border" />
+
+                {/* Dependencies */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs text-muted-foreground font-normal">Blocked By</Label>
+                    {!addingDependency && (
+                      <button
+                        className="text-xs text-muted-foreground hover:text-foreground underline"
+                        onClick={() => setAddingDependency(true)}
+                      >
+                        + Add
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Current blockers */}
+                  {(p.tasks.find(t => t.id === editingTask.id)?.blockedByTaskIds ?? []).map(blockerId => {
+                    const blocker = p.tasks.find(t => t.id === blockerId)
+                    if (!blocker) return null
+                    return (
+                      <div key={blockerId} className="flex items-center justify-between gap-1 text-xs bg-muted/50 rounded px-2 py-1">
+                        <span className="flex items-center gap-1 truncate">
+                          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${blocker.status === 'Done' ? 'bg-green-500' : 'bg-amber-400'}`} />
+                          <span className="truncate">{blocker.title}</span>
+                        </span>
+                        <button
+                          className="text-muted-foreground hover:text-destructive shrink-0"
+                          onClick={() => mutRemoveDependency.mutate({ blockingTaskId: blockerId })}
+                          disabled={mutRemoveDependency.isPending}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    )
+                  })}
+
+                  {addingDependency && (
+                    <div className="space-y-1.5">
+                      <Select
+                        value={pendingBlockerId}
+                        onChange={e => setPendingBlockerId(e.target.value)}
+                        className="text-xs"
+                      >
+                        <option value="">Select a task…</option>
+                        {p.tasks
+                          .filter(t =>
+                            t.id !== editingTask.id &&
+                            !(p.tasks.find(tt => tt.id === editingTask.id)?.blockedByTaskIds ?? []).includes(t.id)
+                          )
+                          .map(t => (
+                            <option key={t.id} value={t.id}>{t.title}</option>
+                          ))
+                        }
+                      </Select>
+                      <div className="flex gap-1">
+                        <Button
+                          size="sm"
+                          className="flex-1 text-xs h-7"
+                          onClick={() => pendingBlockerId && mutAddDependency.mutate({ blockingTaskId: pendingBlockerId })}
+                          disabled={!pendingBlockerId || mutAddDependency.isPending}
+                        >
+                          {mutAddDependency.isPending ? '…' : 'Add'}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs h-7"
+                          onClick={() => { setAddingDependency(false); setPendingBlockerId('') }}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -1110,11 +1122,12 @@ export function ProjectDetailPage() {
                       {descExpanded ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
                     </button>
                   </div>
-                  <Textarea
+                  <RichTextEditor
                     value={taskDesc}
-                    onChange={e => setTaskDesc(e.target.value)}
+                    onChange={setTaskDesc}
                     placeholder="Add a description…"
-                    className={descExpanded ? 'flex-1 min-h-0 resize-none' : 'resize-y min-h-[180px]'}
+                    className={descExpanded ? 'flex-1 min-h-0' : ''}
+                    editorClassName={descExpanded ? 'min-h-0' : 'min-h-[160px]'}
                   />
                 </div>
               </div>

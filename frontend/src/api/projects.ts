@@ -47,6 +47,17 @@ export interface ProjectTask {
   assignedMemberId: string | null
   assignedMemberName: string | null
   comments: TaskComment[]
+  blockedByTaskIds: string[]
+}
+
+export interface ProjectNote {
+  id: string
+  title: string
+  content: string
+  authorId: string
+  authorName: string
+  createdAt: string
+  updatedAt: string
 }
 
 export interface BurndownDataPoint {
@@ -109,6 +120,7 @@ export interface ProjectDetail extends ProjectSummary {
   milestones: Milestone[]
   expenses: Expense[]
   timeEntries: TimeEntry[]
+  notes: ProjectNote[]
 }
 
 export interface CreateProjectRequest {
@@ -177,3 +189,18 @@ export const deleteTaskComment = (projectId: string, taskId: string, commentId: 
 
 export const getBurndown = (projectId: string) =>
   api.get<BurndownData>(`/projects/${projectId}/burndown`).then(r => r.data)
+
+export const addTaskDependency = (projectId: string, taskId: string, blockingTaskId: string) =>
+  api.post(`/projects/${projectId}/tasks/${taskId}/dependencies`, { blockingTaskId })
+
+export const removeTaskDependency = (projectId: string, taskId: string, blockingTaskId: string) =>
+  api.delete(`/projects/${projectId}/tasks/${taskId}/dependencies/${blockingTaskId}`)
+
+export const addNote = (projectId: string, data: { title: string; content: string }) =>
+  api.post<string>(`/projects/${projectId}/notes`, data).then(r => r.data)
+
+export const updateNote = (projectId: string, noteId: string, data: { title: string; content: string }) =>
+  api.put(`/projects/${projectId}/notes/${noteId}`, data)
+
+export const deleteNote = (projectId: string, noteId: string) =>
+  api.delete(`/projects/${projectId}/notes/${noteId}`)

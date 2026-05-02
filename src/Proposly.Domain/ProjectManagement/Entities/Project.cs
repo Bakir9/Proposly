@@ -13,6 +13,7 @@ public sealed class Project : AggregateRoot<Guid>, ITenantEntity, IAuditableEnti
     private readonly List<Milestone> _milestones = [];
     private readonly List<Expense> _expenses = [];
     private readonly List<TimeEntry> _timeEntries = [];
+    private readonly List<ProjectNote> _notes = [];
 
     private Project() { } // For EF Core
 
@@ -71,6 +72,7 @@ public sealed class Project : AggregateRoot<Guid>, ITenantEntity, IAuditableEnti
     public IReadOnlyCollection<Milestone> Milestones => _milestones.AsReadOnly();
     public IReadOnlyCollection<Expense> Expenses => _expenses.AsReadOnly();
     public IReadOnlyCollection<TimeEntry> TimeEntries => _timeEntries.AsReadOnly();
+    public IReadOnlyCollection<ProjectNote> Notes => _notes.AsReadOnly();
 
     // --- Status transitions ---
 
@@ -244,6 +246,30 @@ public sealed class Project : AggregateRoot<Guid>, ITenantEntity, IAuditableEnti
     {
         var revenue = OfferedAmount ?? Budget;
         return revenue - CalculateTotalCost();
+    }
+
+    public ProjectNote AddNote(string title, string content, Guid authorId, string authorName)
+    {
+        var note = ProjectNote.Create(Id, title, content, authorId, authorName);
+        _notes.Add(note);
+        Touch();
+        return note;
+    }
+
+    public void UpdateNote(Guid noteId, string title, string content)
+    {
+        var note = _notes.FirstOrDefault(n => n.Id == noteId)
+            ?? throw new InvalidOperationException($"Note {noteId} not found.");
+        note.Update(title, content);
+        Touch();
+    }
+
+    public void DeleteNote(Guid noteId)
+    {
+        var note = _notes.FirstOrDefault(n => n.Id == noteId)
+            ?? throw new InvalidOperationException($"Note {noteId} not found.");
+        _notes.Remove(note);
+        Touch();
     }
 
     private void Touch() => UpdatedAt = DateTime.UtcNow;

@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Proposly.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using Proposly.Infrastructure.Persistence;
 namespace Proposly.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260502103052_ExpandTaskDescriptionForRichText")]
+    partial class ExpandTaskDescriptionForRichText
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -414,51 +417,10 @@ namespace Proposly.Infrastructure.Migrations
                     b.ToTable("ProjectMembers", (string)null);
                 });
 
-            modelBuilder.Entity("Proposly.Domain.ProjectManagement.Entities.ProjectNote", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("AuthorId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("AuthorName")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<string>("Content")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("ProjectId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ProjectId");
-
-                    b.ToTable("ProjectNotes", (string)null);
-                });
-
             modelBuilder.Entity("Proposly.Domain.ProjectManagement.Entities.ProjectTask", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
-
-                    b.Property<decimal?>("ActualHours")
-                        .HasColumnType("numeric(8,2)");
 
                     b.Property<Guid?>("AssignedMemberId")
                         .HasColumnType("uuid");
@@ -791,15 +753,6 @@ namespace Proposly.Infrastructure.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Proposly.Domain.ProjectManagement.Entities.ProjectNote", b =>
-                {
-                    b.HasOne("Proposly.Domain.ProjectManagement.Entities.Project", null)
-                        .WithMany("Notes")
-                        .HasForeignKey("ProjectId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("Proposly.Domain.ProjectManagement.Entities.ProjectTask", b =>
                 {
                     b.HasOne("Proposly.Domain.ProjectManagement.Entities.Project", null)
@@ -865,8 +818,6 @@ namespace Proposly.Infrastructure.Migrations
                     b.Navigation("Members");
 
                     b.Navigation("Milestones");
-
-                    b.Navigation("Notes");
 
                     b.Navigation("Tasks");
 

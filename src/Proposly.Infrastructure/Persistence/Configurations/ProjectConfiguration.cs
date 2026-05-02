@@ -54,11 +54,17 @@ public sealed class ProjectConfiguration : IEntityTypeConfiguration<Project>
             .HasForeignKey(t => t.ProjectId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        builder.HasMany(p => p.Notes)
+            .WithOne()
+            .HasForeignKey(n => n.ProjectId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         builder.Navigation(p => p.Members).UsePropertyAccessMode(PropertyAccessMode.Field);
         builder.Navigation(p => p.Tasks).UsePropertyAccessMode(PropertyAccessMode.Field);
         builder.Navigation(p => p.Milestones).UsePropertyAccessMode(PropertyAccessMode.Field);
         builder.Navigation(p => p.Expenses).UsePropertyAccessMode(PropertyAccessMode.Field);
         builder.Navigation(p => p.TimeEntries).UsePropertyAccessMode(PropertyAccessMode.Field);
+        builder.Navigation(p => p.Notes).UsePropertyAccessMode(PropertyAccessMode.Field);
 
         builder.HasIndex(p => p.CompanyId);
     }

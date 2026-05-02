@@ -23,20 +23,44 @@ public sealed class UpdateTaskStatusCommandHandlerTests
             DateOnly.FromDateTime(DateTime.UtcNow), null);
     }
 
-    [Theory]
-    [InlineData("InProgress", ProjectTaskStatus.InProgress)]
-    [InlineData("InReview", ProjectTaskStatus.InReview)]
-    [InlineData("Done", ProjectTaskStatus.Done)]
-    public async Task HandleAsync_ValidStatus_TransitionsTask(string statusString, ProjectTaskStatus expectedStatus)
+    [Fact]
+    public async Task HandleAsync_InProgress_TransitionsTask()
     {
         var project = MakeProject();
         var task = project.AddTask("T", null, null, null, null);
         _repo.GetByIdAsync(project.Id).Returns(project);
 
-        await _sut.HandleAsync(new UpdateTaskStatusCommand(project.Id, task.Id, statusString));
+        await _sut.HandleAsync(new UpdateTaskStatusCommand(project.Id, task.Id, "InProgress", null));
 
-        Assert.Equal(expectedStatus, task.Status);
+        Assert.Equal(ProjectTaskStatus.InProgress, task.Status);
         await _repo.Received(1).UpdateAsync(project, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task HandleAsync_InReview_SetsActualHours()
+    {
+        var project = MakeProject();
+        var task = project.AddTask("T", null, null, null, null);
+        _repo.GetByIdAsync(project.Id).Returns(project);
+
+        await _sut.HandleAsync(new UpdateTaskStatusCommand(project.Id, task.Id, "InReview", 3m));
+
+        Assert.Equal(ProjectTaskStatus.InReview, task.Status);
+        Assert.Equal(3m, task.ActualHours);
+    }
+
+    [Fact]
+    public async Task HandleAsync_Done_SetsActualHours()
+    {
+        var project = MakeProject();
+        var task = project.AddTask("T", null, null, null, null);
+        task.Start();
+        task.MoveToReview(3m);
+        _repo.GetByIdAsync(project.Id).Returns(project);
+
+        await _sut.HandleAsync(new UpdateTaskStatusCommand(project.Id, task.Id, "Done", null));
+
+        Assert.Equal(ProjectTaskStatus.Done, task.Status);
     }
 
     [Fact]
@@ -47,7 +71,7 @@ public sealed class UpdateTaskStatusCommandHandlerTests
         task.Start();
         _repo.GetByIdAsync(project.Id).Returns(project);
 
-        await _sut.HandleAsync(new UpdateTaskStatusCommand(project.Id, task.Id, "Todo"));
+        await _sut.HandleAsync(new UpdateTaskStatusCommand(project.Id, task.Id, "Todo", null));
 
         Assert.Equal(ProjectTaskStatus.Todo, task.Status);
     }
@@ -58,7 +82,7 @@ public sealed class UpdateTaskStatusCommandHandlerTests
         _repo.GetByIdAsync(Arg.Any<Guid>()).Returns((Project?)null);
 
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _sut.HandleAsync(new UpdateTaskStatusCommand(Guid.NewGuid(), Guid.NewGuid(), "InProgress")));
+            () => _sut.HandleAsync(new UpdateTaskStatusCommand(Guid.NewGuid(), Guid.NewGuid(), "InProgress", null)));
     }
 
     [Fact]
@@ -68,7 +92,7 @@ public sealed class UpdateTaskStatusCommandHandlerTests
         _repo.GetByIdAsync(project.Id).Returns(project);
 
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _sut.HandleAsync(new UpdateTaskStatusCommand(project.Id, Guid.NewGuid(), "InProgress")));
+            () => _sut.HandleAsync(new UpdateTaskStatusCommand(project.Id, Guid.NewGuid(), "InProgress", null)));
     }
 
     [Fact]
@@ -79,6 +103,6 @@ public sealed class UpdateTaskStatusCommandHandlerTests
         _repo.GetByIdAsync(project.Id).Returns(project);
 
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _sut.HandleAsync(new UpdateTaskStatusCommand(project.Id, task.Id, "Bogus")));
+            () => _sut.HandleAsync(new UpdateTaskStatusCommand(project.Id, task.Id, "Bogus", null)));
     }
 }

@@ -40,9 +40,10 @@ public class ProjectTaskTests
         var task = CreateTask();
         task.Start();
 
-        task.MoveToReview();
+        task.MoveToReview(3m);
 
         Assert.Equal(ProjectTaskStatus.InReview, task.Status);
+        Assert.Equal(3m, task.ActualHours);
     }
 
     [Fact]
@@ -50,22 +51,45 @@ public class ProjectTaskTests
     {
         var task = CreateTask();
         task.Start();
-        task.MoveToReview();
+        task.MoveToReview(3m);
 
-        Assert.Throws<InvalidOperationException>(() => task.MoveToReview());
+        Assert.Throws<InvalidOperationException>(() => task.MoveToReview(3m));
     }
 
     // --- Complete ---
 
     [Fact]
-    public void Complete_WhenInProgress_TransitionsToDone()
+    public void Complete_WithActualHours_TransitionsToDone()
     {
         var task = CreateTask();
         task.Start();
 
+        task.Complete(5m);
+
+        Assert.Equal(ProjectTaskStatus.Done, task.Status);
+        Assert.Equal(5m, task.ActualHours);
+    }
+
+    [Fact]
+    public void Complete_AfterReview_UsesExistingActualHours()
+    {
+        var task = CreateTask();
+        task.Start();
+        task.MoveToReview(3m);
+
         task.Complete();
 
         Assert.Equal(ProjectTaskStatus.Done, task.Status);
+        Assert.Equal(3m, task.ActualHours);
+    }
+
+    [Fact]
+    public void Complete_WithoutActualHours_Throws()
+    {
+        var task = CreateTask();
+        task.Start();
+
+        Assert.Throws<InvalidOperationException>(() => task.Complete());
     }
 
     [Fact]
@@ -73,9 +97,9 @@ public class ProjectTaskTests
     {
         var task = CreateTask();
         task.Start();
-        task.Complete();
+        task.Complete(5m);
 
-        Assert.Throws<InvalidOperationException>(() => task.Complete());
+        Assert.Throws<InvalidOperationException>(() => task.Complete(5m));
     }
 
     // --- Reopen ---
@@ -85,7 +109,7 @@ public class ProjectTaskTests
     {
         var task = CreateTask();
         task.Start();
-        task.Complete();
+        task.Complete(5m);
 
         task.Reopen();
 
