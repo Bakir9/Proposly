@@ -34,7 +34,7 @@ namespace Proposly.Infrastructure.Migrations
 
                     b.HasIndex("BlockingTaskId");
 
-                    b.ToTable("ProjectTaskDependencies");
+                    b.ToTable("ProjectTaskDependencies", (string)null);
                 });
 
             modelBuilder.Entity("Proposly.Domain.CompanyManagement.Entities.Company", b =>
@@ -168,7 +168,7 @@ namespace Proposly.Infrastructure.Migrations
 
                     b.HasIndex("UserId", "IsRead");
 
-                    b.ToTable("Notifications");
+                    b.ToTable("Notifications", (string)null);
                 });
 
             modelBuilder.Entity("Proposly.Domain.OfferManagement.Entities.Client", b =>
@@ -614,7 +614,7 @@ namespace Proposly.Infrastructure.Migrations
 
                             b1.HasKey("ClientId");
 
-                            b1.ToTable("Clients");
+                            b1.ToTable("Clients", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("ClientId");
@@ -648,7 +648,7 @@ namespace Proposly.Infrastructure.Migrations
 
                             b1.HasKey("OfferItemId");
 
-                            b1.ToTable("OfferItems");
+                            b1.ToTable("OfferItems", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("OfferItemId");
@@ -683,7 +683,7 @@ namespace Proposly.Infrastructure.Migrations
 
                             b1.HasKey("ExpenseId");
 
-                            b1.ToTable("Expenses");
+                            b1.ToTable("Expenses", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("ExpenseId");
@@ -721,7 +721,7 @@ namespace Proposly.Infrastructure.Migrations
 
                             b1.HasKey("ProjectId");
 
-                            b1.ToTable("Projects");
+                            b1.ToTable("Projects", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("ProjectId");
@@ -744,7 +744,7 @@ namespace Proposly.Infrastructure.Migrations
 
                             b1.HasKey("ProjectId");
 
-                            b1.ToTable("Projects");
+                            b1.ToTable("Projects", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("ProjectId");
@@ -781,7 +781,7 @@ namespace Proposly.Infrastructure.Migrations
 
                             b1.HasKey("ProjectMemberId");
 
-                            b1.ToTable("ProjectMembers");
+                            b1.ToTable("ProjectMembers", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("ProjectMemberId");
@@ -843,7 +843,7 @@ namespace Proposly.Infrastructure.Migrations
 
                             b1.HasKey("TimeEntryId");
 
-                            b1.ToTable("TimeEntries");
+                            b1.ToTable("TimeEntries", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("TimeEntryId");

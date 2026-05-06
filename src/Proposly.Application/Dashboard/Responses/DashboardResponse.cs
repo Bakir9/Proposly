@@ -7,8 +7,10 @@ public record DashboardResponse(
     int ActiveProjectsCount,
     decimal TotalLockedRevenue,
     decimal HoursThisMonth,
+    int TotalOffersCount,
+    int AcceptedOffersCount,
     IReadOnlyList<RecentOfferItem> RecentOffers,
     IReadOnlyList<RecentProjectItem> RecentProjects);
 
 public record RecentOfferItem(Guid Id, string Title, string ClientName, string Status, decimal Total, string Currency);
-public record RecentProjectItem(Guid Id, string Name, string Status, decimal BudgetAmount, string Currency);
+public record RecentProjectItem(Guid Id, string Name, string Status, decimal BudgetAmount, string Currency, int CompletedTasksCount, int TotalTasksCount);

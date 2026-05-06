@@ -1,4 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
+import { Toaster } from 'sonner'
+import { useTheme } from './context/ThemeContext'
 import { AppShell } from './components/AppShell'
 import { ProtectedRoute } from './features/auth/ProtectedRoute'
 import { ErrorBoundary } from './features/errors/ErrorBoundary'
@@ -22,7 +24,10 @@ import { ProfilePage } from './features/profile/ProfilePage'
 import { NotificationsPage } from './features/notifications/NotificationsPage'
 
 export default function App() {
+  const { theme } = useTheme()
   return (
+    <>
+    <Toaster theme={theme} position="bottom-right" richColors closeButton />
     <ErrorBoundary>
     <Routes>
       <Route path="/login" element={<LoginPage />} />
@@ -48,5 +53,6 @@ export default function App() {
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
     </ErrorBoundary>
+    </>
   )
 }

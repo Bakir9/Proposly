@@ -38,6 +38,8 @@ public sealed class GetDashboardQueryHandler : IQueryHandler<GetDashboardQuery, 
 
         var acceptedOffers = offers.Where(o => o.Status == OfferStatus.Accepted).ToList();
         var totalLockedRevenue = acceptedOffers.Sum(o => o.CalculateSubtotal().Amount);
+        var totalOffersCount = offers.Count;
+        var acceptedOffersCount = acceptedOffers.Count;
 
         var activeProjectsCount = projects.Count(p => p.Status == ProjectStatus.Active);
 
@@ -67,7 +69,9 @@ public sealed class GetDashboardQueryHandler : IQueryHandler<GetDashboardQuery, 
                 p.Name,
                 p.Status.ToString(),
                 p.Budget.Amount,
-                p.Budget.Currency))
+                p.Budget.Currency,
+                p.Tasks.Count(t => t.Status == ProjectTaskStatus.Done),
+                p.Tasks.Count))
             .ToList();
 
         return new DashboardResponse(
@@ -77,6 +81,8 @@ public sealed class GetDashboardQueryHandler : IQueryHandler<GetDashboardQuery, 
             activeProjectsCount,
             totalLockedRevenue,
             hoursThisMonth,
+            totalOffersCount,
+            acceptedOffersCount,
             recentOffers,
             recentProjects);
     }

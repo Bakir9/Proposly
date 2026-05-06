@@ -15,6 +15,8 @@ export interface RecentProjectItem {
   status: string
   budgetAmount: number
   currency: string
+  completedTasksCount: number
+  totalTasksCount: number
 }
 
 export interface DashboardData {
@@ -24,6 +26,8 @@ export interface DashboardData {
   activeProjectsCount: number
   totalLockedRevenue: number
   hoursThisMonth: number
+  totalOffersCount: number
+  acceptedOffersCount: number
   recentOffers: RecentOfferItem[]
   recentProjects: RecentProjectItem[]
 }

@@ -29,7 +29,7 @@ public sealed class GetProjectByIdQueryHandler : IQueryHandler<GetProjectByIdQue
             new ProfitabilityResponse(laborCost.Amount, expensesTotal.Amount, totalCost.Amount, revenue.Amount, profit.Amount, project.Budget.Currency),
             project.Members.Select(m => new ProjectMemberResponse(m.Id, m.UserId, m.Name, m.Role, m.HourlyRate.Amount, m.HourlyRate.Currency)).ToList(),
             project.Tasks.Select(t => new ProjectTaskResponse(
-                t.Id, t.Title, t.Description, t.Status, t.EstimatedHours, t.StartDate, t.DueDate, t.CompletedAt, t.MilestoneId, t.AssignedMemberId,
+                t.Id, t.Title, t.Description, t.Status, t.EstimatedHours, t.ActualHours, t.StartDate, t.DueDate, t.CompletedAt, t.MilestoneId, t.AssignedMemberId,
                 t.AssignedMemberId.HasValue ? project.Members.FirstOrDefault(m => m.Id == t.AssignedMemberId)?.Name : null,
                 t.Comments.OrderBy(c => c.CreatedAt).Select(c => new TaskCommentResponse(c.Id, c.AuthorId, c.AuthorName, c.Body, c.CreatedAt, c.UpdatedAt)).ToList(),
                 t.BlockedBy.Select(b => b.Id).ToList()

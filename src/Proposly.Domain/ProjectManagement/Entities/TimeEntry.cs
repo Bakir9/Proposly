@@ -38,6 +38,12 @@ public sealed class TimeEntry : Entity<Guid>
         DateOnly date)
         => new(Guid.NewGuid(), projectId, memberId, taskId, hoursWorked, hourlyRateSnapshot, description, date);
 
+    public void Update(decimal hoursWorked, string? description)
+    {
+        HoursWorked = hoursWorked;
+        Description = description;
+    }
+
     public Guid ProjectId { get; private set; }
     public Guid MemberId { get; private set; }
     public Guid? TaskId { get; private set; }

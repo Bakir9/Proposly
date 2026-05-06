@@ -113,14 +113,6 @@ public sealed class ProjectTask : Entity<Guid>
         Status = ProjectTaskStatus.InProgress;
     }
 
-    public void MoveToReview(decimal actualHours)
-    {
-        if (Status == ProjectTaskStatus.InReview)
-            throw new InvalidOperationException("Task is already in review.");
-        ActualHours = actualHours;
-        Status = ProjectTaskStatus.InReview;
-    }
-
     public void Complete(decimal? actualHours = null)
     {
         if (Status == ProjectTaskStatus.Done)
@@ -128,7 +120,7 @@ public sealed class ProjectTask : Entity<Guid>
         if (actualHours.HasValue)
             ActualHours = actualHours;
         if (!ActualHours.HasValue)
-            throw new InvalidOperationException("Actual hours must be recorded before completing a task.");
+            throw new InvalidOperationException("Actual hours must be set before completing a task.");
         Status = ProjectTaskStatus.Done;
         CompletedAt = DateOnly.FromDateTime(DateTime.UtcNow);
     }

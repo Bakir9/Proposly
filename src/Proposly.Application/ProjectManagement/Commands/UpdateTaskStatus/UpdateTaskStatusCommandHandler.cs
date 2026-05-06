@@ -25,11 +25,8 @@ public sealed class UpdateTaskStatusCommandHandler : ICommandHandler<UpdateTaskS
             case "InProgress":
                 task.Start();
                 break;
-            case "InReview":
-                task.MoveToReview(command.ActualHours!.Value);
-                break;
             case "Done":
-                task.Complete(command.ActualHours);
+                project.CompleteTask(command.TaskId, command.ActualHours);
                 break;
             default:
                 throw new InvalidOperationException($"Unknown task status '{command.Status}'.");

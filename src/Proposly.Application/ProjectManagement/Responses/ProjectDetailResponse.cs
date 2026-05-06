@@ -16,7 +16,7 @@ public record ProjectDetailResponse(
 
 public record ProfitabilityResponse(decimal LaborCost, decimal ExpensesTotal, decimal TotalCost, decimal Revenue, decimal Profit, string Currency);
 public record ProjectMemberResponse(Guid Id, Guid UserId, string Name, string Role, decimal HourlyRate, string Currency);
-public record ProjectTaskResponse(Guid Id, string Title, string? Description, ProjectTaskStatus Status, decimal? EstimatedHours, DateOnly? StartDate, DateOnly? DueDate, DateOnly? CompletedAt, Guid? MilestoneId, Guid? AssignedMemberId, string? AssignedMemberName, IReadOnlyList<TaskCommentResponse> Comments, IReadOnlyList<Guid> BlockedByTaskIds);
+public record ProjectTaskResponse(Guid Id, string Title, string? Description, ProjectTaskStatus Status, decimal? EstimatedHours, decimal? ActualHours, DateOnly? StartDate, DateOnly? DueDate, DateOnly? CompletedAt, Guid? MilestoneId, Guid? AssignedMemberId, string? AssignedMemberName, IReadOnlyList<TaskCommentResponse> Comments, IReadOnlyList<Guid> BlockedByTaskIds);
 
 public record BurndownDataPoint(DateOnly Date, int Count);
 public record BurndownResponse(int TotalTasks, DateOnly StartDate, DateOnly EndDate, IReadOnlyList<BurndownDataPoint> Actual, IReadOnlyList<BurndownDataPoint> Ideal);

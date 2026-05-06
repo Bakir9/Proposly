@@ -1,7 +1,7 @@
 import { api } from './client'
 
 export type ProjectStatus = 'Planning' | 'Active' | 'OnHold' | 'Completed' | 'Cancelled'
-export type TaskStatus = 'Todo' | 'InProgress' | 'InReview' | 'Done'
+export type TaskStatus = 'Todo' | 'InProgress' | 'Done'
 
 export interface ProjectSummary {
   id: string
@@ -40,6 +40,7 @@ export interface ProjectTask {
   description: string | null
   status: TaskStatus
   estimatedHours: number | null
+  actualHours: number | null
   startDate: string | null
   dueDate: string | null
   completedAt: string | null
@@ -169,8 +170,8 @@ export const addTask = (projectId: string, data: { title: string; description?: 
 export const updateTask = (projectId: string, taskId: string, data: { title: string; description?: string; estimatedHours?: number; startDate?: string; dueDate?: string; milestoneId?: string; assignedMemberId?: string }) =>
   api.put(`/projects/${projectId}/tasks/${taskId}`, data)
 
-export const updateTaskStatus = (projectId: string, taskId: string, status: string) =>
-  api.put(`/projects/${projectId}/tasks/${taskId}/status`, { status })
+export const updateTaskStatus = (projectId: string, taskId: string, status: string, actualHours?: number) =>
+  api.put(`/projects/${projectId}/tasks/${taskId}/status`, { status, actualHours })
 
 export const addMilestone = (projectId: string, data: { title: string; dueDate: string }) =>
   api.post<string>(`/projects/${projectId}/milestones`, data).then(r => r.data)

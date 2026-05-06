@@ -156,6 +156,54 @@ public sealed class Project : AggregateRoot<Guid>, ITenantEntity, IAuditableEnti
         return entry;
     }
 
+    public void CompleteTask(Guid taskId, decimal? actualHours)
+    {
+        var task = _tasks.FirstOrDefault(t => t.Id == taskId)
+            ?? throw new InvalidOperationException($"Task {taskId} not found in project.");
+
+        task.Complete(actualHours);
+
+        if (!task.AssignedMemberId.HasValue)
+        {
+            Touch();
+            return;
+        }
+
+        var hoursToLog = task.ActualHours ?? task.EstimatedHours;
+        if (!hoursToLog.HasValue)
+        {
+            Touch();
+            return;
+        }
+
+        var member = _members.FirstOrDefault(m => m.Id == task.AssignedMemberId.Value);
+        if (member is not null)
+        {
+            var desc = BuildAutoLogDescription(task);
+            var existing = _timeEntries.FirstOrDefault(te => te.TaskId == taskId);
+            if (existing is not null)
+                existing.Update(hoursToLog.Value, desc);
+            else
+                LogTime(member.Id, hoursToLog.Value, desc, DateOnly.FromDateTime(DateTime.UtcNow), taskId);
+        }
+
+        Touch();
+    }
+
+    private static string BuildAutoLogDescription(ProjectTask task)
+    {
+        var hoursLogged = task.ActualHours ?? task.EstimatedHours;
+        if (task.ActualHours.HasValue && task.EstimatedHours.HasValue)
+        {
+            var delta = task.ActualHours.Value - task.EstimatedHours.Value;
+            var deltaStr = delta == 0 ? "on estimate"
+                : delta > 0 ? $"+{delta:0.##}h over estimate"
+                : $"{Math.Abs(delta):0.##}h under estimate";
+            return $"[Auto] {task.Title} — est. {task.EstimatedHours:0.##}h / actual {task.ActualHours:0.##}h ({deltaStr})";
+        }
+        return $"[Auto] {task.Title}" + (hoursLogged.HasValue ? $" — {hoursLogged:0.##}h" : string.Empty);
+    }
+
     public Expense AddExpense(string description, Money amount, ExpenseCategory category, DateOnly date)
     {
         var expense = Expense.Create(Id, description, amount, category, date);

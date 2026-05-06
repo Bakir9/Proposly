@@ -4,6 +4,5 @@ public enum ProjectTaskStatus
 {
     Todo,
     InProgress,
-    InReview,
     Done
 }

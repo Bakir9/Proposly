@@ -21,7 +21,7 @@ import {
   removeTaskDependency,
 } from '@/api/projects'
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  LineChart, Line, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts'
 import type { ProjectTask } from '@/api/projects'
 import { getActiveUsers } from '@/api/users'
@@ -35,7 +35,7 @@ import { Select } from '@/components/ui/select'
 import { Tabs } from '@/components/ui/tabs'
 import { Dialog } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
-import { ArrowLeft, Pencil, Plus, UserPlus, Clock, Receipt, Flag, CheckCircle2, MessageSquare, Send, Trash2, CalendarDays, SquareCheck, Maximize2, Minimize2, Lock, X } from 'lucide-react'
+import { ArrowLeft, Pencil, Plus, UserPlus, Clock, Receipt, Flag, CheckCircle2, MessageSquare, Send, Trash2, CalendarDays, SquareCheck, Maximize2, Minimize2, Lock, X, TrendingUp, Search } from 'lucide-react'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { NotesTab } from './NotesTab'
 import { GanttChart } from './GanttChart'
@@ -44,7 +44,6 @@ import { stripHtml, hasRichContent } from '@/lib/utils'
 const KANBAN_COLUMNS = [
   { status: 'Todo', label: 'Not Started' },
   { status: 'InProgress', label: 'In Progress' },
-  { status: 'InReview', label: 'In Review' },
   { status: 'Done', label: 'Finished' },
 ]
 
@@ -71,16 +70,24 @@ const TABS = [
 const TASK_STATUS_COLOR: Record<string, string> = {
   Todo: 'bg-slate-400',
   InProgress: 'bg-blue-500',
-  InReview: 'bg-amber-400',
   Done: 'bg-green-500',
 }
 
 const TASK_STATUS_BORDER_COLOR: Record<string, string> = {
   Todo: '#94a3b8',
   InProgress: '#3b82f6',
-  InReview: '#fbbf24',
   Done: '#22c55e',
 }
+
+const CATEGORY_COLOR: Record<string, string> = {
+  Materials:      'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-400',
+  Equipment:      'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-400',
+  Subcontractors: 'bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-400',
+  Travel:         'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-400',
+  Other:          'bg-muted text-muted-foreground',
+}
+
+const MEMBER_COLORS = ['#3b82f6', '#22c55e', '#8b5cf6', '#f59e0b', '#ef4444', '#06b6d4', '#ec4899', '#f97316']
 
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime()
@@ -137,7 +144,7 @@ function BurndownTab({ projectId }: { projectId: string }) {
               <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
               <Tooltip
                 labelFormatter={l => String(l)}
-                formatter={(value: number, name: string) => [value, name === 'actual' ? 'Actual remaining' : 'Ideal remaining']}
+                formatter={(value, name) => [value, name === 'actual' ? 'Actual remaining' : 'Ideal remaining']}
               />
               <Legend formatter={v => v === 'actual' ? 'Actual' : 'Ideal'} />
               <Line type="monotone" dataKey="ideal" stroke="#94a3b8" strokeDasharray="5 5" dot={false} strokeWidth={1.5} />
@@ -206,6 +213,7 @@ export function ProjectDetailPage() {
   const [editTaskTitle, setEditTaskTitle] = useState('')
   const [editTaskDesc, setEditTaskDesc] = useState('')
   const [editTaskHours, setEditTaskHours] = useState('')
+  const [editTaskActualHours, setEditActualTaskHours] = useState('')
   const [editTaskStart, setEditTaskStart] = useState('')
   const [editTaskDue, setEditTaskDue] = useState('')
   const [editTaskMilestoneId, setEditTaskMilestoneId] = useState('')
@@ -227,6 +235,12 @@ export function ProjectDetailPage() {
   const [timeDate, setTimeDate] = useState('')
   const [timeDesc, setTimeDesc] = useState('')
 
+  // Time log filters
+  const [timeSearch, setTimeSearch] = useState('')
+  const [timeDateFilter, setTimeDateFilter] = useState<'all' | '7d' | '30d'>('all')
+  const [timeListMemberFilter, setTimeListMemberFilter] = useState('all')
+  const [timePage, setTimePage] = useState(1)
+
   // Expense dialog
   const [expenseOpen, setExpenseOpen] = useState(false)
   const [expenseDesc, setExpenseDesc] = useState('')
@@ -234,6 +248,13 @@ export function ProjectDetailPage() {
   const [expenseCurrency, setExpenseCurrency] = useState('EUR')
   const [expenseCategory, setExpenseCategory] = useState('')
   const [expenseDate, setExpenseDate] = useState('')
+
+  // Expense list filters
+  const [expenseSearch, setExpenseSearch] = useState('')
+  const [expenseListCategoryFilter, setExpenseListCategoryFilter] = useState('all')
+
+  // Team search
+  const [teamSearch, setTeamSearch] = useState('')
 
   // Edit project dialog
   const [editOpen, setEditOpen] = useState(false)
@@ -269,6 +290,10 @@ export function ProjectDetailPage() {
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null)
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null)
 
+  // Actual hours prompt (shown when dragging to Done)
+  const [donePromptTaskId, setDonePromptTaskId] = useState<string | null>(null)
+  const [donePromptHours, setDonePromptHours] = useState('')
+
   const mutAddTask = useMutation({
     mutationFn: () => addTask(id!, {
       title: taskTitle,
@@ -293,7 +318,8 @@ export function ProjectDetailPage() {
   })
 
   const mutTaskStatus = useMutation({
-    mutationFn: ({ taskId, status }: { taskId: string; status: string }) => updateTaskStatus(id!, taskId, status),
+    mutationFn: ({ taskId, status, actualHours }: { taskId: string; status: string; actualHours?: number }) =>
+      updateTaskStatus(id!, taskId, status, actualHours),
     onSuccess: invalidate,
   })
 
@@ -302,6 +328,7 @@ export function ProjectDetailPage() {
     setEditTaskTitle(task.title)
     setEditTaskDesc(task.description ?? '')
     setEditTaskHours(task.estimatedHours?.toString() ?? '')
+    setEditActualTaskHours(task.actualHours?.toString() ?? '')
     setEditTaskStart(task.startDate ? task.startDate.slice(0, 10) : '')
     setEditTaskDue(task.dueDate ? task.dueDate.slice(0, 10) : '')
     setEditTaskMilestoneId(task.milestoneId ?? '')
@@ -328,7 +355,8 @@ export function ProjectDetailPage() {
         assignedMemberId: editTaskAssignedMemberId || undefined,
       })
       if (editTaskStatus !== editingTask!.status) {
-        await updateTaskStatus(id!, editingTask!.id, editTaskStatus)
+        const actualHours = editTaskActualHours ? parseFloat(editTaskActualHours) : undefined
+        await updateTaskStatus(id!, editingTask!.id, editTaskStatus, actualHours)
       }
     },
     onSuccess: () => {
@@ -447,6 +475,147 @@ export function ProjectDetailPage() {
   const fmtCur = (n: number, cur: string) => n.toLocaleString('de-AT', { style: 'currency', currency: cur })
   const margin = prof.revenue > 0 ? ((prof.profit / prof.revenue) * 100).toFixed(1) : null
 
+  const roleChartData = (() => {
+    const roleMap: Record<string, number> = {}
+    p.timeEntries.forEach(entry => {
+      const role = p.members.find(m => m.id === entry.memberId)?.role ?? 'Other'
+      roleMap[role] = (roleMap[role] ?? 0) + entry.hoursWorked
+    })
+    return Object.entries(roleMap).map(([role, hours]) => ({ role, hours }))
+  })()
+
+  const activityItems = (() => {
+    const items: { type: 'time' | 'milestone' | 'overdue'; bold: string; label: string; time: string; sortMs: number }[] = []
+
+    ;[...p.timeEntries]
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .slice(0, 3)
+      .forEach(entry => {
+        items.push({
+          type: 'time',
+          bold: entry.memberName,
+          label: `logged ${entry.hoursWorked}h${entry.description ? ` — ${entry.description}` : ''}`,
+          time: timeAgo(entry.date),
+          sortMs: new Date(entry.date).getTime(),
+        })
+      })
+
+    p.milestones.filter(m => m.isCompleted).forEach(m => {
+      items.push({
+        type: 'milestone',
+        bold: m.title,
+        label: 'milestone reached',
+        time: new Date(m.dueDate).toLocaleDateString('de-AT', { day: '2-digit', month: '2-digit' }),
+        sortMs: new Date(m.dueDate).getTime(),
+      })
+    })
+
+    const today = new Date(); today.setHours(0, 0, 0, 0)
+    p.tasks
+      .filter(t => t.dueDate && new Date(t.dueDate) < today && t.status !== 'Done')
+      .forEach(t => {
+        items.push({
+          type: 'overdue',
+          bold: t.title,
+          label: 'is overdue',
+          time: 'Overdue',
+          sortMs: t.dueDate ? new Date(t.dueDate).getTime() : 0,
+        })
+      })
+
+    return items.sort((a, b) => b.sortMs - a.sortMs).slice(0, 6)
+  })()
+
+  const totalLoggedHours = p.timeEntries.reduce((s, e) => s + e.hoursWorked, 0)
+  const totalLoggedValue = p.timeEntries.reduce((s, e) => s + e.cost, 0)
+  const budgetUtilPct = p.budgetAmount > 0 ? Math.min(100, (prof.totalCost / p.budgetAmount) * 100) : 0
+
+  const filteredTimeEntries = p.timeEntries
+    .filter(e => {
+      if (timeListMemberFilter !== 'all' && e.memberId !== timeListMemberFilter) return false
+      if (timeSearch && !e.memberName.toLowerCase().includes(timeSearch.toLowerCase()) && !e.description?.toLowerCase().includes(timeSearch.toLowerCase())) return false
+      if (timeDateFilter !== 'all') {
+        const days = timeDateFilter === '7d' ? 7 : 30
+        const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - days)
+        if (new Date(e.date) < cutoff) return false
+      }
+      return true
+    })
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+
+  const TIME_PER_PAGE = 10
+  const totalTimePages = Math.ceil(filteredTimeEntries.length / TIME_PER_PAGE)
+  const pagedTimeEntries = filteredTimeEntries.slice((timePage - 1) * TIME_PER_PAGE, timePage * TIME_PER_PAGE)
+
+  const weeklyChartData = (() => {
+    const result: { label: string; hours: number }[] = []
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(); d.setDate(d.getDate() - i); d.setHours(0, 0, 0, 0)
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+      const hours = p.timeEntries.filter(e => e.date.slice(0, 10) === dateStr).reduce((s, e) => s + e.hoursWorked, 0)
+      result.push({ label: d.toLocaleDateString('de-AT', { day: '2-digit', month: '2-digit' }), hours })
+    }
+    return result
+  })()
+
+  const totalExpenses = prof.expensesTotal
+  const remainingBudget = p.budgetAmount - totalExpenses
+  const budgetExpensePct = p.budgetAmount > 0 ? Math.min(100, (totalExpenses / p.budgetAmount) * 100) : 0
+  const uniqueExpenseCategories = [...new Set(p.expenses.map(e => e.category))]
+  const filteredExpenses = p.expenses
+    .filter(e => {
+      if (expenseListCategoryFilter !== 'all' && e.category !== expenseListCategoryFilter) return false
+      if (expenseSearch && !e.description.toLowerCase().includes(expenseSearch.toLowerCase())) return false
+      return true
+    })
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+  const spendingByCategoryData = (() => {
+    const map: Record<string, number> = {}
+    p.expenses.forEach(e => { map[e.category] = (map[e.category] ?? 0) + e.amount })
+    return Object.entries(map).map(([category, amount]) => ({ category, amount })).sort((a, b) => b.amount - a.amount)
+  })()
+  const expenseTimelineData = (() => {
+    const map: Record<string, number> = {}
+    p.expenses.forEach(e => {
+      const month = new Date(e.date).toLocaleDateString('de-AT', { month: 'short', year: '2-digit' })
+      map[month] = (map[month] ?? 0) + e.amount
+    })
+    return Object.entries(map).map(([month, amount]) => ({ month, amount }))
+  })()
+
+  const activeMilestones = p.milestones
+    .filter(m => !m.isCompleted)
+    .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
+  const completedMilestones = p.milestones.filter(m => m.isCompleted)
+  const milestoneCompletionPct = p.milestones.length > 0 ? (completedMilestones.length / p.milestones.length) * 100 : 0
+  const nextMilestoneDays = activeMilestones.length > 0
+    ? Math.ceil((new Date(activeMilestones[0].dueDate).getTime() - Date.now()) / 86_400_000)
+    : null
+
+  const doneTasks = p.tasks.filter(t => t.status === 'Done')
+  const overdueTasks = p.tasks.filter(t => {
+    if (!t.dueDate || t.status === 'Done') return false
+    const d = new Date(t.dueDate); d.setHours(0, 0, 0, 0)
+    const tod = new Date(); tod.setHours(0, 0, 0, 0)
+    return d < tod
+  })
+  const completionRate = p.tasks.length > 0 ? Math.round((doneTasks.length / p.tasks.length) * 100) : 0
+
+  const memberHoursMap: Record<string, number> = {}
+  p.timeEntries.forEach(e => { memberHoursMap[e.memberId] = (memberHoursMap[e.memberId] ?? 0) + e.hoursWorked })
+  const avgRate = p.members.length > 0 ? p.members.reduce((s, m) => s + m.hourlyRate, 0) / p.members.length : 0
+  const filteredMembers = p.members.filter(m =>
+    !teamSearch ||
+    m.name.toLowerCase().includes(teamSearch.toLowerCase()) ||
+    m.role.toLowerCase().includes(teamSearch.toLowerCase())
+  )
+  const memberChartData = p.members.map((m, i) => ({
+    name: m.name.split(' ')[0],
+    hours: memberHoursMap[m.id] ?? 0,
+    fill: MEMBER_COLORS[i % MEMBER_COLORS.length],
+  }))
+  const totalTeamCost = p.members.reduce((s, m) => s + (memberHoursMap[m.id] ?? 0) * m.hourlyRate, 0)
+
   const filteredTasks = (() => {
     const now = new Date()
     now.setHours(0, 0, 0, 0)
@@ -477,27 +646,28 @@ export function ProjectDetailPage() {
 
   return (
     <div className="p-6 space-y-4">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="sm" onClick={() => navigate(-1)}><ArrowLeft className="h-4 w-4 mr-1" /> Back</Button>
-      </div>
-
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">{p.name}</h1>
-          <p className="text-sm text-muted-foreground mt-1">{p.clientName}</p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="h-8 w-8 p-0 shrink-0">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-bold">{p.name}</h1>
+              <Badge variant={projectStatusVariant[p.status] ?? 'outline'}>{p.status}</Badge>
+            </div>
+            <p className="text-sm text-muted-foreground">{p.clientName}</p>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Badge variant={projectStatusVariant[p.status] ?? 'outline'}>{p.status}</Badge>
-          <Button size="sm" variant="outline" onClick={() => {
-            setEditName(p.name)
-            setEditDescription(p.description ?? '')
-            setEditDeadline(p.deadline ? p.deadline.slice(0, 10) : '')
-            setEditStatus(p.status)
-            setEditBudget(p.budgetAmount.toString())
-            setEditCurrency(p.currency)
-            setEditOpen(true)
-          }}><Pencil className="h-3.5 w-3.5 mr-1" />Edit</Button>
-        </div>
+        <Button size="sm" variant="outline" onClick={() => {
+          setEditName(p.name)
+          setEditDescription(p.description ?? '')
+          setEditDeadline(p.deadline ? p.deadline.slice(0, 10) : '')
+          setEditStatus(p.status)
+          setEditBudget(p.budgetAmount.toString())
+          setEditCurrency(p.currency)
+          setEditOpen(true)
+        }}><Pencil className="h-3.5 w-3.5 mr-1" />Edit Project</Button>
       </div>
 
       <Tabs tabs={TABS}>
@@ -505,32 +675,151 @@ export function ProjectDetailPage() {
           <>
             {activeTab === 'overview' && (
               <div className="space-y-4">
-                <Card>
-                  <CardHeader><CardTitle className="text-base">Project Info</CardTitle></CardHeader>
-                  <CardContent className="grid grid-cols-2 gap-3 text-sm">
-                    <div><span className="text-muted-foreground">Budget</span><p className="font-medium">{fmtCur(p.budgetAmount, p.currency)}</p></div>
-                    <div><span className="text-muted-foreground">Start Date</span><p className="font-medium">{new Date(p.startDate).toLocaleDateString()}</p></div>
-                    {p.deadline && <div><span className="text-muted-foreground">Deadline</span><p className="font-medium">{new Date(p.deadline).toLocaleDateString()}</p></div>}
-                    <div><span className="text-muted-foreground">Members</span><p className="font-medium">{p.memberCount}</p></div>
-                    {p.description && <div className="col-span-2"><span className="text-muted-foreground">Description</span><p className="font-medium">{p.description}</p></div>}
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader><CardTitle className="text-base">Profitability</CardTitle></CardHeader>
-                  <CardContent className="grid grid-cols-2 gap-3 text-sm">
-                    <div><span className="text-muted-foreground">Labor Cost</span><p className="font-medium">{fmtCur(prof.laborCost, prof.currency)}</p></div>
-                    <div><span className="text-muted-foreground">Expenses</span><p className="font-medium">{fmtCur(prof.expensesTotal, prof.currency)}</p></div>
-                    <div><span className="text-muted-foreground">Total Cost</span><p className="font-medium">{fmtCur(prof.totalCost, prof.currency)}</p></div>
-                    <div><span className="text-muted-foreground">Revenue</span><p className="font-medium">{fmtCur(prof.revenue, prof.currency)}</p></div>
-                    <div className="col-span-2">
-                      <span className="text-muted-foreground">Profit</span>
-                      <p className={`font-semibold text-base ${prof.profit >= 0 ? 'text-green-600' : 'text-destructive'}`}>
-                        {fmtCur(prof.profit, prof.currency)}
-                        {margin !== null && <span className="text-sm font-normal ml-2">({margin}% margin)</span>}
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
+                {/* Top row */}
+                <div className="grid grid-cols-2 gap-4">
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base">Project Info</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-xs text-muted-foreground uppercase tracking-wide">Budget</p>
+                          <p className="text-lg font-semibold mt-0.5">{fmtCur(p.budgetAmount, p.currency)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground uppercase tracking-wide">Timeline</p>
+                          <p className="text-sm font-medium mt-0.5">
+                            {new Date(p.startDate).toLocaleDateString('de-AT', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            {p.deadline ? ` — ${new Date(p.deadline).toLocaleDateString('de-AT', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
+                          </p>
+                        </div>
+                      </div>
+                      {p.description && (
+                        <div className="bg-muted/40 rounded-md p-3 text-sm text-foreground/80 leading-relaxed">
+                          {p.description}
+                        </div>
+                      )}
+                      <div>
+                        <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Team Members</p>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {p.members.slice(0, 5).map(m => (
+                            <span
+                              key={m.id}
+                              title={m.name}
+                              className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-primary/20 text-primary font-semibold text-xs"
+                            >
+                              {m.name.charAt(0).toUpperCase()}
+                            </span>
+                          ))}
+                          {p.members.length > 5 && (
+                            <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-muted text-muted-foreground font-medium text-xs">
+                              +{p.members.length - 5}
+                            </span>
+                          )}
+                          {p.members.length === 0 && <span className="text-sm text-muted-foreground">No members yet</span>}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-base">Profitability</CardTitle>
+                        <TrendingUp className="h-4 w-4 text-green-500" />
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-0 text-sm">
+                        {[
+                          { label: 'Labor Cost', value: fmtCur(prof.laborCost, prof.currency), red: false },
+                          { label: 'Expenses', value: fmtCur(prof.expensesTotal, prof.currency), red: false },
+                          { label: 'Total Cost', value: fmtCur(prof.totalCost, prof.currency), red: true },
+                          { label: 'Revenue', value: fmtCur(prof.revenue, prof.currency), red: false },
+                        ].map(row => (
+                          <div key={row.label} className="flex justify-between py-2 border-b border-border/40 last:border-0">
+                            <span className="text-muted-foreground">{row.label}</span>
+                            <span className={row.red ? 'font-medium text-destructive' : 'font-medium'}>{row.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="mt-4 rounded-lg bg-muted/30 p-4">
+                        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Net Profit</p>
+                        <div className="flex items-end justify-between mb-3">
+                          <p className={`text-2xl font-bold ${prof.profit >= 0 ? 'text-green-500' : 'text-destructive'}`}>
+                            {fmtCur(prof.profit, prof.currency)}
+                          </p>
+                          {margin !== null && (
+                            <span className={`text-xs font-semibold px-2 py-1 rounded-md ${prof.profit >= 0 ? 'bg-green-500/20 text-green-600' : 'bg-destructive/20 text-destructive'}`}>
+                              {margin}%
+                            </span>
+                          )}
+                        </div>
+                        {prof.revenue > 0 && (
+                          <div className="w-full bg-muted rounded-full h-1.5">
+                            <div
+                              className={`h-1.5 rounded-full transition-all ${prof.profit >= 0 ? 'bg-green-500' : 'bg-destructive'}`}
+                              style={{ width: `${Math.min(100, Math.max(0, (prof.profit / prof.revenue) * 100))}%` }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Bottom row */}
+                <div className="grid grid-cols-2 gap-4">
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-base">Resource Allocation</CardTitle>
+                      <p className="text-xs text-muted-foreground">Hours logged per role</p>
+                    </CardHeader>
+                    <CardContent>
+                      {roleChartData.length === 0 ? (
+                        <p className="text-sm text-muted-foreground py-6 text-center">No time logged yet.</p>
+                      ) : (
+                        <ResponsiveContainer width="100%" height={180}>
+                          <BarChart data={roleChartData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                            <XAxis dataKey="role" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                            <YAxis tick={{ fontSize: 11 }} allowDecimals={false} axisLine={false} tickLine={false} />
+                            <Tooltip formatter={(v) => [`${v}h`, 'Hours']} />
+                            <Bar dataKey="hours" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-base">Recent Project Activity</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {activityItems.length === 0 ? (
+                        <p className="text-sm text-muted-foreground py-6 text-center">No activity yet.</p>
+                      ) : (
+                        <div className="space-y-3.5">
+                          {activityItems.map((item, i) => (
+                            <div key={i} className="flex items-start gap-3">
+                              <span className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${
+                                item.type === 'time' ? 'bg-green-500' :
+                                item.type === 'milestone' ? 'bg-blue-500' : 'bg-destructive'
+                              }`} />
+                              <p className="flex-1 text-sm leading-snug">
+                                <span className="font-medium">{item.bold}</span>
+                                {item.label ? ` ${item.label}` : ''}
+                              </p>
+                              <span className="text-xs text-muted-foreground shrink-0 mt-0.5">{item.time}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
               </div>
             )}
 
@@ -550,182 +839,783 @@ export function ProjectDetailPage() {
             )}
 
             {activeTab === 'tasks' && (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between gap-3 flex-wrap">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <Select value={taskDateFilter} onChange={e => setTaskDateFilter(e.target.value as typeof taskDateFilter)} className="h-8 text-xs w-36">
-                      <option value="all">All dates</option>
-                      <option value="this-week">This week</option>
-                      <option value="this-month">This month</option>
-                      <option value="next-week">Next week</option>
-                      <option value="next-month">Next month</option>
-                      <option value="overdue">Overdue</option>
-                    </Select>
-                    <Select value={taskMemberFilter} onChange={e => setTaskMemberFilter(e.target.value)} className="h-8 text-xs w-40">
-                      <option value="all">All members</option>
-                      {p.members.map(m => (
-                        <option key={m.id} value={m.id}>{m.name}</option>
-                      ))}
-                    </Select>
-                    {(taskDateFilter !== 'all' || taskMemberFilter !== 'all') && (
-                      <button
-                        className="text-xs text-muted-foreground hover:text-foreground underline"
-                        onClick={() => { setTaskDateFilter('all'); setTaskMemberFilter('all') }}
-                      >
-                        Clear
-                      </button>
-                    )}
+              <div className="space-y-5">
+                {/* Header */}
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h2 className="text-xl font-bold">Project Tasks</h2>
+                    <p className="text-sm text-muted-foreground mt-0.5">Manage and track daily team activities.</p>
                   </div>
-                  <Button size="sm" onClick={() => { setTaskOpen(true); setDescExpanded(false) }}><Plus className="h-3.5 w-3.5 mr-1" /> Add Task</Button>
+                  <Button size="sm" onClick={() => { setTaskOpen(true); setDescExpanded(false) }}>
+                    <Plus className="h-3.5 w-3.5 mr-1.5" /> Add Task
+                  </Button>
+                </div>
+
+                {/* Filters + live indicator */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Select value={taskDateFilter} onChange={e => setTaskDateFilter(e.target.value as typeof taskDateFilter)} className="h-8 text-xs w-36">
+                    <option value="all">All dates</option>
+                    <option value="this-week">This week</option>
+                    <option value="this-month">This month</option>
+                    <option value="next-week">Next week</option>
+                    <option value="next-month">Next month</option>
+                    <option value="overdue">Overdue</option>
+                  </Select>
+                  <Select value={taskMemberFilter} onChange={e => setTaskMemberFilter(e.target.value)} className="h-8 text-xs w-40">
+                    <option value="all">All members</option>
+                    {p.members.map(m => (
+                      <option key={m.id} value={m.id}>{m.name}</option>
+                    ))}
+                  </Select>
+                  {(taskDateFilter !== 'all' || taskMemberFilter !== 'all') && (
+                    <button
+                      className="text-xs text-muted-foreground hover:text-foreground underline"
+                      onClick={() => { setTaskDateFilter('all'); setTaskMemberFilter('all') }}
+                    >
+                      Clear
+                    </button>
+                  )}
+                  <div className="ml-auto flex items-center gap-1.5 text-xs text-green-500 font-medium">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                    Live Tracking
+                  </div>
+                </div>
+
+                {/* Stat cards */}
+                <div className="grid grid-cols-3 gap-4">
+                  <Card>
+                    <CardContent className="py-4">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide">Completion Rate</p>
+                      <p className="text-3xl font-bold mt-1">{completionRate}%</p>
+                      <div className="mt-2 w-full bg-muted rounded-full h-1.5">
+                        <div className="h-1.5 rounded-full bg-primary transition-all" style={{ width: `${completionRate}%` }} />
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="py-4">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide">Total Tasks</p>
+                      <p className="text-3xl font-bold mt-1">{p.tasks.length}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{doneTasks.length} completed · {overdueTasks.length} overdue</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="py-4">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide">Overdue</p>
+                      <p className={`text-3xl font-bold mt-1 ${overdueTasks.length > 0 ? 'text-destructive' : ''}`}>
+                        {String(overdueTasks.length).padStart(2, '0')}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">{overdueTasks.length === 0 ? 'All tasks on track' : 'Require attention'}</p>
+                    </CardContent>
+                  </Card>
                 </div>
                 {p.tasks.length === 0 ? (
                   <p className="text-sm text-muted-foreground">No tasks yet.</p>
                 ) : (
-                  <div className="grid grid-cols-4 gap-4">
-                    {KANBAN_COLUMNS.map(col => (
-                      <div
-                        key={col.status}
-                        className={`rounded-lg border-2 border-dashed p-3 min-h-48 transition-colors ${dragOverColumn === col.status ? 'border-primary bg-primary/5' : 'border-muted'}`}
-                        onDragOver={e => { e.preventDefault(); setDragOverColumn(col.status) }}
-                        onDragLeave={e => {
-                          if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverColumn(null)
-                        }}
-                        onDrop={e => {
-                          e.preventDefault()
-                          if (draggedTaskId) {
-                            const task = p.tasks.find(t => t.id === draggedTaskId)
-                            if (task && task.status !== col.status)
-                              mutTaskStatus.mutate({ taskId: draggedTaskId, status: col.status })
-                          }
-                          setDraggedTaskId(null)
-                          setDragOverColumn(null)
-                        }}
-                      >
-                        <div className="flex items-center gap-2 mb-3">
-                          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{col.label}</span>
-                          <span className="text-xs bg-muted rounded-full px-1.5 py-0.5 font-medium">
-                            {filteredTasks.filter(t => t.status === col.status).length}
-                          </span>
-                        </div>
-                        <div className="space-y-2">
-                          {filteredTasks.filter(t => t.status === col.status).map(task => (
-                            <div
-                              key={task.id}
-                              draggable
-                              onDragStart={() => setDraggedTaskId(task.id)}
-                              onDragEnd={() => { setDraggedTaskId(null); setDragOverColumn(null) }}
-                              onClick={() => { if (!draggedTaskId) openEditTask(task) }}
-                              className={`bg-card border rounded-md p-3 cursor-pointer shadow-sm transition-opacity select-none ${draggedTaskId === task.id ? 'opacity-40 cursor-grabbing' : 'hover:border-primary/50'}`}
-                            >
-                              <div className="flex items-start gap-1.5">
-                                <p className="font-medium text-sm leading-snug flex-1">{task.title}</p>
-                                {task.blockedByTaskIds.length > 0 && task.blockedByTaskIds.some(bid => {
+                  <>
+                    <div className="grid grid-cols-3 gap-4">
+                      {KANBAN_COLUMNS.map(col => {
+                        const colTasks = filteredTasks.filter(t => t.status === col.status)
+                        const dotColor = col.status === 'Todo' ? 'bg-slate-400' : col.status === 'InProgress' ? 'bg-blue-500' : 'bg-green-500'
+                        const today = new Date(); today.setHours(0, 0, 0, 0)
+                        return (
+                          <div
+                            key={col.status}
+                            className={`rounded-xl p-3 min-h-48 transition-colors ${dragOverColumn === col.status ? 'bg-primary/10 ring-2 ring-primary/30' : 'bg-muted/30'}`}
+                            onDragOver={e => { e.preventDefault(); setDragOverColumn(col.status) }}
+                            onDragLeave={e => {
+                              if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverColumn(null)
+                            }}
+                            onDrop={e => {
+                              e.preventDefault()
+                              if (draggedTaskId) {
+                                const task = p.tasks.find(t => t.id === draggedTaskId)
+                                if (task && task.status !== col.status) {
+                                  if (col.status === 'Done') {
+                                    setDonePromptTaskId(draggedTaskId)
+                                    setDonePromptHours(task.actualHours?.toString() ?? '')
+                                  } else {
+                                    mutTaskStatus.mutate({ taskId: draggedTaskId, status: col.status })
+                                  }
+                                }
+                              }
+                              setDraggedTaskId(null)
+                              setDragOverColumn(null)
+                            }}
+                          >
+                            {/* Column header */}
+                            <div className="flex items-center gap-2 mb-3 px-1">
+                              <span className={`w-2 h-2 rounded-full shrink-0 ${dotColor}`} />
+                              <span className="text-xs font-bold uppercase tracking-widest flex-1">{col.label}</span>
+                              <span className="text-xs bg-background/60 rounded-full px-2 py-0.5 font-semibold tabular-nums">
+                                {colTasks.length}
+                              </span>
+                            </div>
+
+                            {/* Cards */}
+                            <div className="space-y-2.5">
+                              {colTasks.map(task => {
+                                const isBlocked = task.blockedByTaskIds.length > 0 && task.blockedByTaskIds.some(bid => {
                                   const blocker = p.tasks.find(t => t.id === bid)
                                   return blocker && blocker.status !== 'Done'
-                                }) && (
-                                  <Lock className="h-3 w-3 shrink-0 mt-0.5 text-amber-500" title="Has incomplete dependencies" />
-                                )}
-                              </div>
-                              {hasRichContent(task.description) && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{stripHtml(task.description!)}</p>}
-                              <div className="flex items-center flex-wrap gap-2.5 mt-2 text-xs text-muted-foreground">
-                                {task.estimatedHours && (
-                                  <span className="flex items-center gap-1">
-                                    <Clock className="h-3 w-3 shrink-0" />{task.estimatedHours}h
-                                  </span>
-                                )}
-                                {task.dueDate && (
-                                  <span className="flex items-center gap-1">
-                                    <CalendarDays className="h-3 w-3 shrink-0" />
-                                    {new Date(task.dueDate).toLocaleDateString('de-AT', { day: '2-digit', month: '2-digit' })}
-                                  </span>
-                                )}
-                                {task.comments.length > 0 && (
-                                  <span className="flex items-center gap-1">
-                                    <MessageSquare className="h-3 w-3 shrink-0" />{task.comments.length}
-                                  </span>
-                                )}
-                              </div>
-                              {task.assignedMemberName && (
-                                <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1.5">
-                                  <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-primary/15 text-primary font-semibold text-[10px] shrink-0">
-                                    {task.assignedMemberName.charAt(0).toUpperCase()}
-                                  </span>
-                                  {task.assignedMemberName}
-                                </p>
-                              )}
+                                })
+                                const milestoneName = task.milestoneId ? p.milestones.find(m => m.id === task.milestoneId)?.title : null
+                                const isDue = task.dueDate ? new Date(task.dueDate) < today && task.status !== 'Done' : false
+                                const isDueSoon = task.dueDate && !isDue ? (() => {
+                                  const d = new Date(task.dueDate); d.setHours(0,0,0,0)
+                                  return (d.getTime() - today.getTime()) <= 3 * 86_400_000
+                                })() : false
+
+                                if (col.status === 'Done') {
+                                  return (
+                                    <div
+                                      key={task.id}
+                                      draggable
+                                      onDragStart={() => setDraggedTaskId(task.id)}
+                                      onDragEnd={() => { setDraggedTaskId(null); setDragOverColumn(null) }}
+                                      onClick={() => { if (!draggedTaskId) openEditTask(task) }}
+                                      className={`bg-card border rounded-lg p-3 cursor-pointer shadow-sm select-none transition-opacity ${draggedTaskId === task.id ? 'opacity-40' : 'hover:border-primary/40 opacity-70 hover:opacity-100'}`}
+                                    >
+                                      <p className="text-sm font-medium line-through text-muted-foreground leading-snug">{task.title}</p>
+                                      <div className="flex items-center justify-between mt-2">
+                                        <span className="text-[10px] text-muted-foreground">
+                                          {task.completedAt ? `Closed ${timeAgo(task.completedAt)}` : 'Completed'}
+                                        </span>
+                                        {task.assignedMemberName && (
+                                          <span
+                                            title={task.assignedMemberName}
+                                            className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-primary/20 text-primary font-semibold text-[9px] shrink-0"
+                                          >
+                                            {task.assignedMemberName.charAt(0).toUpperCase()}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )
+                                }
+
+                                return (
+                                  <div
+                                    key={task.id}
+                                    draggable
+                                    onDragStart={() => setDraggedTaskId(task.id)}
+                                    onDragEnd={() => { setDraggedTaskId(null); setDragOverColumn(null) }}
+                                    onClick={() => { if (!draggedTaskId) openEditTask(task) }}
+                                    className={`bg-card border rounded-lg p-3 cursor-pointer shadow-sm select-none transition-colors ${draggedTaskId === task.id ? 'opacity-40 cursor-grabbing' : 'hover:border-primary/50'}`}
+                                  >
+                                    {milestoneName && (
+                                      <span className="inline-flex items-center gap-1 text-[10px] font-medium text-amber-600 bg-amber-100 dark:bg-amber-950 dark:text-amber-400 px-1.5 py-0.5 rounded mb-2">
+                                        <Flag className="h-2.5 w-2.5" />{milestoneName}
+                                      </span>
+                                    )}
+                                    <div className="flex items-start gap-1.5">
+                                      <p className="font-semibold text-sm leading-snug flex-1">{task.title}</p>
+                                      {isBlocked && <Lock className="h-3 w-3 shrink-0 mt-0.5 text-amber-500" />}
+                                    </div>
+                                    {hasRichContent(task.description) && (
+                                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2 leading-relaxed">{stripHtml(task.description!)}</p>
+                                    )}
+                                    <div className="flex items-center flex-wrap gap-x-3 gap-y-1 mt-2.5 text-xs">
+                                      {task.dueDate && (
+                                        <span className={`flex items-center gap-1 font-medium ${isDue ? 'text-destructive' : isDueSoon ? 'text-amber-500' : 'text-muted-foreground'}`}>
+                                          <CalendarDays className="h-3 w-3 shrink-0" />
+                                          {new Date(task.dueDate).toLocaleDateString('de-AT', { day: '2-digit', month: '2-digit' })}
+                                        </span>
+                                      )}
+                                      {task.estimatedHours && (
+                                        <span className="flex items-center gap-1 text-muted-foreground">
+                                          <Clock className="h-3 w-3 shrink-0" />{task.estimatedHours}h
+                                        </span>
+                                      )}
+                                      {task.comments.length > 0 && (
+                                        <span className="flex items-center gap-1 text-muted-foreground">
+                                          <MessageSquare className="h-3 w-3 shrink-0" />{task.comments.length}
+                                        </span>
+                                      )}
+                                      {task.assignedMemberName && (
+                                        <span className="ml-auto flex items-center gap-1 text-muted-foreground">
+                                          <span
+                                            title={task.assignedMemberName}
+                                            className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-primary/20 text-primary font-semibold text-[9px] shrink-0"
+                                          >
+                                            {task.assignedMemberName.charAt(0).toUpperCase()}
+                                          </span>
+                                          <span className="truncate max-w-[80px]">{task.assignedMemberName}</span>
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                )
+                              })}
                             </div>
-                          ))}
+
+                            {/* Add Card button */}
+                            <button
+                              onClick={() => { setTaskOpen(true); setDescExpanded(false) }}
+                              className="mt-2.5 w-full flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground py-1.5 px-2 rounded-md hover:bg-background/60 transition-colors"
+                            >
+                              <Plus className="h-3.5 w-3.5" /> Add Card
+                            </button>
+                          </div>
+                        )
+                      })}
+                    </div>
+
+                    {/* Task Metrics */}
+                    {(() => {
+                      const tasksWithBoth = doneTasks.filter(t => t.estimatedHours && t.actualHours && t.actualHours > 0)
+                      const efficiencyPct = tasksWithBoth.length > 0
+                        ? Math.round(tasksWithBoth.reduce((s, t) => s + Math.min(1, t.estimatedHours! / t.actualHours!), 0) / tasksWithBoth.length * 100)
+                        : null
+                      return (
+                        <div className="grid grid-cols-3 gap-4 pt-2">
+                          <Card>
+                            <CardContent className="py-4">
+                              <p className="text-xs text-muted-foreground uppercase tracking-wide">Efficiency</p>
+                              <p className="text-3xl font-bold mt-1">{efficiencyPct !== null ? `${efficiencyPct}%` : '—'}</p>
+                              <p className="text-xs text-muted-foreground mt-1">Est. vs actual hours</p>
+                            </CardContent>
+                          </Card>
+                          <Card>
+                            <CardContent className="py-4">
+                              <p className="text-xs text-muted-foreground uppercase tracking-wide">Resolved</p>
+                              <p className="text-3xl font-bold mt-1 text-green-500">{doneTasks.length}</p>
+                              <p className="text-xs text-muted-foreground mt-1">Tasks completed</p>
+                            </CardContent>
+                          </Card>
+                          <Card>
+                            <CardContent className="py-4">
+                              <p className="text-xs text-muted-foreground uppercase tracking-wide">Overdue</p>
+                              <p className={`text-3xl font-bold mt-1 ${overdueTasks.length > 0 ? 'text-destructive' : 'text-green-500'}`}>
+                                {String(overdueTasks.length).padStart(2, '0')}
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-1">{overdueTasks.length === 0 ? 'All on track' : 'Need attention'}</p>
+                            </CardContent>
+                          </Card>
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                      )
+                    })()}
+                  </>
                 )}
               </div>
             )}
 
             {activeTab === 'team' && (
-              <div className="space-y-3">
-                <div className="flex justify-end">
-                  <Button size="sm" onClick={() => setMemberOpen(true)}><UserPlus className="h-3.5 w-3.5 mr-1" /> Add Member</Button>
+              <div className="space-y-5">
+                {/* Header */}
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h2 className="text-xl font-bold">Project Team</h2>
+                    <p className="text-sm text-muted-foreground mt-0.5">Manage resource allocation and billing rates for {p.name}.</p>
+                  </div>
+                  <Button size="sm" onClick={() => setMemberOpen(true)}>
+                    <UserPlus className="h-3.5 w-3.5 mr-1.5" /> Add Member
+                  </Button>
                 </div>
-                {p.members.length === 0 && <p className="text-sm text-muted-foreground">No team members yet.</p>}
-                {p.members.map(member => (
-                  <Card key={member.id}>
-                    <CardContent className="py-3 flex items-center justify-between">
-                      <div>
-                        <p className="font-medium text-sm">{member.name}</p>
-                        <p className="text-xs text-muted-foreground">{member.role}</p>
-                      </div>
-                      <p className="text-sm font-medium">
-                        {fmtCur(member.hourlyRate, member.currency)}/h
+
+                {/* Stat cards */}
+                <div className="grid grid-cols-3 gap-4">
+                  <Card>
+                    <CardContent className="py-5">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide">Total Headcount</p>
+                      <p className="text-4xl font-bold mt-2">{p.members.length}</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {p.members.length === 0 ? 'No members yet' : `${p.members.length} team member${p.members.length !== 1 ? 's' : ''}`}
                       </p>
                     </CardContent>
                   </Card>
-                ))}
+                  <Card>
+                    <CardContent className="py-5">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide">Average Rate</p>
+                      <div className="flex items-baseline gap-1 mt-2">
+                        <p className="text-4xl font-bold">{p.members.length > 0 ? fmtCur(avgRate, p.currency) : '—'}</p>
+                        {p.members.length > 0 && <span className="text-sm text-muted-foreground">/hour</span>}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">Across {p.members.length} member{p.members.length !== 1 ? 's' : ''}</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="py-5">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide">Team Allocation</p>
+                      {p.members.length > 0 && totalLoggedHours > 0 ? (
+                        <>
+                          <div className="flex w-full h-4 rounded-full overflow-hidden mt-3 mb-2">
+                            {p.members.map((m, i) => {
+                              const h = memberHoursMap[m.id] ?? 0
+                              const pct = (h / totalLoggedHours) * 100
+                              return pct > 0 ? (
+                                <div key={m.id} style={{ width: `${pct}%`, backgroundColor: MEMBER_COLORS[i % MEMBER_COLORS.length] }} title={`${m.name}: ${h}h`} />
+                              ) : null
+                            })}
+                          </div>
+                          <div className="flex justify-between text-xs text-muted-foreground">
+                            <span>{totalLoggedHours}h total</span>
+                            <span>{p.members.length} members</span>
+                          </div>
+                          <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
+                            {p.members.slice(0, 5).map((m, i) => (
+                              <span key={m.id} className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: MEMBER_COLORS[i % MEMBER_COLORS.length] }} />
+                                {m.name.split(' ')[0]}
+                              </span>
+                            ))}
+                          </div>
+                        </>
+                      ) : (
+                        <p className="text-sm text-muted-foreground mt-3">No hours logged yet</p>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Active Members table */}
+                <Card>
+                  <CardContent className="p-0">
+                    <div className="flex items-center justify-between px-5 py-4 border-b">
+                      <h3 className="font-semibold">Active Members</h3>
+                      <div className="relative w-56">
+                        <Search className="absolute left-2.5 top-2 h-4 w-4 text-muted-foreground" />
+                        <input
+                          type="text"
+                          placeholder="Search members..."
+                          value={teamSearch}
+                          onChange={e => setTeamSearch(e.target.value)}
+                          className="w-full h-8 pl-8 pr-3 text-sm bg-muted rounded-md border-0 focus:outline-none focus:ring-1 focus:ring-primary placeholder:text-muted-foreground"
+                        />
+                      </div>
+                    </div>
+                    {filteredMembers.length === 0 ? (
+                      <p className="text-sm text-muted-foreground py-10 text-center">
+                        {p.members.length === 0 ? 'No team members yet.' : 'No members match your search.'}
+                      </p>
+                    ) : (
+                      <>
+                        <div className="grid grid-cols-[1fr_160px_140px_120px] px-5 py-2.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-b bg-muted/30">
+                          <span>Team Member</span>
+                          <span>Role</span>
+                          <span>Hourly Rate</span>
+                          <span className="text-right">Hours Logged</span>
+                        </div>
+                        <div className="divide-y divide-border">
+                          {filteredMembers.map((member, i) => {
+                            const idx = p.members.indexOf(member)
+                            const hours = memberHoursMap[member.id] ?? 0
+                            const cost = hours * member.hourlyRate
+                            return (
+                              <div key={member.id} className="grid grid-cols-[1fr_160px_140px_120px] items-center px-5 py-3.5">
+                                <div className="flex items-center gap-3">
+                                  <span
+                                    className="inline-flex items-center justify-center w-9 h-9 rounded-full font-bold text-sm text-white shrink-0"
+                                    style={{ backgroundColor: MEMBER_COLORS[idx % MEMBER_COLORS.length] }}
+                                  >
+                                    {member.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                                  </span>
+                                  <div>
+                                    <p className="text-sm font-semibold leading-tight">{member.name}</p>
+                                    <p className="text-xs text-muted-foreground">{hours > 0 ? `${fmtCur(cost, member.currency)} total cost` : 'No hours logged'}</p>
+                                  </div>
+                                </div>
+                                <p className="text-sm text-muted-foreground">{member.role}</p>
+                                <p className="text-sm font-semibold">{fmtCur(member.hourlyRate, member.currency)}/h</p>
+                                <p className="text-sm font-semibold text-right">{hours > 0 ? `${hours}h` : '—'}</p>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Resource Utilization + Cost Breakdown */}
+                <div className="grid grid-cols-2 gap-4">
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-base">Resource Utilization</CardTitle>
+                      <p className="text-xs text-muted-foreground">Hours logged per team member</p>
+                    </CardHeader>
+                    <CardContent>
+                      {memberChartData.every(d => d.hours === 0) ? (
+                        <p className="text-sm text-muted-foreground py-6 text-center">No hours logged yet.</p>
+                      ) : (
+                        <ResponsiveContainer width="100%" height={180}>
+                          <BarChart data={memberChartData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                            <XAxis dataKey="name" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                            <YAxis tick={{ fontSize: 11 }} allowDecimals={false} axisLine={false} tickLine={false} />
+                            <Tooltip formatter={(v) => [`${v}h`, 'Hours']} />
+                            <Bar dataKey="hours" radius={[4, 4, 0, 0]}>
+                              {memberChartData.map((entry, index) => (
+                                <Cell key={index} fill={entry.fill} />
+                              ))}
+                            </Bar>
+                          </BarChart>
+                        </ResponsiveContainer>
+                      )}
+                      <div className="grid grid-cols-2 gap-3 mt-3 pt-3 border-t">
+                        <div>
+                          <p className="text-xs text-muted-foreground uppercase tracking-wide">Total Hours</p>
+                          <p className="text-xl font-bold mt-0.5">{totalLoggedHours}h</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground uppercase tracking-wide">Team Cost</p>
+                          <p className="text-xl font-bold mt-0.5">{fmtCur(totalTeamCost, p.currency)}</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-base">Cost Breakdown</CardTitle>
+                      <p className="text-xs text-muted-foreground">Labor cost per member</p>
+                    </CardHeader>
+                    <CardContent>
+                      {p.members.length === 0 ? (
+                        <p className="text-sm text-muted-foreground py-6 text-center">No team members yet.</p>
+                      ) : (
+                        <div className="space-y-4">
+                          {p.members.map((member, i) => {
+                            const hours = memberHoursMap[member.id] ?? 0
+                            const cost = hours * member.hourlyRate
+                            const costPct = totalTeamCost > 0 ? (cost / totalTeamCost) * 100 : 0
+                            return (
+                              <div key={member.id} className="space-y-1.5">
+                                <div className="flex items-center justify-between text-sm">
+                                  <div className="flex items-center gap-2">
+                                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: MEMBER_COLORS[i % MEMBER_COLORS.length] }} />
+                                    <span className="font-medium">{member.name}</span>
+                                  </div>
+                                  <span className="font-semibold">{hours > 0 ? fmtCur(cost, member.currency) : '—'}</span>
+                                </div>
+                                <div className="w-full bg-muted rounded-full h-1.5">
+                                  <div
+                                    className="h-1.5 rounded-full transition-all"
+                                    style={{ width: `${costPct}%`, backgroundColor: MEMBER_COLORS[i % MEMBER_COLORS.length] }}
+                                  />
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+
               </div>
             )}
 
             {activeTab === 'timelog' && (
-              <div className="space-y-3">
-                <div className="flex justify-end">
-                  <Button size="sm" onClick={() => setTimeOpen(true)}><Clock className="h-3.5 w-3.5 mr-1" /> Log Time</Button>
+              <div className="space-y-4">
+                {/* Header */}
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h2 className="text-xl font-bold">Project Time Log</h2>
+                    <p className="text-sm text-muted-foreground mt-0.5">Detailed breakdown of hours and resource allocation for {p.name}.</p>
+                  </div>
+                  <Button size="sm" onClick={() => setTimeOpen(true)}>
+                    <Clock className="h-3.5 w-3.5 mr-1.5" /> Log Time
+                  </Button>
                 </div>
-                {p.timeEntries.length === 0 && <p className="text-sm text-muted-foreground">No time logged yet.</p>}
-                {p.timeEntries.map(entry => (
-                  <Card key={entry.id}>
-                    <CardContent className="py-3 flex items-center justify-between">
-                      <div>
-                        <p className="font-medium text-sm">{entry.memberName}</p>
-                        {entry.description && <p className="text-xs text-muted-foreground">{entry.description}</p>}
-                        <p className="text-xs text-muted-foreground">{new Date(entry.date).toLocaleDateString()}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-medium">{entry.hoursWorked}h</p>
-                        <p className="text-xs text-muted-foreground">{fmtCur(entry.cost, entry.currency)}</p>
-                      </div>
+
+                {/* Stat cards */}
+                <div className="grid grid-cols-3 gap-4">
+                  <Card>
+                    <CardContent className="py-4">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide">Total Logged Time</p>
+                      <p className="text-3xl font-bold mt-1">{totalLoggedHours}<span className="text-lg font-normal ml-1">h</span></p>
                     </CardContent>
                   </Card>
-                ))}
+                  <Card>
+                    <CardContent className="py-4">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide">Budget Utilization</p>
+                      <p className="text-3xl font-bold mt-1">{budgetUtilPct.toFixed(0)}<span className="text-lg font-normal">%</span></p>
+                      <div className="mt-2 w-full bg-muted rounded-full h-1.5">
+                        <div
+                          className={`h-1.5 rounded-full ${budgetUtilPct > 90 ? 'bg-destructive' : 'bg-primary'}`}
+                          style={{ width: `${budgetUtilPct}%` }}
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">{fmtCur(prof.totalCost, prof.currency)} of {fmtCur(p.budgetAmount, p.currency)}</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="py-4">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide">Logged Value</p>
+                      <p className="text-2xl font-bold mt-1">{fmtCur(totalLoggedValue, prof.currency)}</p>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Filter bar + entry list */}
+                <Card>
+                  <CardContent className="pt-3 pb-0">
+                    <div className="flex items-center gap-2 pb-3 border-b border-border">
+                      <div className="relative flex-1 max-w-xs">
+                        <Search className="absolute left-2.5 top-2 h-4 w-4 text-muted-foreground" />
+                        <input
+                          type="text"
+                          placeholder="Filter logs..."
+                          value={timeSearch}
+                          onChange={e => { setTimeSearch(e.target.value); setTimePage(1) }}
+                          className="w-full h-8 pl-8 pr-3 text-sm bg-muted rounded-md border-0 focus:outline-none focus:ring-1 focus:ring-primary placeholder:text-muted-foreground"
+                        />
+                      </div>
+                      <Select value={timeDateFilter} onChange={e => { setTimeDateFilter(e.target.value as 'all' | '7d' | '30d'); setTimePage(1) }} className="h-8 text-xs w-36">
+                        <option value="all">All Time</option>
+                        <option value="7d">Last 7 Days</option>
+                        <option value="30d">Last 30 Days</option>
+                      </Select>
+                      <Select value={timeListMemberFilter} onChange={e => { setTimeListMemberFilter(e.target.value); setTimePage(1) }} className="h-8 text-xs w-40">
+                        <option value="all">All Members</option>
+                        {p.members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                      </Select>
+                    </div>
+
+                    {filteredTimeEntries.length === 0 ? (
+                      <p className="text-sm text-muted-foreground py-8 text-center">No time entries match your filters.</p>
+                    ) : (
+                      <div className="divide-y divide-border">
+                        {pagedTimeEntries.map(entry => {
+                          const memberRole = p.members.find(m => m.id === entry.memberId)?.role ?? '—'
+                          return (
+                            <div key={entry.id} className="flex items-center gap-4 py-3.5">
+                              <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-primary/20 text-primary font-semibold text-sm shrink-0">
+                                {entry.memberName.charAt(0).toUpperCase()}
+                              </span>
+                              <div className="w-36 shrink-0">
+                                <p className="text-sm font-semibold leading-tight">{entry.memberName}</p>
+                                <p className="text-xs text-muted-foreground">{memberRole}</p>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                {entry.description && <p className="text-sm truncate">{entry.description}</p>}
+                                <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                                  <CalendarDays className="h-3 w-3 shrink-0" />
+                                  {new Date(entry.date).toLocaleDateString('de-AT', { day: 'numeric', month: 'numeric', year: 'numeric' })}
+                                </p>
+                              </div>
+                              <p className="text-sm font-semibold shrink-0 w-12 text-right">{entry.hoursWorked}h</p>
+                              <p className="text-sm font-medium shrink-0 w-24 text-right">{fmtCur(entry.cost, entry.currency)}</p>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </CardContent>
+
+                  {filteredTimeEntries.length > TIME_PER_PAGE && (
+                    <div className="flex items-center justify-between px-6 py-3 border-t text-sm text-muted-foreground">
+                      <span>Showing {(timePage - 1) * TIME_PER_PAGE + 1}–{Math.min(timePage * TIME_PER_PAGE, filteredTimeEntries.length)} of {filteredTimeEntries.length} logs</span>
+                      <div className="flex items-center gap-1">
+                        <button
+                          className="w-7 h-7 rounded border flex items-center justify-center hover:bg-muted disabled:opacity-40"
+                          onClick={() => setTimePage(prev => Math.max(1, prev - 1))}
+                          disabled={timePage === 1}
+                        >‹</button>
+                        {Array.from({ length: Math.min(totalTimePages, 5) }, (_, i) => i + 1).map(pg => (
+                          <button
+                            key={pg}
+                            className={`w-7 h-7 rounded border flex items-center justify-center text-xs ${timePage === pg ? 'bg-primary text-primary-foreground border-primary' : 'hover:bg-muted'}`}
+                            onClick={() => setTimePage(pg)}
+                          >{pg}</button>
+                        ))}
+                        <button
+                          className="w-7 h-7 rounded border flex items-center justify-center hover:bg-muted disabled:opacity-40"
+                          onClick={() => setTimePage(prev => Math.min(totalTimePages, prev + 1))}
+                          disabled={timePage === totalTimePages}
+                        >›</button>
+                      </div>
+                    </div>
+                  )}
+                </Card>
+
+                {/* Weekly Distribution */}
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base">Weekly Distribution</CardTitle>
+                    <p className="text-xs text-muted-foreground">Hours logged per day over the last 7 days</p>
+                  </CardHeader>
+                  <CardContent>
+                    {weeklyChartData.every(d => d.hours === 0) ? (
+                      <p className="text-sm text-muted-foreground py-4 text-center">No time logged in the last 7 days.</p>
+                    ) : (
+                      <ResponsiveContainer width="100%" height={160}>
+                        <BarChart data={weeklyChartData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                          <XAxis dataKey="label" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                          <YAxis tick={{ fontSize: 11 }} allowDecimals={false} axisLine={false} tickLine={false} />
+                          <Tooltip formatter={(v) => [`${v}h`, 'Hours']} />
+                          <Bar dataKey="hours" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    )}
+                  </CardContent>
+                </Card>
               </div>
             )}
 
             {activeTab === 'expenses' && (
-              <div className="space-y-3">
-                <div className="flex justify-end">
-                  <Button size="sm" onClick={() => setExpenseOpen(true)}><Receipt className="h-3.5 w-3.5 mr-1" /> Add Expense</Button>
+              <div className="space-y-4">
+                {/* Header */}
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h2 className="text-xl font-bold">Project Expenses</h2>
+                    <p className="text-sm text-muted-foreground mt-0.5">Manage and track all project-related expenditures.</p>
+                  </div>
+                  <Button size="sm" onClick={() => setExpenseOpen(true)}>
+                    <Receipt className="h-3.5 w-3.5 mr-1.5" /> Add Expense
+                  </Button>
                 </div>
-                {p.expenses.length === 0 && <p className="text-sm text-muted-foreground">No expenses yet.</p>}
-                {p.expenses.map(expense => (
-                  <Card key={expense.id}>
-                    <CardContent className="py-3 flex items-center justify-between">
-                      <div>
-                        <p className="font-medium text-sm">{expense.description}</p>
-                        <p className="text-xs text-muted-foreground">{expense.category} · {new Date(expense.date).toLocaleDateString()}</p>
+
+                {/* Stat cards */}
+                <div className="grid grid-cols-2 gap-4">
+                  <Card>
+                    <CardContent className="py-4">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide">Total Expense Overview</p>
+                      <div className="flex items-end justify-between mt-1">
+                        <p className="text-3xl font-bold">{fmtCur(totalExpenses, prof.currency)}</p>
+                        <p className="text-xs text-muted-foreground">Budget: {fmtCur(p.budgetAmount, p.currency)}</p>
                       </div>
-                      <p className="text-sm font-medium">{fmtCur(expense.amount, expense.currency)}</p>
+                      <div className="grid grid-cols-3 gap-3 mt-4 pt-3 border-t border-border">
+                        <div>
+                          <p className="text-xs text-muted-foreground">Categories</p>
+                          <p className="text-sm font-semibold mt-0.5">{uniqueExpenseCategories.length}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">Entries</p>
+                          <p className="text-sm font-semibold mt-0.5">{p.expenses.length}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">Avg / Entry</p>
+                          <p className="text-sm font-semibold mt-0.5">{p.expenses.length > 0 ? fmtCur(totalExpenses / p.expenses.length, prof.currency) : '—'}</p>
+                        </div>
+                      </div>
                     </CardContent>
                   </Card>
-                ))}
+
+                  <Card className={remainingBudget >= 0 ? 'border-primary/30' : 'border-destructive/30'}>
+                    <CardContent className="py-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-primary">Remaining Budget</p>
+                      <p className={`text-3xl font-bold mt-1 ${remainingBudget >= 0 ? '' : 'text-destructive'}`}>
+                        {fmtCur(Math.abs(remainingBudget), p.currency)}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {remainingBudget >= 0
+                          ? `${(100 - budgetExpensePct).toFixed(1)}% of allocated funds remaining.`
+                          : 'Budget exceeded.'}
+                      </p>
+                      <div className="mt-3 w-full bg-muted rounded-full h-1.5">
+                        <div
+                          className={`h-1.5 rounded-full ${budgetExpensePct > 90 ? 'bg-destructive' : 'bg-primary'}`}
+                          style={{ width: `${Math.min(100, budgetExpensePct)}%` }}
+                        />
+                      </div>
+                      <div className="flex justify-between mt-2 text-xs text-muted-foreground">
+                        <span>Spent: {budgetExpensePct.toFixed(1)}%</span>
+                        <span>Budget: {fmtCur(p.budgetAmount, p.currency)}</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Filter bar + expense list */}
+                <Card>
+                  <CardContent className="pt-3 pb-0">
+                    <div className="flex items-center gap-2 pb-3 border-b border-border">
+                      <div className="relative flex-1 max-w-xs">
+                        <Search className="absolute left-2.5 top-2 h-4 w-4 text-muted-foreground" />
+                        <input
+                          type="text"
+                          placeholder="Search expenses..."
+                          value={expenseSearch}
+                          onChange={e => setExpenseSearch(e.target.value)}
+                          className="w-full h-8 pl-8 pr-3 text-sm bg-muted rounded-md border-0 focus:outline-none focus:ring-1 focus:ring-primary placeholder:text-muted-foreground"
+                        />
+                      </div>
+                      <Select value={expenseListCategoryFilter} onChange={e => setExpenseListCategoryFilter(e.target.value)} className="h-8 text-xs w-40">
+                        <option value="all">All Categories</option>
+                        {uniqueExpenseCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                      </Select>
+                      <span className="ml-auto text-xs text-muted-foreground shrink-0">
+                        Showing {filteredExpenses.length} Expense{filteredExpenses.length !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+
+                    {filteredExpenses.length === 0 ? (
+                      <p className="text-sm text-muted-foreground py-8 text-center">No expenses match your filters.</p>
+                    ) : (
+                      <>
+                        <div className="grid grid-cols-[1fr_120px_120px] py-2 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground border-b border-border">
+                          <span>Description &amp; Category</span>
+                          <span className="text-center">Date</span>
+                          <span className="text-right">Amount</span>
+                        </div>
+                        <div className="divide-y divide-border">
+                          {filteredExpenses.map(expense => (
+                            <div key={expense.id} className="grid grid-cols-[1fr_120px_120px] items-center py-3.5 px-1">
+                              <div>
+                                <p className="text-sm font-semibold">{expense.description}</p>
+                                <span className={`inline-block text-[10px] font-medium uppercase tracking-wide px-1.5 py-0.5 rounded mt-1 ${CATEGORY_COLOR[expense.category] ?? CATEGORY_COLOR.Other}`}>
+                                  {expense.category}
+                                </span>
+                              </div>
+                              <p className="text-sm text-muted-foreground text-center">
+                                {new Date(expense.date).toLocaleDateString('de-AT', { day: 'numeric', month: 'numeric', year: 'numeric' })}
+                              </p>
+                              <p className="text-sm font-semibold text-right">{fmtCur(expense.amount, expense.currency)}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Bottom charts */}
+                <div className="grid grid-cols-2 gap-4">
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-base">Spending by Category</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {spendingByCategoryData.length === 0 ? (
+                        <p className="text-sm text-muted-foreground py-4 text-center">No expenses yet.</p>
+                      ) : (
+                        <ResponsiveContainer width="100%" height={200}>
+                          <BarChart data={spendingByCategoryData} layout="vertical" margin={{ top: 0, right: 20, left: 10, bottom: 0 }}>
+                            <XAxis type="number" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `€${v}`} />
+                            <YAxis type="category" dataKey="category" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} width={95} />
+                            <Tooltip formatter={(v) => [typeof v === 'number' ? fmtCur(v, prof.currency) : v, 'Amount']} />
+                            <Bar dataKey="amount" fill="#3b82f6" radius={[0, 4, 4, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-base">Expense Timeline</CardTitle>
+                      <p className="text-xs text-muted-foreground">Amount spent per month</p>
+                    </CardHeader>
+                    <CardContent>
+                      {expenseTimelineData.length === 0 ? (
+                        <p className="text-sm text-muted-foreground py-4 text-center">No expenses yet.</p>
+                      ) : (
+                        <ResponsiveContainer width="100%" height={200}>
+                          <BarChart data={expenseTimelineData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                            <XAxis dataKey="month" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                            <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `€${v}`} />
+                            <Tooltip formatter={(v) => [typeof v === 'number' ? fmtCur(v, prof.currency) : v, 'Amount']} />
+                            <Bar dataKey="amount" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
               </div>
             )}
 
@@ -734,38 +1624,136 @@ export function ProjectDetailPage() {
             )}
 
             {activeTab === 'milestones' && (
-              <div className="space-y-3">
-                <div className="flex justify-end">
-                  <Button size="sm" onClick={() => setMilestoneOpen(true)}><Flag className="h-3.5 w-3.5 mr-1" /> Add Milestone</Button>
+              <div className="space-y-6">
+                {/* Header */}
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h2 className="text-xl font-bold">Project Milestones</h2>
+                    <p className="text-sm text-muted-foreground mt-0.5">Track key project achievements and upcoming deadlines.</p>
+                  </div>
+                  <Button size="sm" onClick={() => setMilestoneOpen(true)}>
+                    <Plus className="h-3.5 w-3.5 mr-1.5" /> Add Milestone
+                  </Button>
                 </div>
-                {p.milestones.length === 0 && <p className="text-sm text-muted-foreground">No milestones yet.</p>}
-                {p.milestones.map(milestone => (
-                  <Card key={milestone.id}>
-                    <CardContent className="py-3 flex items-center justify-between">
-                      <div>
-                        <p className={`font-medium text-sm ${milestone.isCompleted ? 'line-through text-muted-foreground' : ''}`}>
-                          {milestone.title}
-                        </p>
-                        <p className="text-xs text-muted-foreground">Due {new Date(milestone.dueDate).toLocaleDateString()}</p>
+
+                {/* Stat cards */}
+                <div className="grid grid-cols-2 gap-4">
+                  <Card>
+                    <CardContent className="py-5">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide">Overall Completion</p>
+                      <div className="flex items-baseline gap-2 mt-2">
+                        <span className="text-4xl font-bold">{completedMilestones.length}</span>
+                        <span className="text-lg text-muted-foreground">/ {p.milestones.length} Milestones</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant={milestone.isCompleted ? 'success' : 'secondary'}>
-                          {milestone.isCompleted ? 'Completed' : 'Pending'}
-                        </Badge>
-                        {!milestone.isCompleted && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => mutCompleteMilestone.mutate(milestone.id)}
-                            disabled={mutCompleteMilestone.isPending}
-                          >
-                            <CheckCircle2 className="h-3.5 w-3.5 mr-1" />Mark Complete
-                          </Button>
-                        )}
+                      <div className="mt-3 w-full bg-muted rounded-full h-2">
+                        <div className="h-2 rounded-full bg-primary transition-all" style={{ width: `${milestoneCompletionPct}%` }} />
                       </div>
                     </CardContent>
                   </Card>
-                ))}
+                  <Card>
+                    <CardContent className="py-5">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide">Upcoming Deadlines</p>
+                      <div className="flex items-center gap-4 mt-2">
+                        <div className="w-12 h-12 rounded-lg bg-destructive/15 flex items-center justify-center shrink-0">
+                          <Flag className="h-6 w-6 text-destructive" />
+                        </div>
+                        <div>
+                          <p className="text-3xl font-bold">{activeMilestones.length}</p>
+                          <p className="text-xs text-muted-foreground">Active Milestones</p>
+                        </div>
+                      </div>
+                      {nextMilestoneDays !== null && (
+                        <p className={`text-xs mt-3 flex items-center gap-1 font-medium ${nextMilestoneDays < 0 ? 'text-destructive' : nextMilestoneDays <= 7 ? 'text-amber-500' : 'text-green-500'}`}>
+                          <TrendingUp className="h-3 w-3" />
+                          {nextMilestoneDays < 0
+                            ? `Next is ${Math.abs(nextMilestoneDays)}d overdue`
+                            : nextMilestoneDays === 0
+                            ? 'Next due today'
+                            : `Next due in ${nextMilestoneDays}d`}
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Active Milestones */}
+                {p.milestones.length === 0 && (
+                  <div className="py-12 text-center">
+                    <Flag className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+                    <p className="text-sm text-muted-foreground">No milestones yet. Add your first to track project progress.</p>
+                  </div>
+                )}
+
+                {activeMilestones.length > 0 && (
+                  <div className="space-y-3">
+                    <h3 className="text-base font-semibold">Active Milestones</h3>
+                    {activeMilestones.map(milestone => {
+                      const daysLeft = Math.ceil((new Date(milestone.dueDate).getTime() - Date.now()) / 86_400_000)
+                      const isOverdue = daysLeft < 0
+                      return (
+                        <Card key={milestone.id} className={isOverdue ? 'border-destructive/40' : ''}>
+                          <CardContent className="py-4 flex items-center gap-4">
+                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${isOverdue ? 'bg-destructive/15' : 'bg-muted'}`}>
+                              <Flag className={`h-5 w-5 ${isOverdue ? 'text-destructive' : 'text-muted-foreground'}`} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-sm">{milestone.title}</p>
+                              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                                  <CalendarDays className="h-3 w-3 shrink-0" />
+                                  Due {new Date(milestone.dueDate).toLocaleDateString('de-AT', { day: 'numeric', month: 'numeric', year: 'numeric' })}
+                                </span>
+                                <Badge variant={isOverdue ? 'destructive' : 'secondary'}>
+                                  {isOverdue ? 'Overdue' : 'Pending'}
+                                </Badge>
+                                {!isOverdue && daysLeft <= 7 && (
+                                  <span className="text-xs text-amber-500 font-medium">• Due soon</span>
+                                )}
+                                {!isOverdue && daysLeft > 7 && (
+                                  <span className="text-xs text-muted-foreground">• {daysLeft}d remaining</span>
+                                )}
+                              </div>
+                            </div>
+                            <Button
+                              size="sm"
+                              onClick={() => mutCompleteMilestone.mutate(milestone.id)}
+                              disabled={mutCompleteMilestone.isPending}
+                              className="shrink-0"
+                            >
+                              <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />Mark Complete
+                            </Button>
+                          </CardContent>
+                        </Card>
+                      )
+                    })}
+                  </div>
+                )}
+
+                {/* Recently Completed */}
+                {completedMilestones.length > 0 && (
+                  <div className="space-y-3">
+                    <h3 className="text-base font-semibold text-muted-foreground">Recently Completed</h3>
+                    {completedMilestones.map(milestone => (
+                      <Card key={milestone.id} className="opacity-60">
+                        <CardContent className="py-4 flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-lg bg-green-500/15 flex items-center justify-center shrink-0">
+                            <CheckCircle2 className="h-5 w-5 text-green-500" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-sm line-through text-muted-foreground">{milestone.title}</p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                                <CalendarDays className="h-3 w-3 shrink-0" />
+                                Due {new Date(milestone.dueDate).toLocaleDateString('de-AT', { day: 'numeric', month: 'numeric', year: 'numeric' })}
+                              </span>
+                              <Badge variant="success">Completed</Badge>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </>
@@ -948,7 +1936,6 @@ export function ProjectDetailPage() {
                   <Select value={editTaskStatus} onChange={e => setEditTaskStatus(e.target.value)}>
                     <option value="Todo">To Do</option>
                     <option value="InProgress">In Progress</option>
-                    <option value="InReview">In Review</option>
                     <option value="Done">Done</option>
                   </Select>
                 </div>
@@ -976,6 +1963,11 @@ export function ProjectDetailPage() {
                 <div className="space-y-1.5">
                   <Label className="text-xs text-muted-foreground font-normal">Estimated Hours</Label>
                   <Input type="number" step="0.5" min="0" value={editTaskHours} onChange={e => setEditTaskHours(e.target.value)} placeholder="—" />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground font-normal">Actual Hours</Label>
+                  <Input type="number" step="0.5" min="0" value={editTaskActualHours} onChange={e => setEditActualTaskHours(e.target.value)} placeholder="—" />
                 </div>
 
                 <div className="space-y-1.5">
@@ -1348,6 +2340,50 @@ export function ProjectDetailPage() {
             <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
             <Button onClick={() => mutUpdateProject.mutate()} disabled={mutUpdateProject.isPending || !editName.trim()}>
               {mutUpdateProject.isPending ? 'Saving…' : 'Save'}
+            </Button>
+          </div>
+        </div>
+      </Dialog>
+
+      {/* Actual hours prompt — shown when dragging a task to Done */}
+      <Dialog
+        open={!!donePromptTaskId}
+        onClose={() => { setDonePromptTaskId(null); setDonePromptHours('') }}
+        title="Log actual hours"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            How many hours did this task actually take?
+          </p>
+          <div className="space-y-1">
+            <Label>Actual Hours</Label>
+            <Input
+              type="number"
+              step="0.5"
+              min="0.5"
+              value={donePromptHours}
+              onChange={e => setDonePromptHours(e.target.value)}
+              autoFocus
+              onKeyDown={e => {
+                if (e.key === 'Enter' && donePromptHours && parseFloat(donePromptHours) > 0) {
+                  mutTaskStatus.mutate({ taskId: donePromptTaskId!, status: 'Done', actualHours: parseFloat(donePromptHours) })
+                  setDonePromptTaskId(null)
+                  setDonePromptHours('')
+                }
+              }}
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => { setDonePromptTaskId(null); setDonePromptHours('') }}>Cancel</Button>
+            <Button
+              onClick={() => {
+                mutTaskStatus.mutate({ taskId: donePromptTaskId!, status: 'Done', actualHours: parseFloat(donePromptHours) })
+                setDonePromptTaskId(null)
+                setDonePromptHours('')
+              }}
+              disabled={!donePromptHours || parseFloat(donePromptHours) <= 0 || mutTaskStatus.isPending}
+            >
+              {mutTaskStatus.isPending ? 'Saving…' : 'Mark as Done'}
             </Button>
           </div>
         </div>

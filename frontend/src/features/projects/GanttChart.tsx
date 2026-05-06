@@ -4,7 +4,6 @@ import type { ProjectDetail } from '@/api/projects'
 const TASK_STATUS_COLOR: Record<string, string> = {
   Todo: 'bg-slate-400',
   InProgress: 'bg-blue-500',
-  InReview: 'bg-amber-400',
   Done: 'bg-green-500',
 }
 
