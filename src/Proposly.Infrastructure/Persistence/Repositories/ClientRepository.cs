@@ -11,7 +11,9 @@ public sealed class ClientRepository : IClientRepository
     public ClientRepository(AppDbContext context) => _context = context;
 
     public async Task<Client?> GetByIdAsync(Guid id, CancellationToken ct = default)
-        => await _context.Clients.FirstOrDefaultAsync(c => c.Id == id, ct);
+        => await _context.Clients
+            .Include(c => c.Notes.OrderByDescending(n => n.CreatedAt))
+            .FirstOrDefaultAsync(c => c.Id == id, ct);
 
     public async Task<IReadOnlyList<Client>> GetAllAsync(CancellationToken ct = default)
         => await _context.Clients
@@ -34,6 +36,12 @@ public sealed class ClientRepository : IClientRepository
 
     public async Task UpdateAsync(Client client, CancellationToken ct = default)
     {
+        await _context.SaveChangesAsync(ct);
+    }
+
+    public async Task DeleteAsync(Client client, CancellationToken ct = default)
+    {
+        _context.Clients.Remove(client);
         await _context.SaveChangesAsync(ct);
     }
 }

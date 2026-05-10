@@ -2,7 +2,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Proposly.API.Authorization;
 using Proposly.Application.Abstractions;
+using Proposly.Application.OfferManagement.Commands.AddClientNote;
 using Proposly.Application.OfferManagement.Commands.CreateClient;
+using Proposly.Application.OfferManagement.Commands.DeleteClient;
 using Proposly.Application.OfferManagement.Commands.UpdateClient;
 using Proposly.Application.OfferManagement.Queries.GetClientById;
 using Proposly.Application.OfferManagement.Queries.GetClients;
@@ -48,9 +50,31 @@ public sealed class ClientsController : ControllerBase
         [FromServices] ICommandHandler<UpdateClientCommand> handler,
         CancellationToken ct)
     {
-        await handler.HandleAsync(new UpdateClientCommand(id, body.Name, body.ContactPerson, body.Email, body.Phone, body.Street, body.City, body.PostalCode, body.Country), ct);
+        await handler.HandleAsync(new UpdateClientCommand(id, body.Name, body.ContactPerson, body.Email, body.Phone, body.Website, body.Street, body.City, body.PostalCode, body.Country, body.Currency, body.VatNumber, body.Status), ct);
         return NoContent();
+    }
+
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete(
+        Guid id,
+        [FromServices] ICommandHandler<DeleteClientCommand> handler,
+        CancellationToken ct)
+    {
+        await handler.HandleAsync(new DeleteClientCommand(id), ct);
+        return NoContent();
+    }
+
+    [HttpPost("{id:guid}/notes")]
+    public async Task<ActionResult<Guid>> AddNote(
+        Guid id,
+        [FromBody] AddNoteBody body,
+        [FromServices] ICommandHandler<AddClientNoteCommand, Guid> handler,
+        CancellationToken ct)
+    {
+        var noteId = await handler.HandleAsync(new AddClientNoteCommand(id, body.Content), ct);
+        return Ok(noteId);
     }
 }
 
-public record UpdateClientBody(string Name, string? ContactPerson, string? Email, string? Phone, string? Street, string? City, string? PostalCode, string? Country);
+public record UpdateClientBody(string Name, string? ContactPerson, string? Email, string? Phone, string? Website, string? Street, string? City, string? PostalCode, string? Country, string? Currency, string? VatNumber, Proposly.Domain.OfferManagement.Enums.ClientStatus Status = Proposly.Domain.OfferManagement.Enums.ClientStatus.Active);
+public record AddNoteBody(string Content);

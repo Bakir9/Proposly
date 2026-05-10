@@ -37,6 +37,9 @@ public sealed class GetOffersQueryHandler : IQueryHandler<GetOffersQuery, IReadO
             o.Title,
             o.Status,
             o.CalculateSubtotal().Amount,
+            o.DiscountPercent,
+            o.CalculateDiscountAmount().Amount,
+            o.CalculateTotal().Amount,
             o.Currency,
             o.ValidUntil,
             o.CreatedAt)).ToList();

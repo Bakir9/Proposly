@@ -38,6 +38,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { ArrowLeft, Pencil, Plus, UserPlus, Clock, Receipt, Flag, CheckCircle2, MessageSquare, Send, Trash2, CalendarDays, SquareCheck, Maximize2, Minimize2, Lock, X, TrendingUp, Search } from 'lucide-react'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { NotesTab } from './NotesTab'
+import { VelocityCapacityTab } from './VelocityCapacityTab'
 import { GanttChart } from './GanttChart'
 import { stripHtml, hasRichContent } from '@/lib/utils'
 
@@ -60,6 +61,7 @@ const TABS = [
   { id: 'tasks', label: 'Tasks' },
   { id: 'gantt', label: 'Gantt' },
   { id: 'burndown', label: 'Burndown' },
+  { id: 'velocity', label: 'Velocity' },
   { id: 'team', label: 'Team' },
   { id: 'timelog', label: 'Time Log' },
   { id: 'expenses', label: 'Expenses' },
@@ -836,6 +838,10 @@ export function ProjectDetailPage() {
 
             {activeTab === 'burndown' && (
               <BurndownTab projectId={p.id} />
+            )}
+
+            {activeTab === 'velocity' && (
+              <VelocityCapacityTab projectId={p.id} />
             )}
 
             {activeTab === 'tasks' && (

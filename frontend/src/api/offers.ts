@@ -9,6 +9,9 @@ export interface OfferSummary {
   title: string
   status: OfferStatus
   subtotal: number
+  discountPercent: number | null
+  discountAmount: number
+  total: number
   currency: string
   validUntil: string | null
   createdAt: string
@@ -35,12 +38,14 @@ export interface CreateOfferRequest {
   notes?: string
   currency: string
   validUntil?: string
+  discountPercent?: number | null
 }
 
 export interface UpdateOfferRequest {
   title: string
   notes?: string
   validUntil?: string
+  discountPercent?: number | null
 }
 
 export interface AddOfferItemRequest {
@@ -75,6 +80,9 @@ export const rejectOffer = (id: string) =>
 
 export const expireOffer = (id: string) =>
   api.post(`/offers/${id}/expire`)
+
+export const extendOffer = (id: string, newValidUntil: string) =>
+  api.post(`/offers/${id}/extend`, { newValidUntil })
 
 export const addOfferItem = (offerId: string, data: AddOfferItemRequest) =>
   api.post<string>(`/offers/${offerId}/items`, data).then(r => r.data)

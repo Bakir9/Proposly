@@ -8,5 +8,6 @@ public sealed class UpdateOfferCommandValidator : AbstractValidator<UpdateOfferC
     {
         RuleFor(x => x.Title).NotEmpty().MaximumLength(300);
         RuleFor(x => x.Notes).MaximumLength(2000).When(x => x.Notes is not null);
+        RuleFor(x => x.DiscountPercent).InclusiveBetween(0, 100).When(x => x.DiscountPercent.HasValue);
     }
 }

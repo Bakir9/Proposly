@@ -6,6 +6,7 @@ using Proposly.Application.OfferManagement.Commands.AcceptOffer;
 using Proposly.Application.OfferManagement.Commands.AddOfferItem;
 using Proposly.Application.OfferManagement.Commands.DeleteOffer;
 using Proposly.Application.OfferManagement.Commands.ExpireOffer;
+using Proposly.Application.OfferManagement.Commands.ExtendOffer;
 using Proposly.Application.OfferManagement.Commands.CreateOffer;
 using Proposly.Application.OfferManagement.Commands.RejectOffer;
 using Proposly.Application.OfferManagement.Commands.RemoveOfferItem;
@@ -92,6 +93,17 @@ public sealed class OffersController : ControllerBase
         return NoContent();
     }
 
+    [HttpPost("{id:guid}/extend")]
+    public async Task<IActionResult> Extend(
+        Guid id,
+        [FromBody] ExtendOfferBody body,
+        [FromServices] ICommandHandler<ExtendOfferCommand> handler,
+        CancellationToken ct)
+    {
+        await handler.HandleAsync(new ExtendOfferCommand(id, body.NewValidUntil), ct);
+        return NoContent();
+    }
+
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(
         Guid id,
@@ -109,7 +121,7 @@ public sealed class OffersController : ControllerBase
         [FromServices] ICommandHandler<UpdateOfferCommand> handler,
         CancellationToken ct)
     {
-        await handler.HandleAsync(new UpdateOfferCommand(id, body.Title, body.Notes, body.ValidUntil), ct);
+        await handler.HandleAsync(new UpdateOfferCommand(id, body.Title, body.Notes, body.ValidUntil, body.DiscountPercent), ct);
         return NoContent();
     }
 
@@ -182,6 +194,7 @@ public sealed class OffersController : ControllerBase
     }
 }
 
-public record UpdateOfferBody(string Title, string? Notes, DateOnly? ValidUntil);
+public record UpdateOfferBody(string Title, string? Notes, DateOnly? ValidUntil, decimal? DiscountPercent = null);
+public record ExtendOfferBody(DateOnly NewValidUntil);
 public record AddOfferItemBody(string Description, decimal Quantity, decimal UnitPrice);
 public record UpdateOfferItemBody(string Description, decimal Quantity, decimal UnitPrice);

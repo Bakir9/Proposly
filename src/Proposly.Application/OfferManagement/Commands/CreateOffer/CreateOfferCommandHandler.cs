@@ -31,7 +31,8 @@ public sealed class CreateOfferCommandHandler : ICommandHandler<CreateOfferComma
             command.Title,
             command.Notes,
             command.Currency,
-            command.ValidUntil);
+            command.ValidUntil,
+            command.DiscountPercent);
 
         await _offerRepository.AddAsync(offer, ct);
         return offer.Id;

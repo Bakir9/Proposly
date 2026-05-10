@@ -16,6 +16,7 @@ public sealed class OfferConfiguration : IEntityTypeConfiguration<Offer>
         builder.Property(o => o.Notes).HasMaxLength(4000);
         builder.Property(o => o.Currency).HasMaxLength(3).IsRequired();
         builder.Property(o => o.Status).HasConversion<string>().HasMaxLength(20);
+        builder.Property(o => o.DiscountPercent).HasColumnType("numeric(5,2)");
 
         builder.HasMany(o => o.Items)
             .WithOne()

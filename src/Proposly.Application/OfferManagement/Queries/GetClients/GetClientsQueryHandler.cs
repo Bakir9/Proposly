@@ -18,6 +18,14 @@ public sealed class GetClientsQueryHandler : IQueryHandler<GetClientsQuery, IRea
             c.Name,
             c.ContactPerson,
             c.Email,
-            c.Phone)).ToList();
+            c.Phone,
+            c.Website,
+            c.Address?.Street,
+            c.Address?.City,
+            c.Address?.PostalCode,
+            c.Address?.Country,
+            c.Currency,
+            c.VatNumber,
+            c.Status)).ToList();
     }
 }

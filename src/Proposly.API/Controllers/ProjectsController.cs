@@ -21,6 +21,8 @@ using Proposly.Application.ProjectManagement.Commands.UpdateProject;
 using Proposly.Application.ProjectManagement.Commands.UpdateTask;
 using Proposly.Application.ProjectManagement.Commands.UpdateTaskStatus;
 using Proposly.Application.ProjectManagement.Queries.GetBurndown;
+using Proposly.Application.ProjectManagement.Queries.GetCapacity;
+using Proposly.Application.ProjectManagement.Queries.GetVelocity;
 using Proposly.Application.ProjectManagement.Queries.GetProjectById;
 using Proposly.Application.ProjectManagement.Queries.GetProjects;
 using Proposly.Application.ProjectManagement.Responses;
@@ -245,6 +247,26 @@ public sealed class ProjectsController : ControllerBase
         CancellationToken ct)
     {
         var result = await handler.HandleAsync(new GetBurndownQuery(id), ct);
+        return result is null ? NotFound() : Ok(result);
+    }
+
+    [HttpGet("{id:guid}/velocity")]
+    public async Task<ActionResult<VelocityResponse>> GetVelocity(
+        Guid id,
+        [FromServices] IQueryHandler<GetVelocityQuery, VelocityResponse?> handler,
+        CancellationToken ct)
+    {
+        var result = await handler.HandleAsync(new GetVelocityQuery(id), ct);
+        return result is null ? NotFound() : Ok(result);
+    }
+
+    [HttpGet("{id:guid}/capacity")]
+    public async Task<ActionResult<CapacityResponse>> GetCapacity(
+        Guid id,
+        [FromServices] IQueryHandler<GetCapacityQuery, CapacityResponse?> handler,
+        CancellationToken ct)
+    {
+        var result = await handler.HandleAsync(new GetCapacityQuery(id), ct);
         return result is null ? NotFound() : Ok(result);
     }
 

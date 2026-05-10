@@ -20,6 +20,12 @@ public record ProjectTaskResponse(Guid Id, string Title, string? Description, Pr
 
 public record BurndownDataPoint(DateOnly Date, int Count);
 public record BurndownResponse(int TotalTasks, DateOnly StartDate, DateOnly EndDate, IReadOnlyList<BurndownDataPoint> Actual, IReadOnlyList<BurndownDataPoint> Ideal);
+
+public record VelocityWeek(string WeekLabel, DateOnly WeekStart, int TasksCompleted, decimal HoursCompleted);
+public record VelocityResponse(IReadOnlyList<VelocityWeek> Weeks, decimal TotalHoursCompleted, int TotalTasksCompleted);
+
+public record MemberCapacity(string MemberName, decimal HoursLogged);
+public record CapacityResponse(IReadOnlyList<MemberCapacity> Members, decimal TotalHoursLogged);
 public record TaskCommentResponse(Guid Id, Guid AuthorId, string AuthorName, string Body, DateTime CreatedAt, DateTime? UpdatedAt);
 public record ProjectNoteResponse(Guid Id, string Title, string Content, Guid AuthorId, string AuthorName, DateTime CreatedAt, DateTime UpdatedAt);
 public record MilestoneResponse(Guid Id, string Title, DateOnly DueDate, bool IsCompleted);

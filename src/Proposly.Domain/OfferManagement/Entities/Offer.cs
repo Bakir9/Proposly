@@ -19,7 +19,8 @@ public sealed class Offer : AggregateRoot<Guid>, ITenantEntity, IAuditableEntity
         string title,
         string? notes,
         string currency,
-        DateOnly? validUntil)
+        DateOnly? validUntil,
+        decimal? discountPercent)
         : base(id)
     {
         CompanyId = companyId;
@@ -28,6 +29,7 @@ public sealed class Offer : AggregateRoot<Guid>, ITenantEntity, IAuditableEntity
         Notes = notes;
         Currency = currency;
         ValidUntil = validUntil;
+        DiscountPercent = discountPercent;
         Status = OfferStatus.Draft;
         CreatedAt = DateTime.UtcNow;
         UpdatedAt = DateTime.UtcNow;
@@ -39,9 +41,10 @@ public sealed class Offer : AggregateRoot<Guid>, ITenantEntity, IAuditableEntity
         string title,
         string? notes,
         string currency,
-        DateOnly? validUntil)
+        DateOnly? validUntil,
+        decimal? discountPercent = null)
     {
-        var offer = new Offer(Guid.NewGuid(), companyId, clientId, title, notes, currency, validUntil);
+        var offer = new Offer(Guid.NewGuid(), companyId, clientId, title, notes, currency, validUntil, discountPercent);
         offer.RaiseDomainEvent(new OfferCreatedDomainEvent(offer.Id, companyId));
         return offer;
     }
@@ -52,6 +55,7 @@ public sealed class Offer : AggregateRoot<Guid>, ITenantEntity, IAuditableEntity
     public string? Notes { get; private set; }
     public string Currency { get; private set; } = string.Empty;
     public DateOnly? ValidUntil { get; private set; }
+    public decimal? DiscountPercent { get; private set; }
     public OfferStatus Status { get; private set; }
     public DateTime? SentAt { get; private set; }
     public DateTime CreatedAt { get; private set; }
@@ -103,6 +107,19 @@ public sealed class Offer : AggregateRoot<Guid>, ITenantEntity, IAuditableEntity
         Touch();
     }
 
+    public void Extend(DateOnly newValidUntil)
+    {
+        if (Status != OfferStatus.Sent && Status != OfferStatus.Expired)
+            throw new InvalidOperationException($"Only Sent or Expired offers can be extended.");
+        if (newValidUntil <= DateOnly.FromDateTime(DateTime.UtcNow))
+            throw new InvalidOperationException("New validity date must be in the future.");
+
+        ValidUntil = newValidUntil;
+        if (Status == OfferStatus.Expired)
+            Status = OfferStatus.Sent;
+        Touch();
+    }
+
     // --- Item management (only while Draft) ---
 
     public OfferItem AddItem(string description, decimal quantity, Money unitPrice)
@@ -132,11 +149,12 @@ public sealed class Offer : AggregateRoot<Guid>, ITenantEntity, IAuditableEntity
         Touch();
     }
 
-    public void UpdateDetails(string title, string? notes, DateOnly? validUntil)
+    public void UpdateDetails(string title, string? notes, DateOnly? validUntil, decimal? discountPercent = null)
     {
         Title = title;
         Notes = notes;
         ValidUntil = validUntil;
+        DiscountPercent = discountPercent;
         Touch();
     }
 
@@ -147,6 +165,15 @@ public sealed class Offer : AggregateRoot<Guid>, ITenantEntity, IAuditableEntity
         var zero = Money.Zero(Currency);
         return _items.Aggregate(zero, (total, item) => total + item.LineTotal);
     }
+
+    public Money CalculateDiscountAmount()
+    {
+        if (DiscountPercent is null or 0)
+            return Money.Zero(Currency);
+        return CalculateSubtotal() * (DiscountPercent.Value / 100m);
+    }
+
+    public Money CalculateTotal() => CalculateSubtotal() - CalculateDiscountAmount();
 
     // --- Helpers ---
 

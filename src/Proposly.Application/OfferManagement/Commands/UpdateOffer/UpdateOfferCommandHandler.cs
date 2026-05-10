@@ -14,7 +14,7 @@ public sealed class UpdateOfferCommandHandler : ICommandHandler<UpdateOfferComma
         var offer = await _repository.GetByIdAsync(command.OfferId, ct)
             ?? throw new InvalidOperationException($"Offer {command.OfferId} not found.");
 
-        offer.UpdateDetails(command.Title, command.Notes, command.ValidUntil);
+        offer.UpdateDetails(command.Title, command.Notes, command.ValidUntil, command.DiscountPercent);
 
         await _repository.UpdateAsync(offer, ct);
     }

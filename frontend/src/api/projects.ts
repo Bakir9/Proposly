@@ -14,6 +14,8 @@ export interface ProjectSummary {
   deadline: string | null
   createdAt: string
   memberCount: number
+  completedTasksCount: number
+  totalTasksCount: number
 }
 
 export interface ProjectMember {
@@ -72,6 +74,29 @@ export interface BurndownData {
   endDate: string
   actual: BurndownDataPoint[]
   ideal: BurndownDataPoint[]
+}
+
+export interface VelocityWeek {
+  weekLabel: string
+  weekStart: string
+  tasksCompleted: number
+  hoursCompleted: number
+}
+
+export interface VelocityData {
+  weeks: VelocityWeek[]
+  totalHoursCompleted: number
+  totalTasksCompleted: number
+}
+
+export interface MemberCapacity {
+  memberName: string
+  hoursLogged: number
+}
+
+export interface CapacityData {
+  members: MemberCapacity[]
+  totalHoursLogged: number
 }
 
 export interface Milestone {
@@ -190,6 +215,12 @@ export const deleteTaskComment = (projectId: string, taskId: string, commentId: 
 
 export const getBurndown = (projectId: string) =>
   api.get<BurndownData>(`/projects/${projectId}/burndown`).then(r => r.data)
+
+export const getVelocity = (projectId: string) =>
+  api.get<VelocityData>(`/projects/${projectId}/velocity`).then(r => r.data)
+
+export const getCapacity = (projectId: string) =>
+  api.get<CapacityData>(`/projects/${projectId}/capacity`).then(r => r.data)
 
 export const addTaskDependency = (projectId: string, taskId: string, blockingTaskId: string) =>
   api.post(`/projects/${projectId}/tasks/${taskId}/dependencies`, { blockingTaskId })

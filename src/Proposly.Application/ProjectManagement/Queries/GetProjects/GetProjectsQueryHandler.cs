@@ -1,5 +1,6 @@
 using Proposly.Application.Abstractions;
 using Proposly.Application.ProjectManagement.Responses;
+using Proposly.Domain.ProjectManagement.Enums;
 using Proposly.Domain.ProjectManagement.Repositories;
 
 namespace Proposly.Application.ProjectManagement.Queries.GetProjects;
@@ -24,6 +25,8 @@ public sealed class GetProjectsQueryHandler : IQueryHandler<GetProjectsQuery, IR
             p.StartDate,
             p.Deadline,
             p.CreatedAt,
-            p.Members.Count)).ToList();
+            p.Members.Count,
+            p.Tasks.Count(t => t.Status == ProjectTaskStatus.Done),
+            p.Tasks.Count)).ToList();
     }
 }

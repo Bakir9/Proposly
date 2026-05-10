@@ -15,16 +15,25 @@ public sealed class GetClientByIdQueryHandler : IQueryHandler<GetClientByIdQuery
         var client = await _repository.GetByIdAsync(query.ClientId, ct);
         if (client is null) return null;
 
+        var notes = client.Notes
+            .Select(n => new ClientNoteResponse(n.Id, n.Content, n.AuthorName, n.CreatedAt))
+            .ToList();
+
         return new ClientDetailResponse(
             client.Id,
             client.Name,
             client.ContactPerson,
             client.Email,
             client.Phone,
+            client.Website,
             client.Address?.Street,
             client.Address?.City,
             client.Address?.PostalCode,
             client.Address?.Country,
-            client.CreatedAt);
+            client.Currency,
+            client.VatNumber,
+            client.CreatedAt,
+            client.Status,
+            notes);
     }
 }

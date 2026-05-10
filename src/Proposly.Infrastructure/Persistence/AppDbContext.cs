@@ -19,6 +19,7 @@ public sealed class AppDbContext : DbContext
     public DbSet<Project> Projects => Set<Project>();
     public DbSet<Offer> Offers => Set<Offer>();
     public DbSet<Client> Clients => Set<Client>();
+    public DbSet<ClientNote> ClientNotes => Set<ClientNote>();
     public DbSet<Notification> Notifications => Set<Notification>();
 
     public AppDbContext(

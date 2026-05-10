@@ -9,4 +9,5 @@ public interface IClientRepository
     Task<IReadOnlyList<Client>> SearchAsync(string term, CancellationToken ct = default);
     Task AddAsync(Client client, CancellationToken ct = default);
     Task UpdateAsync(Client client, CancellationToken ct = default);
+    Task DeleteAsync(Client client, CancellationToken ct = default);
 }

@@ -32,30 +32,6 @@ public class ProjectTaskTests
         Assert.Throws<InvalidOperationException>(() => task.Start());
     }
 
-    // --- MoveToReview ---
-
-    [Fact]
-    public void MoveToReview_WhenInProgress_TransitionsToInReview()
-    {
-        var task = CreateTask();
-        task.Start();
-
-        task.MoveToReview(3m);
-
-        Assert.Equal(ProjectTaskStatus.InReview, task.Status);
-        Assert.Equal(3m, task.ActualHours);
-    }
-
-    [Fact]
-    public void MoveToReview_WhenAlreadyInReview_Throws()
-    {
-        var task = CreateTask();
-        task.Start();
-        task.MoveToReview(3m);
-
-        Assert.Throws<InvalidOperationException>(() => task.MoveToReview(3m));
-    }
-
     // --- Complete ---
 
     [Fact]
@@ -71,11 +47,24 @@ public class ProjectTaskTests
     }
 
     [Fact]
-    public void Complete_AfterReview_UsesExistingActualHours()
+    public void Complete_SetsCompletedAt()
     {
         var task = CreateTask();
         task.Start();
-        task.MoveToReview(3m);
+
+        task.Complete(5m);
+
+        Assert.NotNull(task.CompletedAt);
+    }
+
+    [Fact]
+    public void Complete_WithPreviousActualHours_UsesExisting()
+    {
+        var task = CreateTask();
+        task.Start();
+        task.Complete(3m);
+        task.Reopen();
+        task.Start();
 
         task.Complete();
 

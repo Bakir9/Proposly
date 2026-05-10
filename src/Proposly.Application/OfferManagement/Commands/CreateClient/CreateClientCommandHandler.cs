@@ -28,7 +28,11 @@ public sealed class CreateClientCommandHandler : ICommandHandler<CreateClientCom
             command.ContactPerson,
             command.Email,
             command.Phone,
-            address);
+            command.Website,
+            address,
+            command.Currency,
+            command.VatNumber,
+            command.Status);
 
         await _repository.AddAsync(client, ct);
         return client.Id;

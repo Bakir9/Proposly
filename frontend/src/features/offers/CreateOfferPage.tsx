@@ -18,19 +18,35 @@ interface LocalItem {
   unitPrice: string
 }
 
+interface ClientInfo {
+  name: string
+  contactPerson: string | null
+  email: string | null
+  phone: string | null
+  street: string | null
+  city: string | null
+  postalCode: string | null
+  country: string | null
+  vatNumber: string | null
+}
+
 interface OfferPreviewProps {
   title: string
-  clientName: string
+  client: ClientInfo | null
   currency: string
   validUntil: string
   notes: string
   items: LocalItem[]
+  discountPercent: string
 }
 
-function OfferPreview({ title, clientName, currency, validUntil, notes, items }: OfferPreviewProps) {
+function OfferPreview({ title, client, currency, validUntil, notes, items, discountPercent }: OfferPreviewProps) {
   const fmt = (n: number) => n.toLocaleString('de-AT', { style: 'currency', currency })
   const validItems = items.filter(i => i.description.trim())
-  const total = items.reduce((sum, i) => sum + (parseFloat(i.quantity) || 0) * (parseFloat(i.unitPrice) || 0), 0)
+  const subtotal = items.reduce((sum, i) => sum + (parseFloat(i.quantity) || 0) * (parseFloat(i.unitPrice) || 0), 0)
+  const discount = parseFloat(discountPercent) || 0
+  const discountAmount = subtotal * (discount / 100)
+  const total = subtotal - discountAmount
   const today = new Date().toLocaleDateString('de-AT')
 
   return (
@@ -57,9 +73,22 @@ function OfferPreview({ title, clientName, currency, validUntil, notes, items }:
         <div className="grid grid-cols-2 gap-6">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Prepared for</p>
-            <p className="font-semibold text-base text-gray-900">
-              {clientName || <span className="text-gray-300 font-normal italic">Select a client…</span>}
-            </p>
+            {client ? (
+              <div className="space-y-0.5">
+                <p className="font-semibold text-base text-gray-900">{client.name}</p>
+                {client.contactPerson && <p className="text-gray-600 text-xs">{client.contactPerson}</p>}
+                {client.street && <p className="text-gray-600 text-xs">{client.street}</p>}
+                {(client.postalCode || client.city) && (
+                  <p className="text-gray-600 text-xs">{[client.postalCode, client.city].filter(Boolean).join(' ')}</p>
+                )}
+                {client.country && <p className="text-gray-600 text-xs">{client.country}</p>}
+                {client.vatNumber && <p className="text-gray-500 text-xs mt-1">VAT: {client.vatNumber}</p>}
+                {client.email && <p className="text-gray-500 text-xs">{client.email}</p>}
+                {client.phone && <p className="text-gray-500 text-xs">{client.phone}</p>}
+              </div>
+            ) : (
+              <p className="text-gray-300 italic">Select a client…</p>
+            )}
           </div>
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Subject</p>
@@ -109,11 +138,30 @@ function OfferPreview({ title, clientName, currency, validUntil, notes, items }:
             </tbody>
           </table>
 
-          {/* Total */}
+          {/* Subtotal / Discount / Total */}
           <div className="flex justify-end mt-4 pt-3 border-t-2 border-gray-200">
-            <div className="text-right">
-              <p className="text-xs text-gray-500 uppercase tracking-wider mb-0.5">Total</p>
-              <p className="text-xl font-bold text-gray-900">{fmt(total)}</p>
+            <div className="text-right space-y-1 min-w-[160px]">
+              {discount > 0 ? (
+                <>
+                  <div className="flex justify-between gap-8 text-xs text-gray-500">
+                    <span>Subtotal</span>
+                    <span>{fmt(subtotal)}</span>
+                  </div>
+                  <div className="flex justify-between gap-8 text-xs text-green-600">
+                    <span>Discount ({discount}%)</span>
+                    <span>−{fmt(discountAmount)}</span>
+                  </div>
+                  <div className="flex justify-between gap-8 pt-1 border-t border-gray-200">
+                    <span className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Total</span>
+                    <span className="text-xl font-bold text-gray-900">{fmt(total)}</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-0.5">Total</p>
+                  <p className="text-xl font-bold text-gray-900">{fmt(subtotal)}</p>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -136,6 +184,7 @@ export function CreateOfferPage() {
   const [currency, setCurrency] = useState('EUR')
   const [validUntil, setValidUntil] = useState('')
   const [notes, setNotes] = useState('')
+  const [discountPercent, setDiscountPercent] = useState('')
   const [items, setItems] = useState<LocalItem[]>([{ description: '', quantity: '1', unitPrice: '' }])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
@@ -153,12 +202,14 @@ export function CreateOfferPage() {
     setError('')
     setSubmitting(true)
     try {
+      const discount = parseFloat(discountPercent)
       const offerId = await createOffer({
         clientId,
         title: title.trim(),
         notes: notes.trim() || undefined,
         currency,
         validUntil: validUntil || undefined,
+        discountPercent: !isNaN(discount) && discount > 0 ? discount : undefined,
       })
       const validItems = items.filter(i => i.description.trim() && !isNaN(parseFloat(i.unitPrice)))
       for (const item of validItems) {
@@ -175,7 +226,13 @@ export function CreateOfferPage() {
     }
   }
 
-  const selectedClient = clients?.find(c => c.id === clientId)
+  const selectedClient = clients?.find(c => c.id === clientId) ?? null
+
+  const handleClientChange = (id: string) => {
+    setClientId(id)
+    const c = clients?.find(cl => cl.id === id)
+    if (c?.currency) setCurrency(c.currency)
+  }
 
   return (
     <div className="p-6">
@@ -197,7 +254,7 @@ export function CreateOfferPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <Label htmlFor="client">Client</Label>
-                  <Select id="client" value={clientId} onChange={e => setClientId(e.target.value)}>
+                  <Select id="client" value={clientId} onChange={e => handleClientChange(e.target.value)}>
                     <option value="">Select a client…</option>
                     {clients?.map(c => (
                       <option key={c.id} value={c.id}>{c.name}</option>
@@ -269,6 +326,22 @@ export function CreateOfferPage() {
                   )}
                 </div>
               ))}
+
+              {/* Discount row */}
+              <div className="flex items-center justify-end gap-3 pt-3 border-t mt-1">
+                <Label htmlFor="discount" className="text-sm shrink-0">Discount (%)</Label>
+                <Input
+                  id="discount"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  value={discountPercent}
+                  onChange={e => setDiscountPercent(e.target.value)}
+                  placeholder="0"
+                  className="w-28 text-right"
+                />
+              </div>
             </CardContent>
           </Card>
 
@@ -285,11 +358,12 @@ export function CreateOfferPage() {
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Live Preview</p>
           <OfferPreview
             title={title}
-            clientName={selectedClient?.name ?? ''}
+            client={selectedClient}
             currency={currency}
             validUntil={validUntil}
             notes={notes}
             items={items}
+            discountPercent={discountPercent}
           />
         </div>
       </div>

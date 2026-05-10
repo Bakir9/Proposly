@@ -8,6 +8,7 @@ import {
   acceptOffer,
   rejectOffer,
   expireOffer,
+  extendOffer,
   deleteOffer,
   addOfferItem,
   removeOfferItem,
@@ -23,7 +24,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog } from '@/components/ui/dialog'
-import { ArrowLeft, Pencil, Trash2, Send, CheckCircle, XCircle, Clock, Download, Mail, Plus } from 'lucide-react'
+import { ArrowLeft, Pencil, Trash2, Send, CheckCircle, XCircle, Clock, Download, Mail, Plus, CalendarClock } from 'lucide-react'
 
 const statusVariant: Record<string, 'default' | 'secondary' | 'success' | 'destructive' | 'warning' | 'outline'> = {
   Draft: 'secondary',
@@ -47,6 +48,7 @@ export function OfferDetailPage() {
   const [editTitle, setEditTitle] = useState('')
   const [editNotes, setEditNotes] = useState('')
   const [editValidUntil, setEditValidUntil] = useState('')
+  const [editDiscountPercent, setEditDiscountPercent] = useState('')
   const [editMode, setEditMode] = useState(false)
 
   const [addItemOpen, setAddItemOpen] = useState(false)
@@ -58,6 +60,9 @@ export function OfferDetailPage() {
     queryClient.invalidateQueries({ queryKey: ['offer', id] })
     queryClient.invalidateQueries({ queryKey: ['offers'] })
   }
+
+  const [extendOpen, setExtendOpen] = useState(false)
+  const [extendDate, setExtendDate] = useState('')
 
   const [emailSent, setEmailSent] = useState(false)
   const [statusError, setStatusError] = useState<string | null>(null)
@@ -77,6 +82,11 @@ export function OfferDetailPage() {
   const mutAccept = useMutation({ mutationFn: () => acceptOffer(id!), onSuccess: () => { clearStatusError(); invalidate() }, onError: onStatusError })
   const mutReject = useMutation({ mutationFn: () => rejectOffer(id!), onSuccess: () => { clearStatusError(); invalidate() }, onError: onStatusError })
   const mutExpire = useMutation({ mutationFn: () => expireOffer(id!), onSuccess: () => { clearStatusError(); invalidate() }, onError: onStatusError })
+  const mutExtend = useMutation({
+    mutationFn: () => extendOffer(id!, extendDate),
+    onSuccess: () => { clearStatusError(); invalidate(); setExtendOpen(false); setExtendDate('') },
+    onError: onStatusError,
+  })
   const mutSendEmail = useMutation({
     mutationFn: () => sendOfferEmail(id!),
     onSuccess: () => setEmailSent(true),
@@ -91,7 +101,15 @@ export function OfferDetailPage() {
   })
 
   const mutUpdate = useMutation({
-    mutationFn: () => updateOffer(id!, { title: editTitle, notes: editNotes || undefined, validUntil: editValidUntil || undefined }),
+    mutationFn: () => {
+      const d = parseFloat(editDiscountPercent)
+      return updateOffer(id!, {
+        title: editTitle,
+        notes: editNotes || undefined,
+        validUntil: editValidUntil || undefined,
+        discountPercent: !isNaN(d) && d > 0 ? d : null,
+      })
+    },
     onSuccess: () => { invalidate(); setEditMode(false) },
   })
 
@@ -116,6 +134,7 @@ export function OfferDetailPage() {
 
   const isDraft = offer.status === 'Draft'
   const isSent = offer.status === 'Sent'
+  const isExpired = offer.status === 'Expired'
   const isAdmin = user?.role === 'Admin'
   const canDelete = isAdmin || offer.status === 'Draft' || offer.status === 'Expired'
 
@@ -123,6 +142,7 @@ export function OfferDetailPage() {
     setEditTitle(offer.title)
     setEditNotes(offer.notes ?? '')
     setEditValidUntil(offer.validUntil ? offer.validUntil.slice(0, 10) : '')
+    setEditDiscountPercent(offer.discountPercent != null ? String(offer.discountPercent) : '')
     setEditMode(true)
   }
 
@@ -133,7 +153,7 @@ export function OfferDetailPage() {
     mutAddItem.mutate({ description: newDesc.trim(), quantity: qty, unitPrice: price })
   }
 
-  const total = offer.items.reduce((sum, item) => sum + item.lineTotal, 0)
+  const fmt = (n: number) => n.toLocaleString('de-AT', { style: 'currency', currency: offer.currency })
 
   return (
     <div className="p-6 space-y-4">
@@ -195,9 +215,17 @@ export function OfferDetailPage() {
                 <Button variant="outline" onClick={() => mutExpire.mutate()} disabled={mutExpire.isPending}>
                   <Clock className="h-3.5 w-3.5 mr-1" />{mutExpire.isPending ? 'Expiring…' : 'Expire'}
                 </Button>
+                <Button variant="outline" onClick={() => { setExtendDate(offer.validUntil ? offer.validUntil.slice(0, 10) : ''); setExtendOpen(true) }}>
+                  <CalendarClock className="h-3.5 w-3.5 mr-1" /> Extend
+                </Button>
               </>
             )}
-            {!isDraft && !isSent && (
+            {isExpired && (
+              <Button variant="outline" onClick={() => { setExtendDate(''); setExtendOpen(true) }}>
+                <CalendarClock className="h-3.5 w-3.5 mr-1" /> Reactivate &amp; Extend
+              </Button>
+            )}
+            {!isDraft && !isSent && !isExpired && (
               <span className="text-sm text-muted-foreground">No transitions available for this status.</span>
             )}
           </div>
@@ -265,9 +293,26 @@ export function OfferDetailPage() {
             </table>
           )}
           <div className="flex justify-end mt-4 pt-3 border-t">
-            <p className="text-base font-semibold">
-              Total: {total.toLocaleString('de-AT', { style: 'currency', currency: offer.currency })}
-            </p>
+            <div className="text-right space-y-1 min-w-[200px]">
+              {offer.discountPercent != null && offer.discountPercent > 0 ? (
+                <>
+                  <div className="flex justify-between gap-8 text-sm text-muted-foreground">
+                    <span>Subtotal</span>
+                    <span>{fmt(offer.subtotal)}</span>
+                  </div>
+                  <div className="flex justify-between gap-8 text-sm text-green-600">
+                    <span>Discount ({offer.discountPercent}%)</span>
+                    <span>−{fmt(offer.discountAmount)}</span>
+                  </div>
+                  <div className="flex justify-between gap-8 pt-1 border-t">
+                    <span className="text-base font-semibold">Total</span>
+                    <span className="text-base font-semibold">{fmt(offer.total)}</span>
+                  </div>
+                </>
+              ) : (
+                <p className="text-base font-semibold">Total: {fmt(offer.total)}</p>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -286,10 +331,52 @@ export function OfferDetailPage() {
             <Label htmlFor="edit-valid">Valid Until</Label>
             <Input id="edit-valid" type="date" value={editValidUntil} onChange={e => setEditValidUntil(e.target.value)} />
           </div>
+          <div className="space-y-1">
+            <Label htmlFor="edit-discount">Discount (%)</Label>
+            <Input
+              id="edit-discount"
+              type="number"
+              min="0"
+              max="100"
+              step="0.01"
+              value={editDiscountPercent}
+              onChange={e => setEditDiscountPercent(e.target.value)}
+              placeholder="0"
+            />
+          </div>
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setEditMode(false)}>Cancel</Button>
             <Button onClick={() => mutUpdate.mutate()} disabled={mutUpdate.isPending}>
               {mutUpdate.isPending ? 'Saving…' : 'Save'}
+            </Button>
+          </div>
+        </div>
+      </Dialog>
+
+      <Dialog open={extendOpen} onClose={() => setExtendOpen(false)} title={isExpired ? 'Reactivate & Extend Offer' : 'Extend Offer Validity'}>
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            {isExpired
+              ? 'Set a new future validity date to reactivate this offer. Its status will return to Sent.'
+              : 'Push the validity deadline further out. The offer stays in Sent status.'}
+          </p>
+          <div className="space-y-1">
+            <Label htmlFor="extend-date">New Valid Until</Label>
+            <Input
+              id="extend-date"
+              type="date"
+              value={extendDate}
+              min={new Date(Date.now() + 86400000).toISOString().slice(0, 10)}
+              onChange={e => setExtendDate(e.target.value)}
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setExtendOpen(false)}>Cancel</Button>
+            <Button
+              onClick={() => mutExtend.mutate()}
+              disabled={mutExtend.isPending || !extendDate}
+            >
+              {mutExtend.isPending ? 'Saving…' : isExpired ? 'Reactivate' : 'Extend'}
             </Button>
           </div>
         </div>

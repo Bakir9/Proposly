@@ -10,5 +10,6 @@ public sealed class CreateOfferCommandValidator : AbstractValidator<CreateOfferC
         RuleFor(x => x.Title).NotEmpty().MaximumLength(300);
         RuleFor(x => x.Notes).MaximumLength(2000).When(x => x.Notes is not null);
         RuleFor(x => x.Currency).NotEmpty().Length(3);
+        RuleFor(x => x.DiscountPercent).InclusiveBetween(0, 100).When(x => x.DiscountPercent.HasValue);
     }
 }

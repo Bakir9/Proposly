@@ -34,7 +34,7 @@ namespace Proposly.Infrastructure.Migrations
 
                     b.HasIndex("BlockingTaskId");
 
-                    b.ToTable("ProjectTaskDependencies", (string)null);
+                    b.ToTable("ProjectTaskDependencies");
                 });
 
             modelBuilder.Entity("Proposly.Domain.CompanyManagement.Entities.Company", b =>
@@ -168,7 +168,7 @@ namespace Proposly.Infrastructure.Migrations
 
                     b.HasIndex("UserId", "IsRead");
 
-                    b.ToTable("Notifications", (string)null);
+                    b.ToTable("Notifications");
                 });
 
             modelBuilder.Entity("Proposly.Domain.OfferManagement.Entities.Client", b =>
@@ -186,6 +186,10 @@ namespace Proposly.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("Currency")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
                     b.Property<string>("Email")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
@@ -199,14 +203,57 @@ namespace Proposly.Infrastructure.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("VatNumber")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("Website")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
 
                     b.HasKey("Id");
 
                     b.HasIndex("CompanyId");
 
                     b.ToTable("Clients", (string)null);
+                });
+
+            modelBuilder.Entity("Proposly.Domain.OfferManagement.Entities.ClientNote", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AuthorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AuthorName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("ClientId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClientId");
+
+                    b.ToTable("ClientNotes", (string)null);
                 });
 
             modelBuilder.Entity("Proposly.Domain.OfferManagement.Entities.Offer", b =>
@@ -227,6 +274,9 @@ namespace Proposly.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(3)
                         .HasColumnType("character varying(3)");
+
+                    b.Property<decimal?>("DiscountPercent")
+                        .HasColumnType("numeric(5,2)");
 
                     b.Property<string>("Notes")
                         .HasMaxLength(4000)
@@ -614,13 +664,22 @@ namespace Proposly.Infrastructure.Migrations
 
                             b1.HasKey("ClientId");
 
-                            b1.ToTable("Clients", (string)null);
+                            b1.ToTable("Clients");
 
                             b1.WithOwner()
                                 .HasForeignKey("ClientId");
                         });
 
                     b.Navigation("Address");
+                });
+
+            modelBuilder.Entity("Proposly.Domain.OfferManagement.Entities.ClientNote", b =>
+                {
+                    b.HasOne("Proposly.Domain.OfferManagement.Entities.Client", null)
+                        .WithMany("Notes")
+                        .HasForeignKey("ClientId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Proposly.Domain.OfferManagement.Entities.OfferItem", b =>
@@ -648,7 +707,7 @@ namespace Proposly.Infrastructure.Migrations
 
                             b1.HasKey("OfferItemId");
 
-                            b1.ToTable("OfferItems", (string)null);
+                            b1.ToTable("OfferItems");
 
                             b1.WithOwner()
                                 .HasForeignKey("OfferItemId");
@@ -683,7 +742,7 @@ namespace Proposly.Infrastructure.Migrations
 
                             b1.HasKey("ExpenseId");
 
-                            b1.ToTable("Expenses", (string)null);
+                            b1.ToTable("Expenses");
 
                             b1.WithOwner()
                                 .HasForeignKey("ExpenseId");
@@ -721,7 +780,7 @@ namespace Proposly.Infrastructure.Migrations
 
                             b1.HasKey("ProjectId");
 
-                            b1.ToTable("Projects", (string)null);
+                            b1.ToTable("Projects");
 
                             b1.WithOwner()
                                 .HasForeignKey("ProjectId");
@@ -744,7 +803,7 @@ namespace Proposly.Infrastructure.Migrations
 
                             b1.HasKey("ProjectId");
 
-                            b1.ToTable("Projects", (string)null);
+                            b1.ToTable("Projects");
 
                             b1.WithOwner()
                                 .HasForeignKey("ProjectId");
@@ -781,7 +840,7 @@ namespace Proposly.Infrastructure.Migrations
 
                             b1.HasKey("ProjectMemberId");
 
-                            b1.ToTable("ProjectMembers", (string)null);
+                            b1.ToTable("ProjectMembers");
 
                             b1.WithOwner()
                                 .HasForeignKey("ProjectMemberId");
@@ -843,7 +902,7 @@ namespace Proposly.Infrastructure.Migrations
 
                             b1.HasKey("TimeEntryId");
 
-                            b1.ToTable("TimeEntries", (string)null);
+                            b1.ToTable("TimeEntries");
 
                             b1.WithOwner()
                                 .HasForeignKey("TimeEntryId");
@@ -851,6 +910,11 @@ namespace Proposly.Infrastructure.Migrations
 
                     b.Navigation("HourlyRateSnapshot")
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Proposly.Domain.OfferManagement.Entities.Client", b =>
+                {
+                    b.Navigation("Notes");
                 });
 
             modelBuilder.Entity("Proposly.Domain.OfferManagement.Entities.Offer", b =>

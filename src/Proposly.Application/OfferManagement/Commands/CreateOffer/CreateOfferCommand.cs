@@ -7,4 +7,5 @@ public record CreateOfferCommand(
     string Title,
     string? Notes,
     string Currency,
-    DateOnly? ValidUntil) : ICommand<Guid>;
+    DateOnly? ValidUntil,
+    decimal? DiscountPercent = null) : ICommand<Guid>;

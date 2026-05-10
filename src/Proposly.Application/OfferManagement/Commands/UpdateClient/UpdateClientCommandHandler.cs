@@ -19,7 +19,7 @@ public sealed class UpdateClientCommandHandler : ICommandHandler<UpdateClientCom
         if (command.Street is not null || command.City is not null || command.PostalCode is not null || command.Country is not null)
             address = new Address(command.Street, command.City, command.PostalCode, command.Country);
 
-        client.Update(command.Name, command.ContactPerson, command.Email, command.Phone, address);
+        client.Update(command.Name, command.ContactPerson, command.Email, command.Phone, command.Website, address, command.Currency, command.VatNumber, command.Status);
 
         await _repository.UpdateAsync(client, ct);
     }

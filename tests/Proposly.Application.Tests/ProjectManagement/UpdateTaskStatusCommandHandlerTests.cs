@@ -37,30 +37,17 @@ public sealed class UpdateTaskStatusCommandHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_InReview_SetsActualHours()
-    {
-        var project = MakeProject();
-        var task = project.AddTask("T", null, null, null, null);
-        _repo.GetByIdAsync(project.Id).Returns(project);
-
-        await _sut.HandleAsync(new UpdateTaskStatusCommand(project.Id, task.Id, "InReview", 3m));
-
-        Assert.Equal(ProjectTaskStatus.InReview, task.Status);
-        Assert.Equal(3m, task.ActualHours);
-    }
-
-    [Fact]
     public async Task HandleAsync_Done_SetsActualHours()
     {
         var project = MakeProject();
         var task = project.AddTask("T", null, null, null, null);
         task.Start();
-        task.MoveToReview(3m);
         _repo.GetByIdAsync(project.Id).Returns(project);
 
-        await _sut.HandleAsync(new UpdateTaskStatusCommand(project.Id, task.Id, "Done", null));
+        await _sut.HandleAsync(new UpdateTaskStatusCommand(project.Id, task.Id, "Done", 5m));
 
         Assert.Equal(ProjectTaskStatus.Done, task.Status);
+        Assert.Equal(5m, task.ActualHours);
     }
 
     [Fact]

@@ -38,7 +38,11 @@ public sealed class SendOfferEmailCommandHandler : ICommandHandler<SendOfferEmai
         var offerDetail = new OfferDetailResponse(
             offer.Id, offer.ClientId, client.Name,
             offer.Title, offer.Notes, offer.Status,
-            offer.CalculateSubtotal().Amount, offer.Currency,
+            offer.CalculateSubtotal().Amount,
+            offer.DiscountPercent,
+            offer.CalculateDiscountAmount().Amount,
+            offer.CalculateTotal().Amount,
+            offer.Currency,
             offer.ValidUntil, offer.SentAt, offer.CreatedAt,
             offer.Items.Select(i => new OfferItemResponse(
                 i.Id, i.Description, i.Quantity,
@@ -51,7 +55,7 @@ public sealed class SendOfferEmailCommandHandler : ICommandHandler<SendOfferEmai
         var body = $"""
             <p>Dear {client.ContactPerson ?? client.Name},</p>
             <p>Please find attached our offer <strong>{offer.Title}</strong>.</p>
-            <p>Total: <strong>{offer.CalculateSubtotal().Amount:N2} {offer.Currency}</strong></p>
+            <p>Total: <strong>{offer.CalculateTotal().Amount:N2} {offer.Currency}</strong></p>
             {(offer.ValidUntil.HasValue ? $"<p>This offer is valid until <strong>{offer.ValidUntil:dd MMM yyyy}</strong>.</p>" : "")}
             {(!string.IsNullOrWhiteSpace(offer.Notes) ? $"<p>{offer.Notes}</p>" : "")}
             <p>Please don't hesitate to reach out if you have any questions.</p>
