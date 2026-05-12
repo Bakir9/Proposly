@@ -1,4 +1,5 @@
 using Proposly.Application.Abstractions;
+using Proposly.Domain.OfferManagement.Repositories;
 using Proposly.Domain.ProjectManagement.Repositories;
 using Proposly.Shared.ValueObjects;
 
@@ -7,8 +8,15 @@ namespace Proposly.Application.ProjectManagement.Commands.UpdateProject;
 public sealed class UpdateProjectCommandHandler : ICommandHandler<UpdateProjectCommand>
 {
     private readonly IProjectRepository _repository;
+    private readonly IClientRepository _clients;
+    private readonly ICurrentUserService _currentUser;
 
-    public UpdateProjectCommandHandler(IProjectRepository repository) => _repository = repository;
+    public UpdateProjectCommandHandler(IProjectRepository repository, IClientRepository clients, ICurrentUserService currentUser)
+    {
+        _repository = repository;
+        _clients = clients;
+        _currentUser = currentUser;
+    }
 
     public async Task HandleAsync(UpdateProjectCommand command, CancellationToken cancellationToken = default)
     {
@@ -32,6 +40,17 @@ public sealed class UpdateProjectCommandHandler : ICommandHandler<UpdateProjectC
                     project.Cancel();
                     break;
             }
+        }
+
+        if (command.ClientId.HasValue)
+        {
+            var client = await _clients.GetByIdAsync(command.ClientId.Value, cancellationToken)
+                ?? throw new InvalidOperationException($"Client {command.ClientId} not found.");
+
+            if (client.CompanyId != _currentUser.CompanyId)
+                throw new UnauthorizedAccessException("Client does not belong to your company.");
+
+            project.UpdateClient(client.Id, client.Name);
         }
 
         var budget = command.BudgetAmount is not null && command.BudgetCurrency is not null

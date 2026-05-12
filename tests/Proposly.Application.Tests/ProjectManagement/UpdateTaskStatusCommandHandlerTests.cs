@@ -19,7 +19,7 @@ public sealed class UpdateTaskStatusCommandHandlerTests
 
     private static Project MakeProject()
     {
-        return Project.Create(Guid.NewGuid(), "P", null, "Client", Money.Zero("EUR"),
+        return Project.Create(Guid.NewGuid(), "P", null, Guid.NewGuid(), "Client", Money.Zero("EUR"),
             DateOnly.FromDateTime(DateTime.UtcNow), null);
     }
 

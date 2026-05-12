@@ -3,7 +3,7 @@ using Proposly.Domain.ProjectManagement.Enums;
 namespace Proposly.Application.ProjectManagement.Responses;
 
 public record ProjectDetailResponse(
-    Guid Id, string Name, string? Description, string ClientName, ProjectStatus Status,
+    Guid Id, string Name, string? Description, Guid? ClientId, string ClientName, ProjectStatus Status,
     decimal BudgetAmount, string Currency, DateOnly StartDate, DateOnly? Deadline,
     Guid? LinkedOfferId, decimal? OfferedAmount,
     ProfitabilityResponse Profitability,

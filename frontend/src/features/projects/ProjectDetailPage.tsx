@@ -25,6 +25,7 @@ import {
 } from 'recharts'
 import type { ProjectTask } from '@/api/projects'
 import { getActiveUsers } from '@/api/users'
+import { getClients } from '@/api/clients'
 import { useAuth } from '@/features/auth/AuthContext'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -174,6 +175,8 @@ export function ProjectDetailPage() {
   })
 
   const { data: users } = useQuery({ queryKey: ['users', 'active'], queryFn: getActiveUsers })
+  const { data: clients } = useQuery({ queryKey: ['clients'], queryFn: getClients })
+  const activeClients = (clients ?? []).filter(c => c.status === 'Active')
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['project', id] })
 
@@ -266,6 +269,7 @@ export function ProjectDetailPage() {
   const [editStatus, setEditStatus] = useState('')
   const [editBudget, setEditBudget] = useState('')
   const [editCurrency, setEditCurrency] = useState('EUR')
+  const [editClientId, setEditClientId] = useState('')
 
   // Milestone dialog
   const [milestoneOpen, setMilestoneOpen] = useState(false)
@@ -465,6 +469,7 @@ export function ProjectDetailPage() {
       status: editStatus || undefined,
       budgetAmount: editBudget ? parseFloat(editBudget) : undefined,
       budgetCurrency: editBudget ? editCurrency : undefined,
+      clientId: editClientId || undefined,
     }),
     onSuccess: () => { invalidate(); setEditOpen(false) },
   })
@@ -668,6 +673,7 @@ export function ProjectDetailPage() {
           setEditStatus(p.status)
           setEditBudget(p.budgetAmount.toString())
           setEditCurrency(p.currency)
+          setEditClientId(p.clientId ?? '')
           setEditOpen(true)
         }}><Pencil className="h-3.5 w-3.5 mr-1" />Edit Project</Button>
       </div>
@@ -2308,6 +2314,15 @@ export function ProjectDetailPage() {
           <div className="space-y-1">
             <Label>Name</Label>
             <Input value={editName} onChange={e => setEditName(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <Label>Client</Label>
+            <Select value={editClientId} onChange={e => setEditClientId(e.target.value)}>
+              <option value="">— no change —</option>
+              {activeClients.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </Select>
           </div>
           <div className="space-y-1">
             <Label>Description (optional)</Label>

@@ -22,7 +22,7 @@ public sealed class GetProjectByIdQueryHandler : IQueryHandler<GetProjectByIdQue
         var profit = project.CalculateProfitability();
 
         return new ProjectDetailResponse(
-            project.Id, project.Name, project.Description, project.ClientName, project.Status,
+            project.Id, project.Name, project.Description, project.ClientId, project.ClientName, project.Status,
             project.Budget.Amount, project.Budget.Currency,
             project.StartDate, project.Deadline,
             project.LinkedOfferId, project.OfferedAmount?.Amount,

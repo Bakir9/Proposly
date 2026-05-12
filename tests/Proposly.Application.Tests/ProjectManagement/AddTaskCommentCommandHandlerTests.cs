@@ -27,7 +27,7 @@ public sealed class AddTaskCommentCommandHandlerTests
 
     private Project MakeProject()
     {
-        return Project.Create(_companyId, "P", null, "Client", Money.Zero("EUR"),
+        return Project.Create(_companyId, "P", null, Guid.NewGuid(), "Client", Money.Zero("EUR"),
             DateOnly.FromDateTime(DateTime.UtcNow), null);
     }
 

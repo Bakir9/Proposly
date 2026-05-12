@@ -11,7 +11,7 @@ public class ProjectTests
     private static readonly DateOnly Deadline = new DateOnly(2025, 12, 31);
 
     private static Project CreateProject() =>
-        Project.Create(CompanyId, "Test Project", "Description", "ACME Corp",
+        Project.Create(CompanyId, "Test Project", "Description", Guid.NewGuid(), "ACME Corp",
             new Money(50_000m, "EUR"), StartDate, Deadline);
 
     // --- AddMember ---

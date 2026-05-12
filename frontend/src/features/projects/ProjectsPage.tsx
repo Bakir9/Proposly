@@ -103,7 +103,7 @@ export function ProjectsPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
-  const [clientName, setClientName] = useState('')
+  const [clientId, setClientId] = useState('')
   const [budgetAmount, setBudgetAmount] = useState('')
   const [currency, setCurrency] = useState('EUR')
   const [startDate, setStartDate] = useState('')
@@ -113,7 +113,7 @@ export function ProjectsPage() {
     mutationFn: () => createProject({
       name,
       description: description || undefined,
-      clientName,
+      clientId,
       budgetAmount: parseFloat(budgetAmount),
       currency,
       startDate,
@@ -124,7 +124,7 @@ export function ProjectsPage() {
       setDialogOpen(false)
       setName('')
       setDescription('')
-      setClientName('')
+      setClientId('')
       setBudgetAmount('')
       setCurrency('EUR')
       setStartDate('')
@@ -382,10 +382,10 @@ export function ProjectsPage() {
           </div>
           <div className="space-y-1">
             <Label>Client</Label>
-            <Select value={clientName} onChange={e => setClientName(e.target.value)}>
+            <Select value={clientId} onChange={e => setClientId(e.target.value)}>
               <option value="">Select a client…</option>
               {activeClients.map(c => (
-                <option key={c.id} value={c.name}>{c.name}</option>
+                <option key={c.id} value={c.id}>{c.name}</option>
               ))}
             </Select>
           </div>
@@ -422,7 +422,7 @@ export function ProjectsPage() {
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
             <Button
               onClick={() => mutCreate.mutate()}
-              disabled={mutCreate.isPending || !name.trim() || !clientName.trim() || !budgetAmount || !startDate}
+              disabled={mutCreate.isPending || !name.trim() || !clientId || !budgetAmount || !startDate}
             >
               {mutCreate.isPending ? 'Creating…' : 'Create Project'}
             </Button>

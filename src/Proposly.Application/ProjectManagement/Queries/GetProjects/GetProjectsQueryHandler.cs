@@ -18,6 +18,7 @@ public sealed class GetProjectsQueryHandler : IQueryHandler<GetProjectsQuery, IR
         return projects.Select(p => new ProjectSummaryResponse(
             p.Id,
             p.Name,
+            p.ClientId,
             p.ClientName,
             p.Status,
             p.Budget.Amount,

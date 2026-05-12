@@ -71,7 +71,7 @@ public sealed class ProjectsController : ControllerBase
         [FromServices] ICommandHandler<UpdateProjectCommand> handler,
         CancellationToken ct)
     {
-        await handler.HandleAsync(new UpdateProjectCommand(id, body.Name, body.Description, body.Deadline, body.Status, body.BudgetAmount, body.BudgetCurrency), ct);
+        await handler.HandleAsync(new UpdateProjectCommand(id, body.Name, body.Description, body.Deadline, body.Status, body.BudgetAmount, body.BudgetCurrency, body.ClientId), ct);
         return NoContent();
     }
 
@@ -295,7 +295,7 @@ public sealed class ProjectsController : ControllerBase
     }
 }
 
-public record UpdateProjectBody(string Name, string? Description, DateOnly? Deadline, string? Status, decimal? BudgetAmount, string? BudgetCurrency);
+public record UpdateProjectBody(string Name, string? Description, DateOnly? Deadline, string? Status, decimal? BudgetAmount, string? BudgetCurrency, Guid? ClientId = null);
 public record AddMemberBody(Guid UserId, string Name, string Role, decimal HourlyRate, string Currency);
 public record LogTimeBody(Guid MemberId, decimal HoursWorked, string? Description, DateOnly Date);
 public record AddExpenseBody(string Description, decimal Amount, string Currency, string Category, DateOnly Date);

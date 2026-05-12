@@ -6,6 +6,7 @@ export type TaskStatus = 'Todo' | 'InProgress' | 'Done'
 export interface ProjectSummary {
   id: string
   name: string
+  clientId: string | null
   clientName: string
   status: ProjectStatus
   budgetAmount: number
@@ -152,7 +153,7 @@ export interface ProjectDetail extends ProjectSummary {
 export interface CreateProjectRequest {
   name: string
   description?: string
-  clientName: string
+  clientId: string
   budgetAmount: number
   currency: string
   startDate: string
@@ -166,6 +167,7 @@ export interface UpdateProjectRequest {
   status?: string
   budgetAmount?: number
   budgetCurrency?: string
+  clientId?: string
 }
 
 export const getProjects = () =>

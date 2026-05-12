@@ -22,6 +22,7 @@ public sealed class Project : AggregateRoot<Guid>, ITenantEntity, IAuditableEnti
         Guid companyId,
         string name,
         string? description,
+        Guid clientId,
         string clientName,
         Money budget,
         DateOnly startDate,
@@ -31,6 +32,7 @@ public sealed class Project : AggregateRoot<Guid>, ITenantEntity, IAuditableEnti
         CompanyId = companyId;
         Name = name;
         Description = description;
+        ClientId = clientId;
         ClientName = clientName;
         Budget = budget;
         StartDate = startDate;
@@ -44,12 +46,13 @@ public sealed class Project : AggregateRoot<Guid>, ITenantEntity, IAuditableEnti
         Guid companyId,
         string name,
         string? description,
+        Guid clientId,
         string clientName,
         Money budget,
         DateOnly startDate,
         DateOnly? deadline)
     {
-        var project = new Project(Guid.NewGuid(), companyId, name, description, clientName, budget, startDate, deadline);
+        var project = new Project(Guid.NewGuid(), companyId, name, description, clientId, clientName, budget, startDate, deadline);
         project.RaiseDomainEvent(new ProjectCreatedDomainEvent(project.Id, companyId));
         return project;
     }
@@ -57,6 +60,7 @@ public sealed class Project : AggregateRoot<Guid>, ITenantEntity, IAuditableEnti
     public Guid CompanyId { get; private set; }
     public string Name { get; private set; } = string.Empty;
     public string? Description { get; private set; }
+    public Guid? ClientId { get; private set; }
     public string ClientName { get; private set; } = string.Empty;
     public Guid? LinkedOfferId { get; private set; }
     public Money? OfferedAmount { get; private set; }
@@ -119,6 +123,13 @@ public sealed class Project : AggregateRoot<Guid>, ITenantEntity, IAuditableEnti
         Deadline = deadline;
         if (budget is not null)
             Budget = budget;
+        Touch();
+    }
+
+    public void UpdateClient(Guid clientId, string clientNameSnapshot)
+    {
+        ClientId = clientId;
+        ClientName = clientNameSnapshot;
         Touch();
     }
 

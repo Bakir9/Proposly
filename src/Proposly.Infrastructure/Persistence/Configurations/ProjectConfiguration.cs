@@ -13,6 +13,7 @@ public sealed class ProjectConfiguration : IEntityTypeConfiguration<Project>
         builder.Property(p => p.Id).ValueGeneratedNever();
 
         builder.Property(p => p.Name).HasMaxLength(200).IsRequired();
+        builder.Property(p => p.ClientId);
         builder.Property(p => p.ClientName).HasMaxLength(200).IsRequired();
         builder.Property(p => p.Description).HasMaxLength(2000);
         builder.Property(p => p.Status).HasConversion<string>().HasMaxLength(20);
