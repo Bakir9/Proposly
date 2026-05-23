@@ -14,6 +14,13 @@ public sealed class CompanyConfiguration : IEntityTypeConfiguration<Company>
 
         builder.Property(c => c.Name).HasMaxLength(200).IsRequired();
         builder.Property(c => c.Status).HasConversion<string>().HasMaxLength(20);
+        builder.Property(c => c.FiscalYearStartMonth).HasDefaultValue(1);
+
+        // VAT settings
+        builder.Property(c => c.CompanyCountry).HasMaxLength(2);
+        builder.Property(c => c.CompanyVatNumber).HasMaxLength(50);
+        builder.Property(c => c.DefaultVatRate).HasColumnType("numeric(5,2)").HasDefaultValue(0m);
+        builder.Property(c => c.VatExemptReason).HasMaxLength(500);
 
         builder.HasIndex(c => c.Name).IsUnique();
     }

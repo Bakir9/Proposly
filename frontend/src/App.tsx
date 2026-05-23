@@ -22,6 +22,8 @@ import { ClientDetailPage } from './features/clients/ClientDetailPage'
 import { SettingsPage } from './features/settings/SettingsPage'
 import { ProfilePage } from './features/profile/ProfilePage'
 import { NotificationsPage } from './features/notifications/NotificationsPage'
+import { QuarterlyFinancialReportPage } from './features/reports/QuarterlyFinancialReportPage'
+import { CalendarPage } from './features/calendar/CalendarPage'
 
 export default function App() {
   const { theme } = useTheme()
@@ -47,6 +49,8 @@ export default function App() {
         <Route path="/clients/:id" element={<ClientDetailPage />} />
         <Route path="/users" element={<UsersPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
+        <Route path="/reports" element={<QuarterlyFinancialReportPage />} />
+        <Route path="/calendar" element={<CalendarPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/profile" element={<ProfilePage />} />
       </Route>

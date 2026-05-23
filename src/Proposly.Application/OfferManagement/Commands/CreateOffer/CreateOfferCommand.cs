@@ -8,4 +8,5 @@ public record CreateOfferCommand(
     string? Notes,
     string Currency,
     DateOnly? ValidUntil,
-    decimal? DiscountPercent = null) : ICommand<Guid>;
+    decimal? DiscountPercent = null,
+    decimal? VatRateOverride = null) : ICommand<Guid>;

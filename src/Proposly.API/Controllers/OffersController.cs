@@ -16,6 +16,7 @@ using Proposly.Application.OfferManagement.Commands.UpdateOffer;
 using Proposly.Application.OfferManagement.Commands.UpdateOfferItem;
 using Proposly.Application.OfferManagement.Queries.GetOfferById;
 using Proposly.Application.OfferManagement.Queries.GetOffers;
+using Proposly.Application.OfferManagement.Queries.GetVatPreview;
 using Proposly.Application.OfferManagement.Responses;
 using Proposly.Domain.OfferManagement.Enums;
 
@@ -32,6 +33,16 @@ public sealed class OffersController : ControllerBase
         [FromServices] IQueryHandler<GetOffersQuery, IReadOnlyList<OfferSummaryResponse>> handler,
         CancellationToken ct)
         => await handler.HandleAsync(new GetOffersQuery(status), ct);
+
+    [HttpGet("vat-preview")]
+    public async Task<ActionResult<VatPreviewResponse>> GetVatPreview(
+        [FromQuery] Guid clientId,
+        [FromServices] IQueryHandler<GetVatPreviewQuery, VatPreviewResponse?> handler,
+        CancellationToken ct)
+    {
+        var result = await handler.HandleAsync(new GetVatPreviewQuery(clientId), ct);
+        return result is null ? NotFound() : Ok(result);
+    }
 
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<OfferDetailResponse>> GetById(
@@ -121,7 +132,7 @@ public sealed class OffersController : ControllerBase
         [FromServices] ICommandHandler<UpdateOfferCommand> handler,
         CancellationToken ct)
     {
-        await handler.HandleAsync(new UpdateOfferCommand(id, body.Title, body.Notes, body.ValidUntil, body.DiscountPercent), ct);
+        await handler.HandleAsync(new UpdateOfferCommand(id, body.Title, body.Notes, body.ValidUntil, body.DiscountPercent, body.VatRateOverride), ct);
         return NoContent();
     }
 
@@ -194,7 +205,7 @@ public sealed class OffersController : ControllerBase
     }
 }
 
-public record UpdateOfferBody(string Title, string? Notes, DateOnly? ValidUntil, decimal? DiscountPercent = null);
+public record UpdateOfferBody(string Title, string? Notes, DateOnly? ValidUntil, decimal? DiscountPercent = null, decimal? VatRateOverride = null);
 public record ExtendOfferBody(DateOnly NewValidUntil);
 public record AddOfferItemBody(string Description, decimal Quantity, decimal UnitPrice);
 public record UpdateOfferItemBody(string Description, decimal Quantity, decimal UnitPrice);

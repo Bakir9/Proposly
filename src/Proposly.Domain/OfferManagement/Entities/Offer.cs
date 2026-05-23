@@ -1,5 +1,6 @@
 using Proposly.Domain.OfferManagement.Enums;
 using Proposly.Domain.OfferManagement.Events;
+using Proposly.Domain.OfferManagement.Services;
 using Proposly.Shared.Interfaces;
 using Proposly.Shared.Primitives;
 using Proposly.Shared.ValueObjects;
@@ -60,6 +61,13 @@ public sealed class Offer : AggregateRoot<Guid>, ITenantEntity, IAuditableEntity
     public DateTime? SentAt { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime UpdatedAt { get; private set; }
+
+    // VAT
+    public decimal VatRate { get; private set; }
+    public VatType VatType { get; private set; } = VatType.Exempt;
+    public string VatLabel { get; private set; } = "No VAT";
+    public string? VatNote { get; private set; }
+    public bool IsVatExempt { get; private set; } = true;
 
     public IReadOnlyCollection<OfferItem> Items => _items.AsReadOnly();
 
@@ -158,6 +166,18 @@ public sealed class Offer : AggregateRoot<Guid>, ITenantEntity, IAuditableEntity
         Touch();
     }
 
+    // --- VAT ---
+
+    public void SetVat(VatCalculationResult result)
+    {
+        VatRate = result.Rate;
+        VatType = result.Type;
+        VatLabel = result.Label;
+        VatNote = result.Note;
+        IsVatExempt = result.IsExempt;
+        Touch();
+    }
+
     // --- Financial calculations ---
 
     public Money CalculateSubtotal()
@@ -173,7 +193,11 @@ public sealed class Offer : AggregateRoot<Guid>, ITenantEntity, IAuditableEntity
         return CalculateSubtotal() * (DiscountPercent.Value / 100m);
     }
 
-    public Money CalculateTotal() => CalculateSubtotal() - CalculateDiscountAmount();
+    public Money CalculateVatBase() => CalculateSubtotal() - CalculateDiscountAmount();
+
+    public Money CalculateVatAmount() => CalculateVatBase() * (VatRate / 100m);
+
+    public Money CalculateTotal() => CalculateVatBase() + CalculateVatAmount();
 
     // --- Helpers ---
 

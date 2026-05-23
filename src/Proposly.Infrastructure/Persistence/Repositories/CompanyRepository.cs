@@ -18,4 +18,7 @@ public sealed class CompanyRepository : ICompanyRepository
         await _context.Companies.AddAsync(company, ct);
         await _context.SaveChangesAsync(ct);
     }
+
+    public async Task UpdateAsync(Company company, CancellationToken ct = default)
+        => await _context.SaveChangesAsync(ct);
 }

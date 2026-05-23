@@ -11,7 +11,11 @@ export interface OfferSummary {
   subtotal: number
   discountPercent: number | null
   discountAmount: number
+  vatBase: number
+  vatAmount: number
   total: number
+  vatRate: number
+  vatLabel: string
   currency: string
   validUntil: string | null
   createdAt: string
@@ -28,8 +32,19 @@ export interface OfferItem {
 
 export interface OfferDetail extends OfferSummary {
   notes: string | null
+  vatType: string
+  vatNote: string | null
+  isVatExempt: boolean
   sentAt: string | null
   items: OfferItem[]
+}
+
+export interface VatPreview {
+  rate: number
+  type: string
+  label: string
+  note: string | null
+  isExempt: boolean
 }
 
 export interface CreateOfferRequest {
@@ -39,6 +54,7 @@ export interface CreateOfferRequest {
   currency: string
   validUntil?: string
   discountPercent?: number | null
+  vatRateOverride?: number | null
 }
 
 export interface UpdateOfferRequest {
@@ -46,6 +62,7 @@ export interface UpdateOfferRequest {
   notes?: string
   validUntil?: string
   discountPercent?: number | null
+  vatRateOverride?: number | null
 }
 
 export interface AddOfferItemRequest {
@@ -107,3 +124,6 @@ export const downloadOfferPdf = async (id: string, title: string) => {
 
 export const sendOfferEmail = (id: string) =>
   api.post(`/offers/${id}/email`)
+
+export const getVatPreview = (clientId: string) =>
+  api.get<VatPreview>('/offers/vat-preview', { params: { clientId } }).then(r => r.data)

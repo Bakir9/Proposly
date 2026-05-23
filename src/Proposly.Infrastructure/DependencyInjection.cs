@@ -2,6 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Proposly.Application.Abstractions;
+using Proposly.Application.Reports.Services;
+using Proposly.Domain.CalendarManagement.Repositories;
 using Proposly.Domain.CompanyManagement.Repositories;
 using Proposly.Domain.Notifications;
 using Proposly.Domain.OfferManagement.Repositories;
@@ -30,6 +32,7 @@ public static class DependencyInjection
 
         services.AddScoped<IDomainEventDispatcher, DomainEventDispatcher>();
 
+        services.AddScoped<ITerminRepository, TerminRepository>();
         services.AddScoped<ICompanyRepository, CompanyRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IProjectRepository, ProjectRepository>();
@@ -41,6 +44,7 @@ public static class DependencyInjection
         services.AddSingleton<IPasswordHasher, PasswordHasher>();
         services.AddScoped<IJwtService, JwtService>();
         services.AddSingleton<IPdfService, OfferPdfService>();
+        services.AddSingleton<IReportPdfService, QuarterlyReportPdfService>();
         services.AddScoped<IEmailService, MailKitEmailService>();
 
         services.AddScoped<DataSeeder>();

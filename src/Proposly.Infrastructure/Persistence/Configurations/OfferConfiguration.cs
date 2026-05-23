@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Proposly.Domain.OfferManagement.Entities;
+using Proposly.Domain.OfferManagement.Enums;
 
 namespace Proposly.Infrastructure.Persistence.Configurations;
 
@@ -17,6 +18,13 @@ public sealed class OfferConfiguration : IEntityTypeConfiguration<Offer>
         builder.Property(o => o.Currency).HasMaxLength(3).IsRequired();
         builder.Property(o => o.Status).HasConversion<string>().HasMaxLength(20);
         builder.Property(o => o.DiscountPercent).HasColumnType("numeric(5,2)");
+
+        // VAT
+        builder.Property(o => o.VatRate).HasColumnType("numeric(5,2)").HasDefaultValue(0m);
+        builder.Property(o => o.VatType).HasConversion<string>().HasMaxLength(30).HasDefaultValue(VatType.Exempt);
+        builder.Property(o => o.VatLabel).HasMaxLength(100).HasDefaultValue("No VAT");
+        builder.Property(o => o.VatNote).HasMaxLength(500);
+        builder.Property(o => o.IsVatExempt).HasDefaultValue(true);
 
         builder.HasMany(o => o.Items)
             .WithOne()

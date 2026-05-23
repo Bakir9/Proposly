@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Proposly.Application.Abstractions;
+using Proposly.Domain.CalendarManagement.Entities;
 using Proposly.Domain.CompanyManagement.Entities;
 using Proposly.Domain.Notifications;
 using Proposly.Domain.OfferManagement.Entities;
@@ -14,6 +15,8 @@ public sealed class AppDbContext : DbContext
     private readonly ICurrentUserService _currentUserService;
     private readonly IDomainEventDispatcher _dispatcher;
 
+    public DbSet<Termin> Termins => Set<Termin>();
+    public DbSet<TerminInvitation> TerminInvitations => Set<TerminInvitation>();
     public DbSet<Company> Companies => Set<Company>();
     public DbSet<User> Users => Set<User>();
     public DbSet<Project> Projects => Set<Project>();

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { createOffer, addOfferItem } from '@/api/offers'
+import { createOffer, addOfferItem, getVatPreview } from '@/api/offers'
 import { getClients } from '@/api/clients'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -10,7 +10,24 @@ import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
 import { getApiErrorMessage } from '@/lib/api-errors'
 import { Textarea } from '@/components/ui/textarea'
-import { ArrowLeft, Plus } from 'lucide-react'
+import { ArrowLeft, Plus, Info } from 'lucide-react'
+
+const VAT_OPTIONS = [
+  { value: 0,    label: '0% — Reverse Charge' },
+  { value: 0.1,  label: '0% — Export (Non-EU)' },  // sentinel to distinguish
+  { value: 5,    label: '5%' },
+  { value: 7,    label: '7%' },
+  { value: 10,   label: '10%' },
+  { value: 13,   label: '13%' },
+  { value: 17,   label: '17%' },
+  { value: 19,   label: '19%' },
+  { value: 20,   label: '20%' },
+  { value: 21,   label: '21%' },
+  { value: 22,   label: '22%' },
+  { value: 23,   label: '23%' },
+  { value: 25,   label: '25%' },
+  { value: 27,   label: '27%' },
+]
 
 interface LocalItem {
   description: string
@@ -38,15 +55,19 @@ interface OfferPreviewProps {
   notes: string
   items: LocalItem[]
   discountPercent: string
+  vatRate: number
+  vatLabel: string
 }
 
-function OfferPreview({ title, client, currency, validUntil, notes, items, discountPercent }: OfferPreviewProps) {
+function OfferPreview({ title, client, currency, validUntil, notes, items, discountPercent, vatRate, vatLabel }: OfferPreviewProps) {
   const fmt = (n: number) => n.toLocaleString('de-AT', { style: 'currency', currency })
   const validItems = items.filter(i => i.description.trim())
   const subtotal = items.reduce((sum, i) => sum + (parseFloat(i.quantity) || 0) * (parseFloat(i.unitPrice) || 0), 0)
   const discount = parseFloat(discountPercent) || 0
   const discountAmount = subtotal * (discount / 100)
-  const total = subtotal - discountAmount
+  const vatBase = subtotal - discountAmount
+  const vatAmount = vatBase * (vatRate / 100)
+  const total = vatBase + vatAmount
   const today = new Date().toLocaleDateString('de-AT')
 
   return (
@@ -138,10 +159,10 @@ function OfferPreview({ title, client, currency, validUntil, notes, items, disco
             </tbody>
           </table>
 
-          {/* Subtotal / Discount / Total */}
+          {/* Subtotal / Discount / VAT / Total */}
           <div className="flex justify-end mt-4 pt-3 border-t-2 border-gray-200">
-            <div className="text-right space-y-1 min-w-[160px]">
-              {discount > 0 ? (
+            <div className="text-right space-y-1 min-w-[180px]">
+              {discount > 0 && (
                 <>
                   <div className="flex justify-between gap-8 text-xs text-gray-500">
                     <span>Subtotal</span>
@@ -151,17 +172,28 @@ function OfferPreview({ title, client, currency, validUntil, notes, items, disco
                     <span>Discount ({discount}%)</span>
                     <span>−{fmt(discountAmount)}</span>
                   </div>
-                  <div className="flex justify-between gap-8 pt-1 border-t border-gray-200">
-                    <span className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Total</span>
-                    <span className="text-xl font-bold text-gray-900">{fmt(total)}</span>
+                  <div className="flex justify-between gap-8 text-xs text-gray-600 border-t border-gray-100 pt-1">
+                    <span>VAT base</span>
+                    <span>{fmt(vatBase)}</span>
                   </div>
                 </>
-              ) : (
-                <>
-                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-0.5">Total</p>
-                  <p className="text-xl font-bold text-gray-900">{fmt(subtotal)}</p>
-                </>
               )}
+              {vatRate > 0 && (
+                <div className="flex justify-between gap-8 text-xs text-gray-500">
+                  <span>{vatLabel}</span>
+                  <span>{fmt(vatAmount)}</span>
+                </div>
+              )}
+              {vatRate === 0 && (
+                <div className="flex justify-between gap-8 text-xs text-gray-400">
+                  <span>{vatLabel}</span>
+                  <span>{fmt(0)}</span>
+                </div>
+              )}
+              <div className="flex justify-between gap-8 pt-1 border-t border-gray-200">
+                <span className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Total</span>
+                <span className="text-xl font-bold text-gray-900">{fmt(total)}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -185,9 +217,16 @@ export function CreateOfferPage() {
   const [validUntil, setValidUntil] = useState('')
   const [notes, setNotes] = useState('')
   const [discountPercent, setDiscountPercent] = useState('')
+  const [vatOverride, setVatOverride] = useState<string>('auto')
   const [items, setItems] = useState<LocalItem[]>([{ description: '', quantity: '1', unitPrice: '' }])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+
+  const { data: vatPreview } = useQuery({
+    queryKey: ['vat-preview', clientId],
+    queryFn: () => getVatPreview(clientId),
+    enabled: !!clientId,
+  })
 
   const addItemRow = () => setItems(prev => [...prev, { description: '', quantity: '1', unitPrice: '' }])
   const removeItemRow = (index: number) => setItems(prev => prev.filter((_, i) => i !== index))
@@ -203,6 +242,7 @@ export function CreateOfferPage() {
     setSubmitting(true)
     try {
       const discount = parseFloat(discountPercent)
+      const vatRateOverride = vatOverride !== 'auto' ? parseFloat(vatOverride) : undefined
       const offerId = await createOffer({
         clientId,
         title: title.trim(),
@@ -210,6 +250,7 @@ export function CreateOfferPage() {
         currency,
         validUntil: validUntil || undefined,
         discountPercent: !isNaN(discount) && discount > 0 ? discount : undefined,
+        vatRateOverride: vatRateOverride !== undefined && !isNaN(vatRateOverride) ? vatRateOverride : undefined,
       })
       const validItems = items.filter(i => i.description.trim() && !isNaN(parseFloat(i.unitPrice)))
       for (const item of validItems) {
@@ -228,8 +269,17 @@ export function CreateOfferPage() {
 
   const selectedClient = clients?.find(c => c.id === clientId) ?? null
 
+  const effectiveVatRate = vatOverride === 'auto'
+    ? (vatPreview?.rate ?? 0)
+    : parseFloat(vatOverride) || 0
+
+  const effectiveVatLabel = vatOverride === 'auto'
+    ? (vatPreview?.label ?? 'No VAT')
+    : VAT_OPTIONS.find(o => String(o.value) === vatOverride)?.label ?? `VAT ${vatOverride}%`
+
   const handleClientChange = (id: string) => {
     setClientId(id)
+    setVatOverride('auto')
     const c = clients?.find(cl => cl.id === id)
     if (c?.currency) setCurrency(c.currency)
   }
@@ -342,6 +392,34 @@ export function CreateOfferPage() {
                   className="w-28 text-right"
                 />
               </div>
+
+              {/* VAT row */}
+              <div className="pt-3 border-t space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm">VAT</Label>
+                  <Select
+                    value={vatOverride}
+                    onChange={e => setVatOverride(e.target.value)}
+                    className="w-52"
+                  >
+                    <option value="auto">
+                      Auto {vatPreview ? `(${vatPreview.label})` : '(select client first)'}
+                    </option>
+                    {VAT_OPTIONS.map(opt => (
+                      <option key={opt.label} value={String(opt.value)}>{opt.label}</option>
+                    ))}
+                  </Select>
+                </div>
+                {clientId && vatPreview && vatOverride === 'auto' && (
+                  <div className="flex items-start gap-2 rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
+                    <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                    <div>
+                      <span className="font-medium text-foreground">{vatPreview.label}</span>
+                      {vatPreview.note && <p className="mt-0.5">{vatPreview.note}</p>}
+                    </div>
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
 
@@ -364,6 +442,8 @@ export function CreateOfferPage() {
             notes={notes}
             items={items}
             discountPercent={discountPercent}
+            vatRate={effectiveVatRate}
+            vatLabel={effectiveVatLabel}
           />
         </div>
       </div>

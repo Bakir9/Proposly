@@ -28,6 +28,13 @@ public sealed class ProjectRepository : IProjectRepository
             .OrderByDescending(p => p.CreatedAt)
             .ToListAsync(ct);
 
+    public async Task<IReadOnlyList<Project>> GetAllWithExpensesAsync(CancellationToken ct = default)
+        => await _context.Projects
+            .Include(p => p.TimeEntries)
+            .Include(p => p.Expenses)
+            .OrderByDescending(p => p.CreatedAt)
+            .ToListAsync(ct);
+
     public async Task<IReadOnlyList<Project>> SearchAsync(string term, CancellationToken ct = default)
         => await _context.Projects
             .Where(p => EF.Functions.ILike(p.Name, $"%{term}%") ||

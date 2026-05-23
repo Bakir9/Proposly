@@ -37,13 +37,130 @@ namespace Proposly.Infrastructure.Migrations
                     b.ToTable("ProjectTaskDependencies");
                 });
 
+            modelBuilder.Entity("Proposly.Domain.CalendarManagement.Entities.Termin", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateTime>("End")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Location")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<Guid>("OrganizerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("OrganizerName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime>("Start")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Termins", (string)null);
+                });
+
+            modelBuilder.Entity("Proposly.Domain.CalendarManagement.Entities.TerminInvitation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("InviteeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("InviteeName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime?>("ProposedEnd")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ProposedMessage")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime?>("ProposedStart")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("RespondedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<Guid>("TerminId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TerminId", "InviteeId")
+                        .IsUnique();
+
+                    b.ToTable("TerminInvitations", (string)null);
+                });
+
             modelBuilder.Entity("Proposly.Domain.CompanyManagement.Entities.Company", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("CompanyCountry")
+                        .HasMaxLength(2)
+                        .HasColumnType("character varying(2)");
+
+                    b.Property<string>("CompanyVatNumber")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("DefaultVatRate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("numeric(5,2)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<int>("FiscalYearStartMonth")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1);
+
+                    b.Property<bool>("IsVatExempt")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsVatRegistered")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -57,6 +174,10 @@ namespace Proposly.Infrastructure.Migrations
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("VatExemptReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
 
                     b.HasKey("Id");
 
@@ -278,6 +399,11 @@ namespace Proposly.Infrastructure.Migrations
                     b.Property<decimal?>("DiscountPercent")
                         .HasColumnType("numeric(5,2)");
 
+                    b.Property<bool>("IsVatExempt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
                     b.Property<string>("Notes")
                         .HasMaxLength(4000)
                         .HasColumnType("character varying(4000)");
@@ -300,6 +426,29 @@ namespace Proposly.Infrastructure.Migrations
 
                     b.Property<DateOnly?>("ValidUntil")
                         .HasColumnType("date");
+
+                    b.Property<string>("VatLabel")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasDefaultValue("No VAT");
+
+                    b.Property<string>("VatNote")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<decimal>("VatRate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("numeric(5,2)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<string>("VatType")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasDefaultValue("Exempt");
 
                     b.HasKey("Id");
 
@@ -638,6 +787,15 @@ namespace Proposly.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Proposly.Domain.CalendarManagement.Entities.TerminInvitation", b =>
+                {
+                    b.HasOne("Proposly.Domain.CalendarManagement.Entities.Termin", null)
+                        .WithMany("Invitations")
+                        .HasForeignKey("TerminId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Proposly.Domain.OfferManagement.Entities.Client", b =>
                 {
                     b.OwnsOne("Proposly.Shared.ValueObjects.Address", "Address", b1 =>
@@ -913,6 +1071,11 @@ namespace Proposly.Infrastructure.Migrations
 
                     b.Navigation("HourlyRateSnapshot")
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Proposly.Domain.CalendarManagement.Entities.Termin", b =>
+                {
+                    b.Navigation("Invitations");
                 });
 
             modelBuilder.Entity("Proposly.Domain.OfferManagement.Entities.Client", b =>

@@ -24,7 +24,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog } from '@/components/ui/dialog'
-import { ArrowLeft, Pencil, Trash2, Send, CheckCircle, XCircle, Clock, Download, Mail, Plus, CalendarClock } from 'lucide-react'
+import { ArrowLeft, Pencil, Trash2, Send, CheckCircle, XCircle, Clock, Download, Mail, Plus, CalendarClock, Info } from 'lucide-react'
 
 const statusVariant: Record<string, 'default' | 'secondary' | 'success' | 'destructive' | 'warning' | 'outline'> = {
   Draft: 'secondary',
@@ -49,6 +49,7 @@ export function OfferDetailPage() {
   const [editNotes, setEditNotes] = useState('')
   const [editValidUntil, setEditValidUntil] = useState('')
   const [editDiscountPercent, setEditDiscountPercent] = useState('')
+  const [editVatRate, setEditVatRate] = useState('auto')
   const [editMode, setEditMode] = useState(false)
 
   const [addItemOpen, setAddItemOpen] = useState(false)
@@ -103,11 +104,13 @@ export function OfferDetailPage() {
   const mutUpdate = useMutation({
     mutationFn: () => {
       const d = parseFloat(editDiscountPercent)
+      const vatRateOverride = editVatRate !== 'auto' ? parseFloat(editVatRate) : undefined
       return updateOffer(id!, {
         title: editTitle,
         notes: editNotes || undefined,
         validUntil: editValidUntil || undefined,
         discountPercent: !isNaN(d) && d > 0 ? d : null,
+        vatRateOverride: vatRateOverride !== undefined && !isNaN(vatRateOverride) ? vatRateOverride : undefined,
       })
     },
     onSuccess: () => { invalidate(); setEditMode(false) },
@@ -143,6 +146,7 @@ export function OfferDetailPage() {
     setEditNotes(offer.notes ?? '')
     setEditValidUntil(offer.validUntil ? offer.validUntil.slice(0, 10) : '')
     setEditDiscountPercent(offer.discountPercent != null ? String(offer.discountPercent) : '')
+    setEditVatRate('auto')
     setEditMode(true)
   }
 
@@ -293,8 +297,8 @@ export function OfferDetailPage() {
             </table>
           )}
           <div className="flex justify-end mt-4 pt-3 border-t">
-            <div className="text-right space-y-1 min-w-[200px]">
-              {offer.discountPercent != null && offer.discountPercent > 0 ? (
+            <div className="text-right space-y-1 min-w-[220px]">
+              {offer.discountPercent != null && offer.discountPercent > 0 && (
                 <>
                   <div className="flex justify-between gap-8 text-sm text-muted-foreground">
                     <span>Subtotal</span>
@@ -304,13 +308,25 @@ export function OfferDetailPage() {
                     <span>Discount ({offer.discountPercent}%)</span>
                     <span>−{fmt(offer.discountAmount)}</span>
                   </div>
-                  <div className="flex justify-between gap-8 pt-1 border-t">
-                    <span className="text-base font-semibold">Total</span>
-                    <span className="text-base font-semibold">{fmt(offer.total)}</span>
+                  <div className="flex justify-between gap-8 text-sm text-muted-foreground">
+                    <span>VAT base</span>
+                    <span>{fmt(offer.vatBase)}</span>
                   </div>
                 </>
-              ) : (
-                <p className="text-base font-semibold">Total: {fmt(offer.total)}</p>
+              )}
+              <div className="flex justify-between gap-8 text-sm text-muted-foreground">
+                <span>{offer.vatLabel}</span>
+                <span>{fmt(offer.vatAmount)}</span>
+              </div>
+              <div className="flex justify-between gap-8 pt-1 border-t">
+                <span className="text-base font-semibold">Total</span>
+                <span className="text-base font-semibold">{fmt(offer.total)}</span>
+              </div>
+              {offer.vatNote && (
+                <div className="flex items-start gap-1.5 pt-2 text-xs text-muted-foreground text-left max-w-xs">
+                  <Info className="h-3 w-3 mt-0.5 shrink-0" />
+                  <span>{offer.vatNote}</span>
+                </div>
               )}
             </div>
           </div>
@@ -343,6 +359,20 @@ export function OfferDetailPage() {
               onChange={e => setEditDiscountPercent(e.target.value)}
               placeholder="0"
             />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="edit-vat">VAT Rate</Label>
+            <select
+              id="edit-vat"
+              value={editVatRate}
+              onChange={e => setEditVatRate(e.target.value)}
+              className="h-9 w-full rounded-md border bg-background px-3 text-sm"
+            >
+              <option value="auto">Auto-calculate (current: {offer.vatLabel})</option>
+              {[0, 5, 7, 10, 13, 17, 19, 20, 21, 22, 23, 25, 27].map(r => (
+                <option key={r} value={String(r)}>{r}%</option>
+              ))}
+            </select>
           </div>
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setEditMode(false)}>Cancel</Button>

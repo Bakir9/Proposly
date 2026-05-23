@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, FileText, FolderKanban, Users, LogOut, Building2, Settings } from 'lucide-react'
+import { LayoutDashboard, FileText, FolderKanban, Users, LogOut, Building2, Settings, BarChart3, CalendarDays } from 'lucide-react'
 import { useAuth } from '@/features/auth/AuthContext'
 import { useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
@@ -14,8 +14,10 @@ const ALL_NAV_ITEMS = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, adminOnly: false },
   { to: '/offers',    label: 'Offers',    icon: FileText,        adminOnly: true  },
   { to: '/projects',  label: 'Projects',  icon: FolderKanban,   adminOnly: false },
+  { to: '/calendar',  label: 'Calendar',  icon: CalendarDays,   adminOnly: false },
   { to: '/clients',   label: 'Clients',   icon: Building2,      adminOnly: true  },
   { to: '/users',     label: 'Team',      icon: Users,          adminOnly: true  },
+  { to: '/reports',   label: 'Reports',   icon: BarChart3,      adminOnly: true  },
 ]
 
 function getInitials(fullName: string) {
