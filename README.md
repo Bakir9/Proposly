@@ -1,164 +1,144 @@
 # Proposly
 
-Proposly is a SaaS web application built with **.NET + React** that helps companies create professional business offers, generate PDF documents, send them to clients via email, and manage the full lifecycle of projects from offer acceptance through to delivery and cost tracking.
+Business management platform for small and medium agencies. Covers the full client lifecycle — from writing offers to running projects and tracking profitability — in a single tool.
 
----
-
-## Overview
-
-Most small and medium-sized businesses still manage offers in Word, Excel, or copy-paste workflows. Proposly replaces that entirely — giving teams a single, centralized platform to create offers, track client communication, run projects, and understand their real profitability.
-
-The platform is multi-tenant by design. Every company operates in a fully isolated environment: users, offers, projects, and documents are never shared or visible across tenants.
+The core pitch: most agencies use a proposals tool (PandaDoc, Bonsai) **and** a project management tool (Asana, Monday) separately. Proposly combines both — an accepted offer becomes a project automatically, and the quoted budget flows into profitability tracking.
 
 ---
 
 ## Features
 
-### Offer Management
-- Create professional offers with client details, line items, quantities, unit prices, and optional discount percentages
-- Automatic calculation of subtotals, discounts, VAT, and final totals per item and overall
-- Generate professionally formatted PDF documents including company logo, sender and client information, an itemised table, and all totals
-- Send generated PDFs directly to clients via email — no email client configuration required
-- Store and retrieve generated PDFs from local storage or S3-compatible cloud storage
+| Area | What it covers |
+|---|---|
+| **Offers** | Create, send, accept/reject with line items, discounts, VAT, PDF export, email delivery |
+| **Projects** | Kanban board, Gantt chart, burndown chart, task dependencies, time logging, expenses, milestones, notes |
+| **Clients** | Profiles with status (Active / Lead / Inactive), notes, offer history and revenue stats |
+| **Calendar** | Schedule meetings, invite team members, accept / decline / propose reschedule, pending invitations inbox |
+| **Reports** | Quarterly P&L — offer funnel, labor costs, expenses by category, gross profit, PDF export |
+| **Team** | Email invites, role-based access (Owner / Admin / Member), disable/enable accounts |
+| **Notifications** | In-app notifications for task assignments, meeting invitations, and meeting lifecycle events |
 
-### Company & User Management
-- Each company manages its own profile: name, full address, and logo (automatically embedded in PDFs)
-- Multiple users per company with role-based access
-- Secure authentication using JWT tokens
-- Automatic multi-tenant data isolation — every database query is scoped to the active company
+---
 
-### Project Management
-- Create projects linked to an accepted offer or independently
-- Track project status through its full lifecycle: **Planning → Active → On Hold → Completed / Cancelled**
-- Set a project budget separately from the offer amount to manage internal margin
-- Assign team members to a project with a role and a per-project hourly rate
-- Log time entries per team member and optionally per task
-- Define tasks with estimated hours, status, and due dates
-- Group tasks under milestones to track delivery phases
-- Record expenses by category (materials, equipment, subcontractors, travel, other)
+## Tech stack
 
-### Financial Tracking & Dashboard
-- **Labor cost** — calculated automatically from logged hours × member hourly rate
-- **Total cost** — labor cost + all project expenses
-- **Hours tracked** — estimated vs actual, per task and overall
-- **Profitability** — revenue (accepted offer amount) minus total project cost
-- Snapshot-based financial integrity: offer amounts and hourly rates are recorded at the time of linking or logging, so historical records are never affected by later changes
+| Layer | Technology |
+|---|---|
+| API | .NET 10, ASP.NET Core, C# |
+| Database | PostgreSQL via Entity Framework Core + Npgsql |
+| Auth | JWT Bearer tokens |
+| PDF | QuestPDF |
+| Email | MailKit |
+| Validation | FluentValidation |
+| Frontend | React 19, TypeScript, Vite |
+| UI | Tailwind CSS, shadcn/ui, Recharts, Tiptap |
+| State | TanStack Query |
 
 ---
 
 ## Architecture
 
-Proposly is built on **Clean Architecture** with two distinct bounded contexts.
-
-### Bounded Contexts
-
-**Offer Management** — the company as seller. Core concepts: `Offer`, `OfferItem`, `Client`. The outcome is a sent offer and a client response.
-
-**Project Management** — the company as executor. Core concepts: `Project`, `Task`, `Milestone`, `TeamMember`, `TimeEntry`, `Expense`. The outcome is a delivered project with full cost visibility.
-
-The two contexts communicate through a well-defined integration point: when an offer is accepted, a project can be created from it. The accepted amount is stored as a snapshot on the project and never mutated by changes to the original offer.
-
-### Layer Structure
+Five-layer clean architecture with CQRS (no MediatR):
 
 ```
-/src
-  /OfferManagement
-    /Domain          # Offer, OfferItem, Client — entities, value objects, interfaces
-    /Application     # Command and query handlers (CQRS via MediatR), validators
-    /Infrastructure  # EF Core repositories, PDF generator, email service, file storage
-  /ProjectManagement
-    /Domain          # Project, Task, Milestone, TeamMember, TimeEntry, Expense
-    /Application     # Command and query handlers, validators
-    /Infrastructure  # EF Core repositories, reporting queries
-  /SharedKernel      # Money, Address, TenantId — shared value objects only
-  /API               # Controllers, JWT middleware, tenant resolver, request pipeline
+src/
+├── Proposly.Shared/        # Value objects, base classes — no dependencies
+├── Proposly.Domain/        # Entities, aggregates, repository interfaces
+├── Proposly.Application/   # Commands, queries, handlers, service interfaces
+├── Proposly.Infrastructure/# EF Core, repositories, PDF/email services
+└── Proposly.API/           # Controllers, middleware, DI wiring
+
+frontend/                   # React + TypeScript SPA
+tests/
+├── Proposly.Domain.Tests/
+└── Proposly.Application.Tests/
 ```
 
-### Key Technical Decisions
+**Dependency flow:** `API → Application → Domain ← Infrastructure`
 
-- **Rich domain entities** — business logic (price calculations, status transitions, cost aggregation) lives inside entities and domain services, not in anemic service classes
-- **Value objects** — `Money` and `Quantity` are typed to prevent primitive obsession and accidental mixing
-- **CQRS with MediatR** — commands and queries are fully separated; write operations go through command handlers, reads through query handlers
-- **FluentValidation** — request validation is wired into the MediatR pipeline as a behaviour, keeping controllers clean
-- **EF Core global query filters** — every entity carries a `CompanyId` and every query is automatically scoped to the active tenant, enforced at the ORM level
-- **Snapshot pattern** — financial figures (offer amounts, hourly rates) are recorded at the moment of use, not referenced dynamically, preserving historical accuracy
+**Multi-tenancy:** Every entity implements `ITenantEntity` (`CompanyId`). EF Core global query filters enforce tenant isolation automatically on every query — no per-query `.Where(x => x.CompanyId == ...)` required.
+
+**CQRS:** Custom `ICommandHandler<T>` / `IQueryHandler<T, R>` interfaces auto-registered by reflection. No pipeline library.
+
+**Domain events:** Raised inside aggregates, dispatched in `AppDbContext.SaveChangesAsync`, handled by `IDomainEventHandler<T>` implementations (auto-registered). Used to create in-app notifications for task and calendar events.
+
+**Snapshot pattern:** Financial figures (offer amounts, hourly rates) are stored at the moment of use. Changing a rate later does not alter historical records.
 
 ---
 
-## Technology Stack
+## Getting started
 
-| Layer | Technology |
-|---|---|
-| Backend | .NET 10, C# |
-| Frontend | React, TypeScript |
-| Database | PostgreSQL / SQL Server |
-| ORM | Entity Framework Core |
-| CQRS |
-| Validation | FluentValidation |
-| PDF generation | QuestPDF |
-| Email | MailKit / SendGrid |
-| Authentication | JWT Bearer tokens |
-| Logging | Serilog |
+### Prerequisites
 
----
+- .NET 10 SDK
+- Node.js 20+
+- PostgreSQL
 
-## Domain Model
+### Run the API
 
-### Project entity (key fields)
+```bash
+# Configure connection string in appsettings.Development.json
+# "ConnectionStrings__DefaultConnection": "Host=localhost;Database=proposly;Username=...;Password=..."
 
-```csharp
-public class Project
-{
-    public Guid Id { get; private set; }
-    public Guid CompanyId { get; private set; }       // tenant isolation
-    public string Name { get; private set; }
-    public string? Description { get; private set; }
-    public string ClientName { get; private set; }
-    public Guid? LinkedOfferId { get; private set; }
-    public Money? OfferedAmount { get; private set; } // snapshot at link time
-    public Money Budget { get; private set; }
-    public DateOnly StartDate { get; private set; }
-    public DateOnly? Deadline { get; private set; }
-    public ProjectStatus Status { get; private set; }
-
-    public IReadOnlyCollection<ProjectMember> Members { get; }
-    public IReadOnlyCollection<ProjectTask> Tasks { get; }
-    public IReadOnlyCollection<Milestone> Milestones { get; }
-    public IReadOnlyCollection<Expense> Expenses { get; }
-
-    public Money CalculateLaborCost();
-    public Money CalculateTotalCost();
-    public Money CalculateProfitability();
-}
+dotnet run --project src/Proposly.API/Proposly.API.csproj
+# API available at http://localhost:5143
 ```
 
-### Project status transitions
+### Apply migrations
 
+```bash
+dotnet ef database update --project src/Proposly.Infrastructure --startup-project src/Proposly.API
 ```
-Planning ──► Active ──► On Hold ──► Active
-                  │
-                  ├──► Completed
-                  └──► Cancelled
+
+### Run the frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+# Runs on http://localhost:5173 — proxies /api to http://localhost:5143
 ```
 
 ---
 
-## Roadmap
+## Commands
 
-- [ ] Offer status tracking (draft, sent, accepted, rejected)
-- [ ] Convert accepted offer directly into a project in one action
-- [ ] Invoice generation from completed projects
-- [ ] Company financial details (IBAN, VAT ID) on PDF documents
-- [ ] Offer and project history with full audit log
-- [ ] Subscription tiers with feature limits (number of offers, users, storage)
-- [ ] Client portal — a shareable link where clients can view and accept offers online
-- [ ] Notification system — email alerts for offer expiry, milestone due dates, budget thresholds
+```bash
+# Build
+dotnet build
+
+# Test
+dotnet test
+
+# Add a migration
+dotnet ef migrations add <Name> --project src/Proposly.Infrastructure --startup-project src/Proposly.API
+
+# Apply migrations
+dotnet ef database update --project src/Proposly.Infrastructure --startup-project src/Proposly.API
+```
 
 ---
 
-## Deployment
+## Domain overview
 
-Proposly is designed to run on affordable cloud infrastructure. The recommended setup is a single VPS (e.g. Hetzner) with Docker Compose for the initial launch, with a clear path to scale horizontally as user volume grows. S3-compatible object storage (Hetzner Object Storage, AWS S3, Backblaze B2) is used for PDF files, keeping the application servers stateless.
+### OfferManagement
+- `Offer` aggregate — lifecycle: Draft → Sent → Accepted / Rejected / Expired
+- `Client` entity — status, notes, linked offers
+- `OfferExpiryJob` background service — auto-expires sent offers past their validity date
+
+### ProjectManagement
+- `Project` aggregate — linked to a client via FK (name snapshot prevents drift)
+- `ProjectTask` — Todo → InProgress → Done, estimated + actual hours, task dependencies with cycle detection
+- `TimeEntry`, `Expense`, `Milestone`, `ProjectNote`, `TaskComment` sub-entities
+
+### CalendarManagement
+- `Termin` aggregate — meeting with start/end, location, organizer
+- `TerminInvitation` — per-invitee status: Pending / Accepted / Declined / RescheduleProposed
+- Full lifecycle: create → invite → respond → reschedule → cancel / delete
+
+### CompanyManagement
+- `Company` — multi-tenant root, stores fiscal year start month for quarterly reports
+- `User` — roles, email invite flow, password reset tokens
 
 ---
 
