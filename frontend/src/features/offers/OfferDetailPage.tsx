@@ -66,6 +66,9 @@ export function OfferDetailPage() {
   const [extendDate, setExtendDate] = useState('')
 
   const [emailSent, setEmailSent] = useState(false)
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false)
+  const [emailSubject, setEmailSubject] = useState('')
+  const [emailBody, setEmailBody] = useState('')
   const [statusError, setStatusError] = useState<string | null>(null)
 
   const clearStatusError = () => setStatusError(null)
@@ -89,8 +92,8 @@ export function OfferDetailPage() {
     onError: onStatusError,
   })
   const mutSendEmail = useMutation({
-    mutationFn: () => sendOfferEmail(id!),
-    onSuccess: () => setEmailSent(true),
+    mutationFn: () => sendOfferEmail(id!, emailSubject || undefined, emailBody || undefined),
+    onSuccess: () => { setEmailSent(true); setEmailDialogOpen(false) },
   })
 
   const mutDelete = useMutation({
@@ -241,8 +244,12 @@ export function OfferDetailPage() {
             <Button variant="outline" onClick={() => downloadOfferPdf(id!, offer.title)}>
               <Download className="h-3.5 w-3.5 mr-1" /> Download PDF
             </Button>
-            <Button variant="outline" onClick={() => mutSendEmail.mutate()} disabled={mutSendEmail.isPending}>
-              <Mail className="h-3.5 w-3.5 mr-1" />{mutSendEmail.isPending ? 'Sending…' : emailSent ? 'Email sent ✓' : 'Send by Email'}
+            <Button variant="outline" onClick={() => {
+              setEmailSubject(`Offer: ${offer.title}`)
+              setEmailBody(`Dear ${offer.clientName},\n\nPlease find attached our offer "${offer.title}".\n\nTotal: ${fmt(offer.total)}\n${offer.validUntil ? `This offer is valid until ${new Date(offer.validUntil).toLocaleDateString()}.\n` : ''}\nPlease don't hesitate to reach out if you have any questions.\n\nBest regards,\nProposly`)
+              setEmailDialogOpen(true)
+            }}>
+              <Mail className="h-3.5 w-3.5 mr-1" />{emailSent ? 'Email sent ✓' : 'Send by Email'}
             </Button>
           </div>
         </CardContent>
@@ -378,6 +385,26 @@ export function OfferDetailPage() {
             <Button variant="outline" onClick={() => setEditMode(false)}>Cancel</Button>
             <Button onClick={() => mutUpdate.mutate()} disabled={mutUpdate.isPending}>
               {mutUpdate.isPending ? 'Saving…' : 'Save'}
+            </Button>
+          </div>
+        </div>
+      </Dialog>
+
+      <Dialog open={emailDialogOpen} onClose={() => setEmailDialogOpen(false)} title="Send Offer by Email">
+        <div className="space-y-4">
+          <div className="space-y-1">
+            <Label htmlFor="email-subject">Subject</Label>
+            <Input id="email-subject" value={emailSubject} onChange={e => setEmailSubject(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="email-body">Message</Label>
+            <Textarea id="email-body" rows={10} value={emailBody} onChange={e => setEmailBody(e.target.value)} />
+          </div>
+          <p className="text-xs text-muted-foreground">The PDF offer will be attached automatically.</p>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setEmailDialogOpen(false)}>Cancel</Button>
+            <Button onClick={() => mutSendEmail.mutate()} disabled={mutSendEmail.isPending}>
+              <Mail className="h-3.5 w-3.5 mr-1" />{mutSendEmail.isPending ? 'Sending…' : 'Send Email'}
             </Button>
           </div>
         </div>

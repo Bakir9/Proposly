@@ -44,8 +44,21 @@ public sealed class OfferPdfService : IPdfService
                     {
                         c.Item().Text("Bill To").FontSize(9).FontColor(Colors.Grey.Medium).Bold();
                         c.Item().Text(offer.ClientName).SemiBold();
-                        if (!string.IsNullOrWhiteSpace(offer.Notes))
-                            c.Item().PaddingTop(4).Text(offer.Notes).FontColor(Colors.Grey.Darken1);
+                        if (!string.IsNullOrWhiteSpace(offer.ClientContactPerson))
+                            c.Item().Text(offer.ClientContactPerson).FontColor(Colors.Grey.Darken1);
+                        if (!string.IsNullOrWhiteSpace(offer.ClientStreet))
+                            c.Item().Text(offer.ClientStreet).FontColor(Colors.Grey.Darken1);
+                        var cityLine = string.Join(" ", new[] { offer.ClientPostalCode, offer.ClientCity }.Where(s => !string.IsNullOrWhiteSpace(s)));
+                        if (!string.IsNullOrWhiteSpace(cityLine))
+                            c.Item().Text(cityLine).FontColor(Colors.Grey.Darken1);
+                        if (!string.IsNullOrWhiteSpace(offer.ClientCountry))
+                            c.Item().Text(offer.ClientCountry).FontColor(Colors.Grey.Darken1);
+                        if (!string.IsNullOrWhiteSpace(offer.ClientVatNumber))
+                            c.Item().PaddingTop(4).Text($"VAT: {offer.ClientVatNumber}").FontSize(9).FontColor(Colors.Grey.Medium);
+                        if (!string.IsNullOrWhiteSpace(offer.ClientEmail))
+                            c.Item().Text(offer.ClientEmail).FontSize(9).FontColor(Colors.Grey.Medium);
+                        if (!string.IsNullOrWhiteSpace(offer.ClientPhone))
+                            c.Item().Text(offer.ClientPhone).FontSize(9).FontColor(Colors.Grey.Medium);
                     });
 
                     // Items table

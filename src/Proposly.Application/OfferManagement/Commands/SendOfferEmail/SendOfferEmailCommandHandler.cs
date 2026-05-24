@@ -37,6 +37,10 @@ public sealed class SendOfferEmailCommandHandler : ICommandHandler<SendOfferEmai
 
         var offerDetail = new OfferDetailResponse(
             offer.Id, offer.ClientId, client.Name,
+            client.ContactPerson, client.Email, client.Phone,
+            client.Address?.Street, client.Address?.City,
+            client.Address?.PostalCode, client.Address?.Country,
+            client.VatNumber,
             offer.Title, offer.Notes, offer.Status,
             offer.CalculateSubtotal().Amount,
             offer.DiscountPercent,
@@ -58,8 +62,14 @@ public sealed class SendOfferEmailCommandHandler : ICommandHandler<SendOfferEmai
         var pdfBytes = _pdfService.GenerateOfferPdf(offerDetail);
 
         var fileName = $"Offer-{offer.Title.Replace(" ", "_")}.pdf";
-        var subject = $"Offer: {offer.Title}";
-        var body = $"""
+
+        var subject = !string.IsNullOrWhiteSpace(command.CustomSubject)
+            ? command.CustomSubject
+            : $"Offer: {offer.Title}";
+
+        var body = !string.IsNullOrWhiteSpace(command.CustomBody)
+            ? command.CustomBody
+            : $"""
             <p>Dear {client.ContactPerson ?? client.Name},</p>
             <p>Please find attached our offer <strong>{offer.Title}</strong>.</p>
             <p>Total: <strong>{offer.CalculateTotal().Amount:N2} {offer.Currency}</strong></p>

@@ -197,14 +197,16 @@ public sealed class OffersController : ControllerBase
     [HttpPost("{id:guid}/email")]
     public async Task<IActionResult> SendEmail(
         Guid id,
+        [FromBody] SendOfferEmailBody? body,
         [FromServices] ICommandHandler<SendOfferEmailCommand> handler,
         CancellationToken ct)
     {
-        await handler.HandleAsync(new SendOfferEmailCommand(id), ct);
+        await handler.HandleAsync(new SendOfferEmailCommand(id, body?.Subject, body?.Body), ct);
         return NoContent();
     }
 }
 
+public record SendOfferEmailBody(string? Subject, string? Body);
 public record UpdateOfferBody(string Title, string? Notes, DateOnly? ValidUntil, decimal? DiscountPercent = null, decimal? VatRateOverride = null);
 public record ExtendOfferBody(DateOnly NewValidUntil);
 public record AddOfferItemBody(string Description, decimal Quantity, decimal UnitPrice);

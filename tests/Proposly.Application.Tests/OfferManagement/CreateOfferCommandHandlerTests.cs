@@ -2,6 +2,7 @@ using NSubstitute;
 using Proposly.Application.Abstractions;
 using Proposly.Application.OfferManagement.Commands.CreateOffer;
 using Proposly.Domain.CompanyManagement.Entities;
+using Proposly.Domain.CompanyManagement.Repositories;
 using Proposly.Domain.OfferManagement.Entities;
 using Proposly.Domain.OfferManagement.Repositories;
 
@@ -11,6 +12,7 @@ public sealed class CreateOfferCommandHandlerTests
 {
     private readonly IOfferRepository _offers = Substitute.For<IOfferRepository>();
     private readonly IClientRepository _clients = Substitute.For<IClientRepository>();
+    private readonly ICompanyRepository _companies = Substitute.For<ICompanyRepository>();
     private readonly ICurrentUserService _currentUser = Substitute.For<ICurrentUserService>();
     private readonly CreateOfferCommandHandler _sut;
 
@@ -20,7 +22,8 @@ public sealed class CreateOfferCommandHandlerTests
     public CreateOfferCommandHandlerTests()
     {
         _currentUser.CompanyId.Returns(_companyId);
-        _sut = new CreateOfferCommandHandler(_offers, _clients, _currentUser);
+        _companies.GetByIdAsync(_companyId, Arg.Any<CancellationToken>()).Returns(Company.Create(_companyId, "Test Company"));
+        _sut = new CreateOfferCommandHandler(_offers, _clients, _companies, _currentUser);
     }
 
     [Fact]

@@ -122,8 +122,8 @@ export const downloadOfferPdf = async (id: string, title: string) => {
   URL.revokeObjectURL(url)
 }
 
-export const sendOfferEmail = (id: string) =>
-  api.post(`/offers/${id}/email`)
+export const sendOfferEmail = (id: string, subject?: string, body?: string) =>
+  api.post(`/offers/${id}/email`, subject || body ? { subject, body } : undefined)
 
 export const getVatPreview = (clientId: string) =>
   api.get<VatPreview>('/offers/vat-preview', { params: { clientId } }).then(r => r.data)
