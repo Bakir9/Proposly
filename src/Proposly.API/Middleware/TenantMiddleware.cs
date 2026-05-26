@@ -32,6 +32,14 @@ public sealed class TenantMiddleware : IMiddleware
             return;
         }
 
+        // SuperAdmin is cross-tenant — skip company validation entirely
+        var role = context.User.FindFirstValue(ClaimTypes.Role);
+        if (role == nameof(UserRole.SuperAdmin))
+        {
+            await next(context);
+            return;
+        }
+
         var companyIdClaim = context.User.FindFirstValue("company_id");
 
         if (!Guid.TryParse(companyIdClaim, out var companyId))

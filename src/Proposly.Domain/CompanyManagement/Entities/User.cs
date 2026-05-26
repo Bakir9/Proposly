@@ -25,6 +25,9 @@ public sealed class User : Entity<Guid>, ITenantEntity, IAuditableEntity
     public static User Create(Guid companyId, string email, string passwordHash, string firstName, string lastName, UserRole role = UserRole.Member)
         => new(Guid.NewGuid(), companyId, email, passwordHash, firstName, lastName, role);
 
+    public static User CreateSuperAdmin(string email, string passwordHash, string firstName, string lastName)
+        => new(Guid.NewGuid(), Guid.Empty, email, passwordHash, firstName, lastName, UserRole.SuperAdmin);
+
     public static User CreateInvited(Guid companyId, string email, string firstName, string lastName, UserRole role, string inviteToken, DateTime inviteTokenExpiry)
     {
         // Placeholder hash — cannot be used to log in; replaced when invite is accepted

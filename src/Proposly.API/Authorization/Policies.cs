@@ -20,4 +20,7 @@ public static class Policies
 
     /// <summary>Owner or Admin. Use for creating and managing projects.</summary>
     public const string ManageProjects = nameof(ManageProjects);
+
+    /// <summary>SuperAdmin only. Use for cross-tenant administration (plan management, company listing).</summary>
+    public const string SuperAdminOnly = nameof(SuperAdminOnly);
 }

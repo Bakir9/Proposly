@@ -23,6 +23,9 @@ public static class AuthorizationExtensions
 
             options.AddPolicy(Policies.ManageProjects, policy =>
                 policy.RequireRole(UserRole.Owner.ToString(), UserRole.Admin.ToString()));
+
+            options.AddPolicy(Policies.SuperAdminOnly, policy =>
+                policy.RequireRole(UserRole.SuperAdmin.ToString()));
         });
 
         return services;

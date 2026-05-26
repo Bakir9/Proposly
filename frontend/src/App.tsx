@@ -24,6 +24,15 @@ import { ProfilePage } from './features/profile/ProfilePage'
 import { NotificationsPage } from './features/notifications/NotificationsPage'
 import { QuarterlyFinancialReportPage } from './features/reports/QuarterlyFinancialReportPage'
 import { CalendarPage } from './features/calendar/CalendarPage'
+import { AdminCompaniesPage } from './features/admin/AdminCompaniesPage'
+import { useAuth } from './features/auth/AuthContext'
+
+function AdminRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, user } = useAuth()
+  if (!isAuthenticated) return <Navigate to="/login" replace />
+  if (user?.role !== 'SuperAdmin') return <Navigate to="/dashboard" replace />
+  return <>{children}</>
+}
 
 export default function App() {
   const { theme } = useTheme()
@@ -53,6 +62,7 @@ export default function App() {
         <Route path="/calendar" element={<CalendarPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/admin/companies" element={<AdminRoute><AdminCompaniesPage /></AdminRoute>} />
       </Route>
       <Route path="*" element={<NotFoundPage />} />
     </Routes>

@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Moon, Sun } from 'lucide-react'
-import { getCompanySettings, updateCompanySettings } from '@/api/settings'
+import { getCompanySettings, updateCompanySettings, type PlanTier } from '@/api/settings'
 
 const EU_COUNTRIES = [
   { code: 'AT', name: 'Austria' }, { code: 'BE', name: 'Belgium' }, { code: 'BG', name: 'Bulgaria' },
@@ -25,6 +25,17 @@ const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
 ]
+
+const PLAN_COLORS: Record<PlanTier, string> = {
+  Free: 'bg-muted text-muted-foreground',
+  Starter: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
+  Pro: 'bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300',
+  Business: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
+}
+
+function usageLabel(current: number, max: number | null) {
+  return max === null ? `${current} / Unlimited` : `${current} / ${max}`
+}
 
 export function SettingsPage() {
   const { theme, toggleTheme } = useTheme()
@@ -293,6 +304,47 @@ export function SettingsPage() {
           </Button>
         </CardContent>
       </Card>
+
+      {/* Plan */}
+      {settings && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-3">
+              Plan
+              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${PLAN_COLORS[settings.planTier]}`}>
+                {settings.planTier}
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="text-muted-foreground">Invited users</p>
+                <p className="font-medium mt-0.5">
+                  {usageLabel(settings.currentUserCount, settings.maxUsers)}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Projects</p>
+                <p className="font-medium mt-0.5">
+                  {usageLabel(settings.currentProjectCount, settings.maxProjects)}
+                </p>
+              </div>
+              {settings.planExpiresAt && (
+                <div className="col-span-2">
+                  <p className="text-muted-foreground">Plan expires</p>
+                  <p className="font-medium mt-0.5">
+                    {new Date(settings.planExpiresAt).toLocaleDateString()}
+                  </p>
+                </div>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground mt-4">
+              Plan changes are managed by your Proposly administrator.
+            </p>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

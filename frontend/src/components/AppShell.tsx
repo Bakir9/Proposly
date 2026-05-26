@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, FileText, FolderKanban, Users, LogOut, Building2, Settings, BarChart3, CalendarDays } from 'lucide-react'
+import { LayoutDashboard, FileText, FolderKanban, Users, LogOut, Building2, Settings, BarChart3, CalendarDays, ShieldCheck } from 'lucide-react'
 import { useAuth } from '@/features/auth/AuthContext'
 import { useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
@@ -11,13 +11,14 @@ import proposlyLogo from '@/assets/proposly.png'
 import { NotificationTaskProvider } from '@/contexts/NotificationTaskContext'
 
 const ALL_NAV_ITEMS = [
-  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, adminOnly: false },
-  { to: '/offers',    label: 'Offers',    icon: FileText,        adminOnly: true  },
-  { to: '/projects',  label: 'Projects',  icon: FolderKanban,   adminOnly: false },
-  { to: '/calendar',  label: 'Calendar',  icon: CalendarDays,   adminOnly: false },
-  { to: '/clients',   label: 'Clients',   icon: Building2,      adminOnly: true  },
-  { to: '/users',     label: 'Team',      icon: Users,          adminOnly: true  },
-  { to: '/reports',   label: 'Reports',   icon: BarChart3,      adminOnly: true  },
+  { to: '/dashboard',        label: 'Dashboard', icon: LayoutDashboard, adminOnly: false, superAdminOnly: false },
+  { to: '/offers',           label: 'Offers',    icon: FileText,        adminOnly: true,  superAdminOnly: false },
+  { to: '/projects',         label: 'Projects',  icon: FolderKanban,   adminOnly: false, superAdminOnly: false },
+  { to: '/calendar',         label: 'Calendar',  icon: CalendarDays,   adminOnly: false, superAdminOnly: false },
+  { to: '/clients',          label: 'Clients',   icon: Building2,      adminOnly: true,  superAdminOnly: false },
+  { to: '/users',            label: 'Team',      icon: Users,          adminOnly: true,  superAdminOnly: false },
+  { to: '/reports',          label: 'Reports',   icon: BarChart3,      adminOnly: true,  superAdminOnly: false },
+  { to: '/admin/companies',  label: 'Companies', icon: ShieldCheck,    adminOnly: false, superAdminOnly: true  },
 ]
 
 function getInitials(fullName: string) {
@@ -33,8 +34,13 @@ export function AppShell() {
   const queryClient = useQueryClient()
   const [avatarColor, setAvatarColorState] = useState(getAvatarColor)
 
+  const isSuperAdmin = user?.role === 'SuperAdmin'
   const isAdminOrOwner = user?.role === 'Owner' || user?.role === 'Admin'
-  const navItems = ALL_NAV_ITEMS.filter(item => !item.adminOnly || isAdminOrOwner)
+  const navItems = ALL_NAV_ITEMS.filter(item => {
+    if (item.superAdminOnly) return isSuperAdmin
+    if (item.adminOnly) return isAdminOrOwner && !isSuperAdmin
+    return !isSuperAdmin
+  })
 
   useEffect(() => {
     const handler = () => setAvatarColorState(getAvatarColor())

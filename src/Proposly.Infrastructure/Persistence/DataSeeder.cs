@@ -12,12 +12,17 @@ namespace Proposly.Infrastructure.Persistence;
 public sealed class DataSeeder
 {
     private readonly IConfiguration _configuration;
+    private readonly IPasswordHasher _passwordHasher;
 
     /// <summary>Fixed IDs so seed data is stable across re-runs.</summary>
     public static readonly Guid SeedCompanyId = Guid.Parse("a1b2c3d4-0000-0000-0000-000000000001");
     public static readonly Guid SeedUserId   = Guid.Parse("00000000-0000-0000-0000-000000000001");
 
-    public DataSeeder(IConfiguration configuration) => _configuration = configuration;
+    public DataSeeder(IConfiguration configuration, IPasswordHasher passwordHasher)
+    {
+        _configuration = configuration;
+        _passwordHasher = passwordHasher;
+    }
 
     public async Task SeedAsync(CancellationToken ct = default)
     {
@@ -26,6 +31,20 @@ public sealed class DataSeeder
             .Options;
 
         await using var context = new AppDbContext(options, new SeedCurrentUserService(), new NoOpDispatcher());
+
+        // Seed SuperAdmin (dev only — use a strong password in production via config)
+        var superAdminEmail = _configuration["Seed:SuperAdminEmail"] ?? "admin@proposly.io";
+        var superAdminPassword = _configuration["Seed:SuperAdminPassword"] ?? "SuperAdmin123!";
+        if (!await context.Users.IgnoreQueryFilters().AnyAsync(u => u.Email == superAdminEmail, ct))
+        {
+            var superAdmin = User.CreateSuperAdmin(
+                superAdminEmail,
+                _passwordHasher.Hash(superAdminPassword),
+                "Super",
+                "Admin");
+            await context.Users.AddAsync(superAdmin, ct);
+            await context.SaveChangesAsync(ct);
+        }
 
         if (await context.Companies.AnyAsync(ct))
             return;
