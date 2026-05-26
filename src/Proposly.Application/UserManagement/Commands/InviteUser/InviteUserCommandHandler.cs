@@ -3,23 +3,27 @@ using Proposly.Application.Abstractions;
 using Proposly.Domain.CompanyManagement.Entities;
 using Proposly.Domain.CompanyManagement.Enums;
 using Proposly.Domain.CompanyManagement.Repositories;
+using Proposly.Domain.ProjectManagement.Repositories;
 
 namespace Proposly.Application.UserManagement.Commands.InviteUser;
 
 public sealed class InviteUserCommandHandler : ICommandHandler<InviteUserCommand>
 {
     private readonly IUserRepository _userRepository;
+    private readonly ICompanyRepository _companyRepository;
     private readonly IEmailService _emailService;
     private readonly IAppSettings _appSettings;
     private readonly ICurrentUserService _currentUser;
 
     public InviteUserCommandHandler(
         IUserRepository userRepository,
+        ICompanyRepository companyRepository,
         IEmailService emailService,
         IAppSettings appSettings,
         ICurrentUserService currentUser)
     {
         _userRepository = userRepository;
+        _companyRepository = companyRepository;
         _emailService = emailService;
         _appSettings = appSettings;
         _currentUser = currentUser;
@@ -27,6 +31,13 @@ public sealed class InviteUserCommandHandler : ICommandHandler<InviteUserCommand
 
     public async Task HandleAsync(InviteUserCommand command, CancellationToken ct = default)
     {
+        var company = await _companyRepository.GetByIdAsync(_currentUser.CompanyId, ct)
+            ?? throw new InvalidOperationException("Company not found.");
+
+        var invitedCount = await _userRepository.CountInvitedByCompanyIdAsync(_currentUser.CompanyId, ct);
+        if (company.IsUserLimitReached(invitedCount))
+            throw new InvalidOperationException($"User limit reached for your current plan. Upgrade to invite more users.");
+
         if (await _userRepository.ExistsByEmailAsync(command.Email, ct))
             throw new InvalidOperationException($"Email '{command.Email}' is already registered.");
 

@@ -14,4 +14,5 @@ public interface IUserRepository
     Task AddAsync(User user, CancellationToken ct = default);
     Task UpdateAsync(User user, CancellationToken ct = default);
     Task RemoveAsync(User user, CancellationToken ct = default);
+    Task<int> CountInvitedByCompanyIdAsync(Guid companyId, CancellationToken ct = default);
 }

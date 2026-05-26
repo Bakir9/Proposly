@@ -25,6 +25,12 @@ public sealed class Company : AggregateRoot<Guid>, IAuditableEntity
     public DateTime CreatedAt { get; private set; }
     public DateTime UpdatedAt { get; private set; }
 
+    // Plan
+    public PlanTier PlanTier { get; private set; } = PlanTier.Free;
+    public int? MaxUsers { get; private set; } = 1;
+    public int? MaxProjects { get; private set; } = 3;
+    public DateTime? PlanExpiresAt { get; private set; }
+
     // VAT settings
     public string? CompanyCountry { get; private set; }
     public bool IsVatRegistered { get; private set; }
@@ -58,6 +64,27 @@ public sealed class Company : AggregateRoot<Guid>, IAuditableEntity
         IsVatExempt = isVatExempt;
         VatExemptReason = vatExemptReason;
         UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void SetPlan(PlanTier tier, int? maxUsers, int? maxProjects, DateTime? expiresAt)
+    {
+        PlanTier = tier;
+        MaxUsers = maxUsers;
+        MaxProjects = maxProjects;
+        PlanExpiresAt = expiresAt;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public bool IsUserLimitReached(int invitedCount)
+    {
+        var limit = PlanExpiresAt.HasValue && PlanExpiresAt.Value < DateTime.UtcNow ? 1 : MaxUsers;
+        return limit.HasValue && invitedCount >= limit.Value;
+    }
+
+    public bool IsProjectLimitReached(int projectCount)
+    {
+        var limit = PlanExpiresAt.HasValue && PlanExpiresAt.Value < DateTime.UtcNow ? 3 : MaxProjects;
+        return limit.HasValue && projectCount >= limit.Value;
     }
 
     public void Suspend()

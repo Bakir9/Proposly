@@ -1,3 +1,5 @@
+using Proposly.Domain.CompanyManagement.Enums;
+
 namespace Proposly.Application.Settings.Responses;
 
 public record CompanySettingsResponse(
@@ -7,4 +9,10 @@ public record CompanySettingsResponse(
     string? CompanyVatNumber,
     decimal DefaultVatRate,
     bool IsVatExempt,
-    string? VatExemptReason);
+    string? VatExemptReason,
+    PlanTier PlanTier,
+    int? MaxUsers,
+    int? MaxProjects,
+    DateTime? PlanExpiresAt,
+    int CurrentUserCount,
+    int CurrentProjectCount);

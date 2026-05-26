@@ -10,4 +10,5 @@ public interface IProjectRepository
     Task<IReadOnlyList<Project>> SearchAsync(string term, CancellationToken ct = default);
     Task AddAsync(Project project, CancellationToken ct = default);
     Task UpdateAsync(Project project, CancellationToken ct = default);
+    Task<int> CountByCompanyIdAsync(Guid companyId, CancellationToken ct = default);
 }

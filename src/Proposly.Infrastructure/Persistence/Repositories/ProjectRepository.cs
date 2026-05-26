@@ -54,4 +54,9 @@ public sealed class ProjectRepository : IProjectRepository
     {
         await _context.SaveChangesAsync(ct);
     }
+
+    public async Task<int> CountByCompanyIdAsync(Guid companyId, CancellationToken ct = default)
+        => await _context.Projects
+            .Where(p => p.CompanyId == companyId)
+            .CountAsync(ct);
 }

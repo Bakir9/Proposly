@@ -1,4 +1,5 @@
 using Proposly.Application.Abstractions;
+using Proposly.Domain.CompanyManagement.Repositories;
 using Proposly.Domain.OfferManagement.Repositories;
 using Proposly.Domain.ProjectManagement.Entities;
 using Proposly.Domain.ProjectManagement.Repositories;
@@ -10,17 +11,26 @@ public sealed class CreateProjectCommandHandler : ICommandHandler<CreateProjectC
 {
     private readonly IProjectRepository _repository;
     private readonly IClientRepository _clients;
+    private readonly ICompanyRepository _companies;
     private readonly ICurrentUserService _currentUser;
 
-    public CreateProjectCommandHandler(IProjectRepository repository, IClientRepository clients, ICurrentUserService currentUser)
+    public CreateProjectCommandHandler(IProjectRepository repository, IClientRepository clients, ICompanyRepository companies, ICurrentUserService currentUser)
     {
         _repository = repository;
         _clients = clients;
+        _companies = companies;
         _currentUser = currentUser;
     }
 
     public async Task<Guid> HandleAsync(CreateProjectCommand command, CancellationToken ct = default)
     {
+        var company = await _companies.GetByIdAsync(_currentUser.CompanyId, ct)
+            ?? throw new InvalidOperationException("Company not found.");
+
+        var projectCount = await _repository.CountByCompanyIdAsync(_currentUser.CompanyId, ct);
+        if (company.IsProjectLimitReached(projectCount))
+            throw new InvalidOperationException($"Project limit reached for your current plan. Upgrade to create more projects.");
+
         var client = await _clients.GetByIdAsync(command.ClientId, ct)
             ?? throw new InvalidOperationException($"Client {command.ClientId} not found.");
 

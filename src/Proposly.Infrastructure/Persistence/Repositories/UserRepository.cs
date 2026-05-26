@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Proposly.Domain.CompanyManagement.Entities;
+using Proposly.Domain.CompanyManagement.Enums;
 using Proposly.Domain.CompanyManagement.Repositories;
 
 namespace Proposly.Infrastructure.Persistence.Repositories;
@@ -58,4 +59,9 @@ public sealed class UserRepository : IUserRepository
         _context.Users.Remove(user);
         await _context.SaveChangesAsync(ct);
     }
+
+    public async Task<int> CountInvitedByCompanyIdAsync(Guid companyId, CancellationToken ct = default)
+        => await _context.Users
+            .Where(u => u.CompanyId == companyId && !u.IsDisabled && u.Role != UserRole.Owner)
+            .CountAsync(ct);
 }
