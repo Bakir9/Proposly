@@ -16,6 +16,7 @@ import { OfferDetailPage } from './features/offers/OfferDetailPage'
 import { CreateOfferPage } from './features/offers/CreateOfferPage'
 import { ProjectsPage } from './features/projects/ProjectsPage'
 import { ProjectDetailPage } from './features/projects/ProjectDetailPage'
+import { TaskDetailPage } from './features/projects/TaskDetailPage'
 import { UsersPage } from './features/users/UsersPage'
 import { ClientsPage } from './features/clients/ClientsPage'
 import { ClientDetailPage } from './features/clients/ClientDetailPage'
@@ -54,6 +55,7 @@ export default function App() {
         <Route path="/offers/:id" element={<OfferDetailPage />} />
         <Route path="/projects" element={<ProjectsPage />} />
         <Route path="/projects/:id" element={<ProjectDetailPage />} />
+        <Route path="/projects/:id/tasks/:taskId" element={<TaskDetailPage />} />
         <Route path="/clients" element={<ClientsPage />} />
         <Route path="/clients/:id" element={<ClientDetailPage />} />
         <Route path="/users" element={<UsersPage />} />

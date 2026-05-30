@@ -188,13 +188,16 @@ export const addProjectMember = (projectId: string, data: { userId: string; name
 export const logTime = (projectId: string, data: { memberId: string; hoursWorked: number; description?: string; date: string }) =>
   api.post<string>(`/projects/${projectId}/time`, data).then(r => r.data)
 
+export const deleteTimeEntry = (projectId: string, entryId: string) =>
+  api.delete(`/projects/${projectId}/time/${entryId}`)
+
 export const addExpense = (projectId: string, data: { description: string; amount: number; currency: string; category: string; date: string }) =>
   api.post<string>(`/projects/${projectId}/expenses`, data).then(r => r.data)
 
 export const addTask = (projectId: string, data: { title: string; description?: string; estimatedHours?: number; startDate?: string; dueDate?: string; milestoneId?: string; assignedMemberId?: string }) =>
   api.post<string>(`/projects/${projectId}/tasks`, data).then(r => r.data)
 
-export const updateTask = (projectId: string, taskId: string, data: { title: string; description?: string; estimatedHours?: number; startDate?: string; dueDate?: string; milestoneId?: string; assignedMemberId?: string }) =>
+export const updateTask = (projectId: string, taskId: string, data: { title: string; description?: string; estimatedHours?: number; actualHours?: number; startDate?: string; dueDate?: string; milestoneId?: string; assignedMemberId?: string }) =>
   api.put(`/projects/${projectId}/tasks/${taskId}`, data)
 
 export const updateTaskStatus = (projectId: string, taskId: string, status: string, actualHours?: number) =>

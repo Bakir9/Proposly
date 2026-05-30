@@ -167,6 +167,14 @@ public sealed class Project : AggregateRoot<Guid>, ITenantEntity, IAuditableEnti
         return entry;
     }
 
+    public void RemoveTimeEntry(Guid timeEntryId)
+    {
+        var entry = _timeEntries.FirstOrDefault(e => e.Id == timeEntryId)
+            ?? throw new InvalidOperationException($"Time entry {timeEntryId} not found in project.");
+        _timeEntries.Remove(entry);
+        Touch();
+    }
+
     public void CompleteTask(Guid taskId, decimal? actualHours)
     {
         var task = _tasks.FirstOrDefault(t => t.Id == taskId)
@@ -237,13 +245,13 @@ public sealed class Project : AggregateRoot<Guid>, ITenantEntity, IAuditableEnti
         return task;
     }
 
-    public void UpdateTask(Guid taskId, string title, string? description, decimal? estimatedHours, DateOnly? startDate, DateOnly? dueDate, Guid? milestoneId, Guid? assignedMemberId)
+    public void UpdateTask(Guid taskId, string title, string? description, decimal? estimatedHours, decimal? actualHours, DateOnly? startDate, DateOnly? dueDate, Guid? milestoneId, Guid? assignedMemberId)
     {
         var task = _tasks.FirstOrDefault(t => t.Id == taskId)
             ?? throw new InvalidOperationException($"Task {taskId} not found in project.");
 
         var previousAssignee = task.AssignedMemberId;
-        task.UpdateDetails(title, description, estimatedHours, startDate, dueDate, milestoneId, assignedMemberId);
+        task.UpdateDetails(title, description, estimatedHours, actualHours, startDate, dueDate, milestoneId, assignedMemberId);
 
         if (assignedMemberId.HasValue && assignedMemberId != previousAssignee)
         {

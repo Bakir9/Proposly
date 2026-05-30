@@ -1,4 +1,4 @@
-using Proposly.Application.Abstractions;
+﻿using Proposly.Application.Abstractions;
 using Proposly.Domain.OfferManagement.Repositories;
 using Proposly.Domain.ProjectManagement.Repositories;
 using Proposly.Shared.ValueObjects;
@@ -20,7 +20,7 @@ public sealed class UpdateProjectCommandHandler : ICommandHandler<UpdateProjectC
 
     public async Task HandleAsync(UpdateProjectCommand command, CancellationToken cancellationToken = default)
     {
-        var project = await _repository.GetByIdAsync(command.ProjectId, cancellationToken)
+        var project = await _repository.GetByIdForWriteAsync(command.ProjectId, cancellationToken)
             ?? throw new InvalidOperationException($"Project {command.ProjectId} not found.");
 
         if (command.Status is not null && command.Status != project.Status.ToString())

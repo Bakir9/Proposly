@@ -1,4 +1,4 @@
-using Proposly.Application.Abstractions;
+﻿using Proposly.Application.Abstractions;
 using Proposly.Domain.CompanyManagement.Repositories;
 using Proposly.Domain.ProjectManagement.Repositories;
 
@@ -19,7 +19,7 @@ public sealed class AddProjectNoteCommandHandler : ICommandHandler<AddProjectNot
 
     public async Task<Guid> HandleAsync(AddProjectNoteCommand command, CancellationToken ct = default)
     {
-        var project = await _projects.GetByIdAsync(command.ProjectId, ct)
+        var project = await _projects.GetByIdForWriteAsync(command.ProjectId, ct)
             ?? throw new InvalidOperationException($"Project {command.ProjectId} not found.");
 
         var user = await _users.GetByIdAsync(_currentUser.UserId, ct)

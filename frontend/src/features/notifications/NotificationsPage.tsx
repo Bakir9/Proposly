@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom'
 import { Bell, Check, CheckCheck } from 'lucide-react'
 import { getAllNotifications, markNotificationRead, markAllNotificationsRead } from '@/api/notifications'
 import { useAuth } from '@/features/auth/AuthContext'
-import { useNotificationTask } from '@/contexts/NotificationTaskContext'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 
@@ -15,7 +14,6 @@ export function NotificationsPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { user } = useAuth()
-  const { setPendingTaskId } = useNotificationTask()
 
   const { data: notifications = [], isLoading } = useQuery({
     queryKey: ['notifications-all', user?.userId],
@@ -47,8 +45,12 @@ export function NotificationsPage() {
     if (link) {
       const url = new URL(link, window.location.origin)
       const taskId = url.searchParams.get('task')
-      if (taskId) setPendingTaskId(taskId)
-      navigate(url.pathname)
+      if (taskId) {
+        const projectId = url.pathname.replace('/projects/', '')
+        navigate(`/projects/${projectId}/tasks/${taskId}`)
+      } else {
+        navigate(url.pathname)
+      }
     }
   }
 

@@ -9,5 +9,6 @@ public sealed class UpdateTaskCommandValidator : AbstractValidator<UpdateTaskCom
         RuleFor(x => x.Title).NotEmpty().MaximumLength(300);
         RuleFor(x => x.Description).MaximumLength(50000).When(x => x.Description is not null);
         RuleFor(x => x.EstimatedHours).GreaterThan(0).When(x => x.EstimatedHours is not null);
+        RuleFor(x => x.ActualHours).GreaterThan(0).When(x => x.ActualHours is not null);
     }
 }

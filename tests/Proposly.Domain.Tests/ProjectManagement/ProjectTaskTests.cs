@@ -124,7 +124,7 @@ public class ProjectTaskTests
         var milestoneId = Guid.NewGuid();
         var assignedMemberId = Guid.NewGuid();
 
-        task.UpdateDetails("New Title", "New Desc", 16m, newStart, newDue, milestoneId, assignedMemberId);
+        task.UpdateDetails("New Title", "New Desc", 16m, null, newStart, newDue, milestoneId, assignedMemberId);
 
         Assert.Equal("New Title", task.Title);
         Assert.Equal("New Desc", task.Description);

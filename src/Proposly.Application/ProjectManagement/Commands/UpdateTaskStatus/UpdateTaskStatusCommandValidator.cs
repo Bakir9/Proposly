@@ -13,8 +13,7 @@ public sealed class UpdateTaskStatusCommandValidator : AbstractValidator<UpdateT
             .WithMessage("Invalid task status.");
 
         RuleFor(x => x.ActualHours)
-            .NotNull().WithMessage("Actual hours are required to complete a task.")
             .GreaterThan(0).WithMessage("Actual hours must be greater than zero.")
-            .When(x => x.Status == "Done");
+            .When(x => x.ActualHours is not null);
     }
 }

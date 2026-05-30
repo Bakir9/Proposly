@@ -19,6 +19,7 @@ import {
   deleteTaskComment,
   addTaskDependency,
   removeTaskDependency,
+  deleteTimeEntry,
 } from '@/api/projects'
 import {
   LineChart, Line, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -300,6 +301,9 @@ export function ProjectDetailPage() {
   const [donePromptTaskId, setDonePromptTaskId] = useState<string | null>(null)
   const [donePromptHours, setDonePromptHours] = useState('')
 
+  // Delete time entry confirmation
+  const [deleteTimeEntryId, setDeleteTimeEntryId] = useState<string | null>(null)
+
   const mutAddTask = useMutation({
     mutationFn: () => addTask(id!, {
       title: taskTitle,
@@ -355,6 +359,7 @@ export function ProjectDetailPage() {
         title: editTaskTitle,
         description: editTaskDesc || undefined,
         estimatedHours: editTaskHours ? parseFloat(editTaskHours) : undefined,
+        actualHours: editTaskActualHours && parseFloat(editTaskActualHours) > 0 ? parseFloat(editTaskActualHours) : undefined,
         startDate: editTaskStart || undefined,
         dueDate: editTaskDue || undefined,
         milestoneId: editTaskMilestoneId || undefined,
@@ -366,12 +371,32 @@ export function ProjectDetailPage() {
       }
     },
     onSuccess: () => {
-      invalidate()
+      queryClient.setQueryData<import('@/api/projects').ProjectDetail>(['project', id], old => {
+        if (!old) return old
+        const member = old.members.find(m => m.id === editTaskAssignedMemberId)
+        return {
+          ...old,
+          tasks: old.tasks.map(t => t.id !== editingTask!.id ? t : {
+            ...t,
+            title: editTaskTitle,
+            description: editTaskDesc || null,
+            estimatedHours: editTaskHours ? parseFloat(editTaskHours) : null,
+            actualHours: editTaskActualHours && parseFloat(editTaskActualHours) > 0 ? parseFloat(editTaskActualHours) : null,
+            startDate: editTaskStart || null,
+            dueDate: editTaskDue || null,
+            milestoneId: editTaskMilestoneId || null,
+            assignedMemberId: editTaskAssignedMemberId || null,
+            assignedMemberName: member?.name ?? null,
+            status: editTaskStatus as import('@/api/projects').TaskStatus,
+          }),
+        }
+      })
       setEditTaskOpen(false)
       setEditingTask(null)
       setCommentBody('')
       setEditingCommentId(null)
       setEditingCommentBody('')
+      invalidate()
     },
   })
 
@@ -421,6 +446,11 @@ export function ProjectDetailPage() {
       date: timeDate,
     }),
     onSuccess: () => { invalidate(); setTimeOpen(false); setTimeMemberId(''); setTimeHours(''); setTimeDate(''); setTimeDesc('') },
+  })
+
+  const mutDeleteTimeEntry = useMutation({
+    mutationFn: (entryId: string) => deleteTimeEntry(id!, entryId),
+    onSuccess: invalidate,
   })
 
   const mutAddExpense = useMutation({
@@ -944,8 +974,12 @@ export function ProjectDetailPage() {
                                 const task = p.tasks.find(t => t.id === draggedTaskId)
                                 if (task && task.status !== col.status) {
                                   if (col.status === 'Done') {
-                                    setDonePromptTaskId(draggedTaskId)
-                                    setDonePromptHours(task.actualHours?.toString() ?? '')
+                                    if (task.actualHours) {
+                                      mutTaskStatus.mutate({ taskId: draggedTaskId, status: 'Done', actualHours: task.actualHours })
+                                    } else {
+                                      setDonePromptTaskId(draggedTaskId)
+                                      setDonePromptHours('')
+                                    }
                                   } else {
                                     mutTaskStatus.mutate({ taskId: draggedTaskId, status: col.status })
                                   }
@@ -1409,6 +1443,15 @@ export function ProjectDetailPage() {
                               </div>
                               <p className="text-sm font-semibold shrink-0 w-12 text-right">{entry.hoursWorked}h</p>
                               <p className="text-sm font-medium shrink-0 w-24 text-right">{fmtCur(entry.cost, entry.currency)}</p>
+                              {authUser?.role === 'Owner' && (
+                                <button
+                                  onClick={() => setDeleteTimeEntryId(entry.id)}
+                                  title="Delete entry"
+                                  className="shrink-0 p-1.5 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              )}
                             </div>
                           )
                         })}
@@ -1792,7 +1835,7 @@ export function ProjectDetailPage() {
                 <span className="text-xs text-muted-foreground truncate">{p.name}</span>
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                <Button size="sm" onClick={() => mutUpdateTask.mutate()} disabled={mutUpdateTask.isPending || !editTaskTitle.trim()}>
+                <Button size="sm" onClick={() => mutUpdateTask.mutate()} disabled={mutUpdateTask.isPending || !editTaskTitle.trim() || (editTaskStatus === 'Done' && (!editTaskActualHours || parseFloat(editTaskActualHours) <= 0))}>
                   {mutUpdateTask.isPending ? 'Saving…' : 'Save'}
                 </Button>
                 <button
@@ -1978,8 +2021,21 @@ export function ProjectDetailPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground font-normal">Actual Hours</Label>
-                  <Input type="number" step="0.5" min="0" value={editTaskActualHours} onChange={e => setEditActualTaskHours(e.target.value)} placeholder="—" />
+                  <Label className={`text-xs font-normal ${editTaskStatus === 'Done' && (!editTaskActualHours || parseFloat(editTaskActualHours) <= 0) ? 'text-red-500' : 'text-muted-foreground'}`}>
+                    Actual Hours{editTaskStatus === 'Done' ? ' *' : ''}
+                  </Label>
+                  <Input
+                    type="number"
+                    step="0.5"
+                    min="0"
+                    value={editTaskActualHours}
+                    onChange={e => setEditActualTaskHours(e.target.value)}
+                    placeholder="—"
+                    className={editTaskStatus === 'Done' && (!editTaskActualHours || parseFloat(editTaskActualHours) <= 0) ? 'border-red-500 focus-visible:ring-red-500' : ''}
+                  />
+                  {editTaskStatus === 'Done' && (!editTaskActualHours || parseFloat(editTaskActualHours) <= 0) && (
+                    <p className="text-xs text-red-500">Required to mark as done</p>
+                  )}
                 </div>
 
                 <div className="space-y-1.5">
@@ -2424,6 +2480,36 @@ export function ProjectDetailPage() {
             <Button variant="outline" onClick={() => setMilestoneOpen(false)}>Cancel</Button>
             <Button onClick={() => mutAddMilestone.mutate()} disabled={mutAddMilestone.isPending || !milestoneTitle.trim() || !milestoneDue}>
               {mutAddMilestone.isPending ? 'Adding…' : 'Add Milestone'}
+            </Button>
+          </div>
+        </div>
+      </Dialog>
+
+      {/* Delete time entry confirmation */}
+      <Dialog
+        open={!!deleteTimeEntryId}
+        onClose={() => setDeleteTimeEntryId(null)}
+        title="Delete time entry"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Are you sure you want to delete this time entry? This action cannot be undone and will affect project cost calculations.
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setDeleteTimeEntryId(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (deleteTimeEntryId) {
+                  mutDeleteTimeEntry.mutate(deleteTimeEntryId)
+                  setDeleteTimeEntryId(null)
+                }
+              }}
+              disabled={mutDeleteTimeEntry.isPending}
+            >
+              {mutDeleteTimeEntry.isPending ? 'Deleting…' : 'Delete'}
             </Button>
           </div>
         </div>

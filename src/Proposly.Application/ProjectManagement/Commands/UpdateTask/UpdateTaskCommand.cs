@@ -8,6 +8,7 @@ public record UpdateTaskCommand(
     string Title,
     string? Description,
     decimal? EstimatedHours,
+    decimal? ActualHours,
     DateOnly? StartDate,
     DateOnly? DueDate,
     Guid? MilestoneId,

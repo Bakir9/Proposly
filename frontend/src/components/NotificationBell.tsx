@@ -9,7 +9,6 @@ import {
   type NotificationResponse,
 } from '@/api/notifications'
 import { useAuth } from '@/features/auth/AuthContext'
-import { useNotificationTask } from '@/contexts/NotificationTaskContext'
 import { cn } from '@/lib/utils'
 
 export function NotificationBell() {
@@ -18,7 +17,6 @@ export function NotificationBell() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { user } = useAuth()
-  const { setPendingTaskId } = useNotificationTask()
 
   const { data: notifications = [] } = useQuery({
     queryKey: ['notifications', user?.userId],
@@ -54,8 +52,12 @@ export function NotificationBell() {
     if (n.link) {
       const url = new URL(n.link, window.location.origin)
       const taskId = url.searchParams.get('task')
-      if (taskId) setPendingTaskId(taskId)
-      navigate(url.pathname)
+      if (taskId) {
+        const projectId = url.pathname.replace('/projects/', '')
+        navigate(`/projects/${projectId}/tasks/${taskId}`)
+      } else {
+        navigate(url.pathname)
+      }
     }
   }
 

@@ -58,11 +58,12 @@ public sealed class ProjectTask : Entity<Guid>
     public IReadOnlyCollection<TaskComment> Comments => _comments.AsReadOnly();
     public IReadOnlyCollection<ProjectTask> BlockedBy => _blockedBy.AsReadOnly();
 
-    public void UpdateDetails(string title, string? description, decimal? estimatedHours, DateOnly? startDate, DateOnly? dueDate, Guid? milestoneId, Guid? assignedMemberId)
+    public void UpdateDetails(string title, string? description, decimal? estimatedHours, decimal? actualHours, DateOnly? startDate, DateOnly? dueDate, Guid? milestoneId, Guid? assignedMemberId)
     {
         Title = title;
         Description = description;
         EstimatedHours = estimatedHours;
+        ActualHours = actualHours;
         StartDate = startDate;
         DueDate = dueDate;
         MilestoneId = milestoneId;

@@ -61,7 +61,7 @@ public class ProjectTests
         var project = CreateProject();
         var task = project.AddTask("Old Title", null, 4m, StartDate, Deadline);
 
-        project.UpdateTask(task.Id, "New Title", "New Desc", 8m, StartDate, Deadline, null, null);
+        project.UpdateTask(task.Id, "New Title", "New Desc", 8m, null, StartDate, Deadline, null, null);
 
         var updated = project.Tasks.First();
         Assert.Equal("New Title", updated.Title);
@@ -75,7 +75,7 @@ public class ProjectTests
         var project = CreateProject();
 
         Assert.Throws<InvalidOperationException>(() =>
-            project.UpdateTask(Guid.NewGuid(), "Title", null, null, null, null, null, null));
+            project.UpdateTask(Guid.NewGuid(), "Title", null, null, null, null, null, null, null));
     }
 
     // --- AddTaskComment ---

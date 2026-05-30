@@ -21,6 +21,21 @@ public sealed class ProjectRepository : IProjectRepository
             .Include(p => p.Notes)
             .FirstOrDefaultAsync(p => p.Id == id, ct);
 
+    public async Task<Project?> GetByIdWithTimeEntriesAsync(Guid id, CancellationToken ct = default)
+        => await _context.Projects
+            .Include(p => p.TimeEntries)
+            .FirstOrDefaultAsync(p => p.Id == id, ct);
+
+    public async Task<Project?> GetByIdForWriteAsync(Guid id, CancellationToken ct = default)
+        => await _context.Projects
+            .Include(p => p.Members)
+            .Include(p => p.Tasks).ThenInclude(t => t.Comments)
+            .Include(p => p.Tasks).ThenInclude(t => t.BlockedBy)
+            .Include(p => p.Milestones)
+            .Include(p => p.Expenses)
+            .Include(p => p.Notes)
+            .FirstOrDefaultAsync(p => p.Id == id, ct);
+
     public async Task<IReadOnlyList<Project>> GetAllAsync(CancellationToken ct = default)
         => await _context.Projects
             .Include(p => p.Members)
