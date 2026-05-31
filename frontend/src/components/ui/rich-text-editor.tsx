@@ -90,7 +90,7 @@ export function RichTextEditor({ value, onChange, placeholder, className, editor
     const current = editor.getHTML()
     const incoming = value || ''
     if (current !== incoming && !(current === '<p></p>' && incoming === '')) {
-      editor.commands.setContent(incoming, false)
+      editor.commands.setContent(incoming)
     }
   }, [value, editor])
 
