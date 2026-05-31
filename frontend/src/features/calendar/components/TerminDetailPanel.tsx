@@ -107,6 +107,9 @@ export function TerminDetailPanel({ terminId, onClose }: Props) {
     onError: () => toast.error('Failed to update.'),
   })
 
+  
+
+
   const { mutate: doReschedule, isPending: rescheduling } = useMutation({
     mutationFn: () => rescheduleTermin(terminId, new Date(newStart).toISOString(), new Date(newEnd).toISOString()),
     onSuccess: () => { invalidate(); setRescheduleMode(false); toast.success('Meeting rescheduled.') },
