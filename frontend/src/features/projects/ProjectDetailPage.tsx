@@ -71,11 +71,11 @@ const TABS = [
   { id: 'notes', label: 'Notes' },
 ]
 
-const TASK_STATUS_COLOR: Record<string, string> = {
-  Todo: 'bg-slate-400',
-  InProgress: 'bg-blue-500',
-  Done: 'bg-green-500',
-}
+// const TASK_STATUS_COLOR: Record<string, string> = {
+//   Todo: 'bg-slate-400',
+//   InProgress: 'bg-blue-500',
+//   Done: 'bg-green-500',
+// }
 
 const TASK_STATUS_BORDER_COLOR: Record<string, string> = {
   Todo: '#94a3b8',
@@ -1243,7 +1243,7 @@ export function ProjectDetailPage() {
                           <span className="text-right">Hours Logged</span>
                         </div>
                         <div className="divide-y divide-border">
-                          {filteredMembers.map((member, i) => {
+                          {filteredMembers.map((member) => {
                             const idx = p.members.indexOf(member)
                             const hours = memberHoursMap[member.id] ?? 0
                             const cost = hours * member.hourlyRate

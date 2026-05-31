@@ -84,7 +84,7 @@ export function UsersPage() {
 
       <div className="grid gap-3">
         {users?.map(user => {
-          const isSelf = user.id === currentUser?.id
+          const isSelf = user.id === currentUser?.userId
           const isOwner = user.role === 'Owner'
           const canAct = canManage && !isSelf && !isOwner
 
