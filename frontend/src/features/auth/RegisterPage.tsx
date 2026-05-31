@@ -1,10 +1,10 @@
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useNavigate, Link } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import { register as registerApi } from '@/api/auth'
-import { useAuth } from './AuthContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -22,8 +22,7 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>
 
 export function RegisterPage() {
-  const { login: setAuth } = useAuth()
-  const navigate = useNavigate()
+  const [submitted, setSubmitted] = useState(false)
 
   const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -31,11 +30,29 @@ export function RegisterPage() {
 
   const mutation = useMutation({
     mutationFn: registerApi,
-    onSuccess: (data) => {
-      setAuth(data)
-      navigate('/')
-    },
+    onSuccess: () => setSubmitted(true),
   })
+
+  if (submitted) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-muted/40">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle className="text-2xl">Check your email</CardTitle>
+            <CardDescription>
+              We've sent a verification link to your email address. Click the link to activate your account.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              Already verified?{' '}
+              <Link to="/login" className="text-primary hover:underline">Sign in</Link>
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/40">

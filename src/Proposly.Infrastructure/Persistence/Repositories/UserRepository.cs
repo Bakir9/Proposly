@@ -27,6 +27,10 @@ public sealed class UserRepository : IUserRepository
         => await _context.Users.IgnoreQueryFilters()
             .FirstOrDefaultAsync(u => u.InviteToken == token, ct);
 
+    public async Task<User?> GetByEmailVerificationTokenAsync(string token, CancellationToken ct = default)
+        => await _context.Users.IgnoreQueryFilters()
+            .FirstOrDefaultAsync(u => u.EmailVerificationToken == token, ct);
+
     public async Task<bool> ExistsByEmailAsync(string email, CancellationToken ct = default)
         => await _context.Users.IgnoreQueryFilters()
             .AnyAsync(u => u.Email == email.ToLowerInvariant(), ct);

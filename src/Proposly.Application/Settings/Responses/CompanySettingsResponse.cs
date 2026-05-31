@@ -4,6 +4,11 @@ namespace Proposly.Application.Settings.Responses;
 
 public record CompanySettingsResponse(
     int FiscalYearStartMonth,
+    string? CompanyEmail,
+    string? CompanyPhone,
+    string? CompanyStreet,
+    string? CompanyCity,
+    string? CompanyPostalCode,
     string? CompanyCountry,
     bool IsVatRegistered,
     string? CompanyVatNumber,

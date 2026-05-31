@@ -23,6 +23,13 @@ public sealed class CompanyConfiguration : IEntityTypeConfiguration<Company>
         builder.Property(c => c.MaxProjects).HasDefaultValue(3);
         builder.Property(c => c.PlanExpiresAt);
 
+        // Contact info
+        builder.Property(c => c.CompanyEmail).HasMaxLength(200);
+        builder.Property(c => c.CompanyPhone).HasMaxLength(50);
+        builder.Property(c => c.CompanyStreet).HasMaxLength(200);
+        builder.Property(c => c.CompanyCity).HasMaxLength(100);
+        builder.Property(c => c.CompanyPostalCode).HasMaxLength(20);
+
         // VAT settings
         builder.Property(c => c.CompanyCountry).HasMaxLength(2);
         builder.Property(c => c.CompanyVatNumber).HasMaxLength(50);

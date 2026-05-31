@@ -23,7 +23,10 @@ export interface LoginRequest {
 }
 
 export const register = (data: RegisterRequest) =>
-  api.post<AuthResponse>('/auth/register', data).then(r => r.data)
+  api.post<{ message: string }>('/auth/register', data).then(r => r.data)
+
+export const verifyEmail = (token: string) =>
+  api.get<AuthResponse>(`/auth/verify-email?token=${encodeURIComponent(token)}`).then(r => r.data)
 
 export const login = (data: LoginRequest) =>
   api.post<AuthResponse>('/auth/login', data).then(r => r.data)

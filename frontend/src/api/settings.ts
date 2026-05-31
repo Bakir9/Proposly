@@ -4,6 +4,11 @@ export type PlanTier = 'Free' | 'Starter' | 'Pro' | 'Business'
 
 export interface CompanySettings {
   fiscalYearStartMonth: number
+  companyEmail: string | null
+  companyPhone: string | null
+  companyStreet: string | null
+  companyCity: string | null
+  companyPostalCode: string | null
   companyCountry: string | null
   isVatRegistered: boolean
   companyVatNumber: string | null

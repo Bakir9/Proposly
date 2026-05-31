@@ -26,7 +26,11 @@ public sealed class User : Entity<Guid>, ITenantEntity, IAuditableEntity
         => new(Guid.NewGuid(), companyId, email, passwordHash, firstName, lastName, role);
 
     public static User CreateSuperAdmin(string email, string passwordHash, string firstName, string lastName)
-        => new(Guid.NewGuid(), Guid.Empty, email, passwordHash, firstName, lastName, UserRole.SuperAdmin);
+    {
+        var user = new User(Guid.NewGuid(), Guid.Empty, email, passwordHash, firstName, lastName, UserRole.SuperAdmin);
+        user.IsEmailVerified = true;
+        return user;
+    }
 
     public static User CreateInvited(Guid companyId, string email, string firstName, string lastName, UserRole role, string inviteToken, DateTime inviteTokenExpiry)
     {
@@ -35,6 +39,7 @@ public sealed class User : Entity<Guid>, ITenantEntity, IAuditableEntity
         var user = new User(Guid.NewGuid(), companyId, email, placeholder, firstName, lastName, role);
         user.InviteToken = inviteToken;
         user.InviteTokenExpiry = inviteTokenExpiry;
+        user.IsEmailVerified = true; // admin-created account; email ownership is assumed
         return user;
     }
 
@@ -45,6 +50,9 @@ public sealed class User : Entity<Guid>, ITenantEntity, IAuditableEntity
     public string LastName { get; private set; } = string.Empty;
     public UserRole Role { get; private set; }
     public bool IsDisabled { get; private set; }
+    public bool IsEmailVerified { get; private set; }
+    public string? EmailVerificationToken { get; private set; }
+    public DateTime? EmailVerificationTokenExpiry { get; private set; }
     public string? InviteToken { get; private set; }
     public DateTime? InviteTokenExpiry { get; private set; }
     public bool IsPendingInvite => InviteToken is not null;
@@ -54,6 +62,19 @@ public sealed class User : Entity<Guid>, ITenantEntity, IAuditableEntity
     public DateTime UpdatedAt { get; private set; }
 
     public string FullName => $"{FirstName} {LastName}";
+
+    public void SetEmailVerificationToken(string token, DateTime expiry)
+    {
+        EmailVerificationToken = token;
+        EmailVerificationTokenExpiry = expiry;
+    }
+
+    public void MarkEmailVerified()
+    {
+        IsEmailVerified = true;
+        EmailVerificationToken = null;
+        EmailVerificationTokenExpiry = null;
+    }
 
     public void ChangePassword(string newPasswordHash)
     {

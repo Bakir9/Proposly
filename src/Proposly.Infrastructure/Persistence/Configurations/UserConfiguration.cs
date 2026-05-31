@@ -18,6 +18,9 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.LastName).HasMaxLength(100).IsRequired();
         builder.Property(u => u.Role).HasConversion<string>().HasMaxLength(20);
         builder.Property(u => u.IsDisabled).HasDefaultValue(false);
+        builder.Property(u => u.IsEmailVerified).HasDefaultValue(false);
+        builder.Property(u => u.EmailVerificationToken).HasMaxLength(100);
+        builder.Property(u => u.EmailVerificationTokenExpiry);
         builder.Property(u => u.InviteToken).HasMaxLength(100);
         builder.Property(u => u.InviteTokenExpiry);
         builder.Property(u => u.PasswordResetToken).HasMaxLength(100);

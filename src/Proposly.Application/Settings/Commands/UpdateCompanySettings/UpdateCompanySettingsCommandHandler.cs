@@ -20,6 +20,12 @@ public sealed class UpdateCompanySettingsCommandHandler : ICommandHandler<Update
             ?? throw new InvalidOperationException("Company not found.");
 
         company.UpdateSettings(command.FiscalYearStartMonth);
+        company.UpdateContactInfo(
+            command.CompanyEmail,
+            command.CompanyPhone,
+            command.CompanyStreet,
+            command.CompanyCity,
+            command.CompanyPostalCode);
         company.UpdateVatSettings(
             command.CompanyCountry,
             command.IsVatRegistered,

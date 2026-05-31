@@ -34,6 +34,11 @@ public sealed class GetCompanySettingsQueryHandler : IQueryHandler<GetCompanySet
 
         return new CompanySettingsResponse(
             company.FiscalYearStartMonth,
+            company.CompanyEmail,
+            company.CompanyPhone,
+            company.CompanyStreet,
+            company.CompanyCity,
+            company.CompanyPostalCode,
             company.CompanyCountry,
             company.IsVatRegistered,
             company.CompanyVatNumber,

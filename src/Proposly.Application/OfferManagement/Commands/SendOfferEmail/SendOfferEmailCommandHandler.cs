@@ -41,6 +41,7 @@ public sealed class SendOfferEmailCommandHandler : ICommandHandler<SendOfferEmai
             client.Address?.Street, client.Address?.City,
             client.Address?.PostalCode, client.Address?.Country,
             client.VatNumber,
+            string.Empty, null, null, null, null, null,
             offer.Title, offer.Notes, offer.Status,
             offer.CalculateSubtotal().Amount,
             offer.DiscountPercent,

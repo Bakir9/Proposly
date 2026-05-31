@@ -10,6 +10,7 @@ import { RegisterPage } from './features/auth/RegisterPage'
 import { ForgotPasswordPage } from './features/auth/ForgotPasswordPage'
 import { ResetPasswordPage } from './features/auth/ResetPasswordPage'
 import { AcceptInvitePage } from './features/auth/AcceptInvitePage'
+import { VerifyEmailPage } from './features/auth/VerifyEmailPage'
 import { DashboardPage } from './features/dashboard/DashboardPage'
 import { OffersPage } from './features/offers/OffersPage'
 import { OfferDetailPage } from './features/offers/OfferDetailPage'
@@ -47,6 +48,7 @@ export default function App() {
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/accept-invite" element={<AcceptInvitePage />} />
+      <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<DashboardPage />} />

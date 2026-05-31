@@ -48,6 +48,11 @@ export function SettingsPage() {
   })
 
   const [fiscalMonth, setFiscalMonth] = useState(1)
+  const [companyEmail, setCompanyEmail] = useState('')
+  const [companyPhone, setCompanyPhone] = useState('')
+  const [companyStreet, setCompanyStreet] = useState('')
+  const [companyCity, setCompanyCity] = useState('')
+  const [companyPostalCode, setCompanyPostalCode] = useState('')
   const [companyCountry, setCompanyCountry] = useState<string>('')
   const [isVatRegistered, setIsVatRegistered] = useState(false)
   const [companyVatNumber, setCompanyVatNumber] = useState('')
@@ -58,6 +63,11 @@ export function SettingsPage() {
   useEffect(() => {
     if (settings) {
       setFiscalMonth(settings.fiscalYearStartMonth)
+      setCompanyEmail(settings.companyEmail ?? '')
+      setCompanyPhone(settings.companyPhone ?? '')
+      setCompanyStreet(settings.companyStreet ?? '')
+      setCompanyCity(settings.companyCity ?? '')
+      setCompanyPostalCode(settings.companyPostalCode ?? '')
       setCompanyCountry(settings.companyCountry ?? '')
       setIsVatRegistered(settings.isVatRegistered)
       setCompanyVatNumber(settings.companyVatNumber ?? '')
@@ -70,6 +80,11 @@ export function SettingsPage() {
   const { mutate: saveSettings, isPending } = useMutation({
     mutationFn: () => updateCompanySettings({
       fiscalYearStartMonth: fiscalMonth,
+      companyEmail: companyEmail || null,
+      companyPhone: companyPhone || null,
+      companyStreet: companyStreet || null,
+      companyCity: companyCity || null,
+      companyPostalCode: companyPostalCode || null,
       companyCountry: companyCountry || null,
       isVatRegistered,
       companyVatNumber: companyVatNumber || null,
@@ -87,6 +102,11 @@ export function SettingsPage() {
 
   const hasChanges = settings
     ? settings.fiscalYearStartMonth !== fiscalMonth
+      || (settings.companyEmail ?? '') !== companyEmail
+      || (settings.companyPhone ?? '') !== companyPhone
+      || (settings.companyStreet ?? '') !== companyStreet
+      || (settings.companyCity ?? '') !== companyCity
+      || (settings.companyPostalCode ?? '') !== companyPostalCode
       || (settings.companyCountry ?? '') !== companyCountry
       || settings.isVatRegistered !== isVatRegistered
       || (settings.companyVatNumber ?? '') !== companyVatNumber
@@ -172,6 +192,45 @@ export function SettingsPage() {
             onClick={() => saveSettings()}
             disabled={!hasChanges || isPending}
           >
+            {isPending ? 'Saving…' : 'Save'}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Company Contact Info */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Company Contact Info</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            This information appears in the header of your offer PDFs.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="co-email">Email</Label>
+              <Input id="co-email" type="email" value={companyEmail} onChange={e => setCompanyEmail(e.target.value)} placeholder="hello@yourcompany.com" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="co-phone">Phone</Label>
+              <Input id="co-phone" value={companyPhone} onChange={e => setCompanyPhone(e.target.value)} placeholder="+43 1 234 5678" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="co-street">Street Address</Label>
+              <Input id="co-street" value={companyStreet} onChange={e => setCompanyStreet(e.target.value)} placeholder="Mariahilfer Straße 12" />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="co-postal">Postal Code</Label>
+                <Input id="co-postal" value={companyPostalCode} onChange={e => setCompanyPostalCode(e.target.value)} placeholder="1070" />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="co-city">City</Label>
+                <Input id="co-city" value={companyCity} onChange={e => setCompanyCity(e.target.value)} placeholder="Wien" />
+              </div>
+            </div>
+          </div>
+          <Button size="sm" onClick={() => saveSettings()} disabled={!hasChanges || isPending}>
             {isPending ? 'Saving…' : 'Save'}
           </Button>
         </CardContent>

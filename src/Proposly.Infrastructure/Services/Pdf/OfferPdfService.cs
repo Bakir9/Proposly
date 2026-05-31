@@ -3,11 +3,26 @@ using Proposly.Application.OfferManagement.Responses;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
+using System.Reflection;
 
 namespace Proposly.Infrastructure.Services.Pdf;
 
 public sealed class OfferPdfService : IPdfService
 {
+    private static readonly byte[]? LogoBytes = LoadLogo();
+
+    private static byte[]? LoadLogo()
+    {
+        var assembly = Assembly.GetExecutingAssembly();
+        var resourceName = assembly.GetManifestResourceNames()
+            .FirstOrDefault(n => n.EndsWith("logo.png", StringComparison.OrdinalIgnoreCase));
+        if (resourceName is null) return null;
+        using var stream = assembly.GetManifestResourceStream(resourceName)!;
+        using var ms = new MemoryStream();
+        stream.CopyTo(ms);
+        return ms.ToArray();
+    }
+
     public byte[] GenerateOfferPdf(OfferDetailResponse offer)
     {
         return Document.Create(container =>
@@ -15,160 +30,212 @@ public sealed class OfferPdfService : IPdfService
             container.Page(page =>
             {
                 page.Size(PageSizes.A4);
-                page.Margin(40);
-                page.DefaultTextStyle(x => x.FontSize(10));
+                page.Margin(48);
+                page.DefaultTextStyle(x => x.FontSize(10).FontFamily("Arial").FontColor(Colors.Grey.Darken3));
 
                 page.Content().Column(col =>
                 {
-                    // Header
+                    // ── Header ─────────────────────────────────────────────────────
                     col.Item().Row(row =>
+                    {
+                        // Left: logo + company name
+                        row.RelativeItem().Row(r =>
+                        {
+                            if (LogoBytes is not null)
+                            {
+                                r.ConstantItem(36).Height(36).Image(LogoBytes).FitArea();
+                                r.ConstantItem(10);
+                            }
+                            r.RelativeItem().AlignMiddle()
+                                .Text(offer.CompanyName).FontSize(16).Bold().FontColor(Colors.Grey.Darken3);
+                        });
+
+                        // Right: company contact info
+                        row.ConstantItem(180).AlignRight().Column(c =>
+                        {
+                            if (!string.IsNullOrWhiteSpace(offer.CompanyStreet))
+                                c.Item().AlignRight().Text(offer.CompanyStreet).FontSize(9).FontColor(Colors.Grey.Medium);
+                            var cityLine = string.Join(" ", new[] { offer.CompanyPostalCode, offer.CompanyCity }
+                                .Where(s => !string.IsNullOrWhiteSpace(s)));
+                            if (!string.IsNullOrWhiteSpace(cityLine))
+                                c.Item().AlignRight().Text(cityLine).FontSize(9).FontColor(Colors.Grey.Medium);
+                            if (!string.IsNullOrWhiteSpace(offer.CompanyEmail))
+                                c.Item().AlignRight().Text(offer.CompanyEmail).FontSize(9).FontColor(Colors.Grey.Medium);
+                        });
+                    });
+
+                    col.Item().PaddingVertical(16).LineHorizontal(1).LineColor(Colors.Grey.Lighten2);
+
+                    // ── Offer title & meta ──────────────────────────────────────────
+                    col.Item().PaddingBottom(20).Row(row =>
                     {
                         row.RelativeItem().Column(c =>
                         {
-                            c.Item().Text("OFFER").FontSize(24).Bold().FontColor(Colors.Grey.Darken3);
-                            c.Item().Text(offer.Title).FontSize(14).SemiBold();
+                            c.Item().Text("OFFER").FontSize(9).FontColor(Colors.Grey.Medium)
+                                .Bold().LetterSpacing(0.08f);
+                            c.Item().PaddingTop(4).Text(offer.Title ?? string.Empty)
+                                .FontSize(22).Bold().FontColor(Colors.Grey.Darken3);
                         });
-                        row.ConstantItem(160).Column(c =>
+                        row.ConstantItem(180).AlignRight().Column(c =>
                         {
-                            c.Item().AlignRight().Text($"Status: {offer.Status}").FontSize(9).FontColor(Colors.Grey.Medium);
-                            c.Item().AlignRight().Text($"Date: {offer.CreatedAt:dd MMM yyyy}").FontSize(9).FontColor(Colors.Grey.Medium);
+                            c.Item().AlignRight()
+                                .Text($"Issued · {offer.CreatedAt:dd MMM yyyy}")
+                                .FontSize(9).FontColor(Colors.Grey.Medium);
                             if (offer.ValidUntil.HasValue)
-                                c.Item().AlignRight().Text($"Valid until: {offer.ValidUntil:dd MMM yyyy}").FontSize(9).FontColor(Colors.Grey.Medium);
+                                c.Item().AlignRight()
+                                    .Text($"Valid until · {offer.ValidUntil:dd MMM yyyy}")
+                                    .FontSize(9).FontColor(Colors.Grey.Medium);
                         });
                     });
 
-                    col.Item().PaddingVertical(12).LineHorizontal(1).LineColor(Colors.Grey.Lighten2);
-
-                    // Client
-                    col.Item().PaddingBottom(16).Column(c =>
+                    // ── Bill To ─────────────────────────────────────────────────────
+                    col.Item().PaddingBottom(20).Column(c =>
                     {
-                        c.Item().Text("Bill To").FontSize(9).FontColor(Colors.Grey.Medium).Bold();
-                        c.Item().Text(offer.ClientName).SemiBold();
+                        c.Item().PaddingBottom(6).Text("BILL TO").FontSize(8).Bold()
+                            .FontColor(Colors.Grey.Medium).LetterSpacing(0.08f);
+                        c.Item().Text(offer.ClientName).Bold().FontSize(11);
                         if (!string.IsNullOrWhiteSpace(offer.ClientContactPerson))
-                            c.Item().Text(offer.ClientContactPerson).FontColor(Colors.Grey.Darken1);
+                            c.Item().Text(offer.ClientContactPerson).FontSize(9).FontColor(Colors.Grey.Medium);
                         if (!string.IsNullOrWhiteSpace(offer.ClientStreet))
-                            c.Item().Text(offer.ClientStreet).FontColor(Colors.Grey.Darken1);
-                        var cityLine = string.Join(" ", new[] { offer.ClientPostalCode, offer.ClientCity }.Where(s => !string.IsNullOrWhiteSpace(s)));
-                        if (!string.IsNullOrWhiteSpace(cityLine))
-                            c.Item().Text(cityLine).FontColor(Colors.Grey.Darken1);
+                            c.Item().Text(offer.ClientStreet).FontSize(9).FontColor(Colors.Grey.Medium);
+                        var clientCity = string.Join(" ", new[] { offer.ClientPostalCode, offer.ClientCity }
+                            .Where(s => !string.IsNullOrWhiteSpace(s)));
+                        if (!string.IsNullOrWhiteSpace(clientCity))
+                            c.Item().Text(clientCity).FontSize(9).FontColor(Colors.Grey.Medium);
                         if (!string.IsNullOrWhiteSpace(offer.ClientCountry))
-                            c.Item().Text(offer.ClientCountry).FontColor(Colors.Grey.Darken1);
+                            c.Item().Text(offer.ClientCountry).FontSize(9).FontColor(Colors.Grey.Medium);
                         if (!string.IsNullOrWhiteSpace(offer.ClientVatNumber))
-                            c.Item().PaddingTop(4).Text($"VAT: {offer.ClientVatNumber}").FontSize(9).FontColor(Colors.Grey.Medium);
-                        if (!string.IsNullOrWhiteSpace(offer.ClientEmail))
-                            c.Item().Text(offer.ClientEmail).FontSize(9).FontColor(Colors.Grey.Medium);
-                        if (!string.IsNullOrWhiteSpace(offer.ClientPhone))
-                            c.Item().Text(offer.ClientPhone).FontSize(9).FontColor(Colors.Grey.Medium);
+                            c.Item().PaddingTop(3).Text($"VAT: {offer.ClientVatNumber}")
+                                .FontSize(8).FontColor(Colors.Grey.Lighten1);
                     });
 
-                    // Items table
-                    col.Item().Table(table =>
+                    // ── Items table ─────────────────────────────────────────────────
+                    col.Item().PaddingBottom(4).Table(table =>
                     {
                         table.ColumnsDefinition(cols =>
                         {
-                            cols.RelativeColumn(5);
-                            cols.RelativeColumn(1);
-                            cols.RelativeColumn(2);
-                            cols.RelativeColumn(2);
+                            cols.RelativeColumn(6);
+                            cols.ConstantColumn(48);
+                            cols.ConstantColumn(80);
+                            cols.ConstantColumn(80);
                         });
 
                         static IContainer HeaderCell(IContainer c) =>
-                            c.Background(Colors.Grey.Lighten3).Padding(6);
+                            c.BorderBottom(2).BorderColor(Colors.Grey.Lighten2).PaddingVertical(6);
 
                         table.Header(h =>
                         {
-                            h.Cell().Element(HeaderCell).Text("Description").SemiBold();
-                            h.Cell().Element(HeaderCell).AlignRight().Text("Qty").SemiBold();
-                            h.Cell().Element(HeaderCell).AlignRight().Text("Unit Price").SemiBold();
-                            h.Cell().Element(HeaderCell).AlignRight().Text("Line Total").SemiBold();
+                            h.Cell().Element(HeaderCell)
+                                .Text("DESCRIPTION").FontSize(8).Bold()
+                                .FontColor(Colors.Grey.Medium).LetterSpacing(0.06f);
+                            h.Cell().Element(HeaderCell).AlignRight()
+                                .Text("QTY").FontSize(8).Bold()
+                                .FontColor(Colors.Grey.Medium).LetterSpacing(0.06f);
+                            h.Cell().Element(HeaderCell).AlignRight()
+                                .Text("UNIT").FontSize(8).Bold()
+                                .FontColor(Colors.Grey.Medium).LetterSpacing(0.06f);
+                            h.Cell().Element(HeaderCell).AlignRight()
+                                .Text("TOTAL").FontSize(8).Bold()
+                                .FontColor(Colors.Grey.Medium).LetterSpacing(0.06f);
                         });
 
-                        foreach (var (item, index) in offer.Items.Select((i, idx) => (i, idx)))
+                        foreach (var item in offer.Items)
                         {
-                            var bg = index % 2 == 0 ? Colors.White : Colors.Grey.Lighten5;
-                            IContainer Cell(IContainer c) => c.Background(bg).Padding(6);
+                            static IContainer DataCell(IContainer c) =>
+                                c.BorderBottom(1).BorderColor(Colors.Grey.Lighten4).PaddingVertical(10);
 
-                            table.Cell().Element(Cell).Text(item.Description);
-                            table.Cell().Element(Cell).AlignRight().Text(item.Quantity.ToString("G"));
-                            table.Cell().Element(Cell).AlignRight().Text(Fmt(item.UnitPrice, item.Currency));
-                            table.Cell().Element(Cell).AlignRight().Text(Fmt(item.LineTotal, item.Currency));
+                            table.Cell().Element(DataCell).Text(item.Description);
+                            table.Cell().Element(DataCell).AlignRight()
+                                .Text(item.Quantity.ToString("G")).FontColor(Colors.Grey.Darken1);
+                            table.Cell().Element(DataCell).AlignRight()
+                                .Text(Fmt(item.UnitPrice, item.Currency)).FontColor(Colors.Grey.Darken1);
+                            table.Cell().Element(DataCell).AlignRight()
+                                .Text(Fmt(item.LineTotal, item.Currency)).Bold();
                         }
                     });
 
-                    // Totals breakdown
-                    col.Item().PaddingTop(8).AlignRight().Column(totals =>
+                    // ── Totals ──────────────────────────────────────────────────────
+                    col.Item().PaddingTop(16).AlignRight().Column(totals =>
                     {
-                        static IContainer TotalsRow(IContainer c) =>
-                            c.BorderBottom(1).BorderColor(Colors.Grey.Lighten4).PaddingVertical(3);
-
-                        void Row(string label, string value, bool bold = false, string? color = null)
+                        void SummaryRow(string label, string value, bool muted = true)
                         {
-                            totals.Item().Element(TotalsRow).Row(r =>
+                            totals.Item().PaddingVertical(3).Row(r =>
                             {
-                                var labelText = r.RelativeItem().PaddingRight(24).AlignRight().Text(label);
-                                var valueText = r.ConstantItem(130).AlignRight().Text(value);
-                                if (bold) { labelText.Bold(); valueText.Bold(); }
-                                if (color is not null)
-                                {
-                                    labelText.FontColor(color);
-                                    valueText.FontColor(color);
-                                }
+                                r.ConstantItem(130).AlignRight().PaddingRight(24)
+                                    .Text(label).FontSize(9)
+                                    .FontColor(muted ? Colors.Grey.Medium : Colors.Grey.Darken3);
+                                r.ConstantItem(100).AlignRight()
+                                    .Text(value).FontSize(9)
+                                    .FontColor(muted ? Colors.Grey.Medium : Colors.Grey.Darken3);
                             });
                         }
 
-                        Row("Subtotal:", Fmt(offer.Subtotal, offer.Currency));
+                        SummaryRow("Subtotal", Fmt(offer.Subtotal, offer.Currency));
 
                         if (offer.DiscountPercent is > 0)
                         {
-                            Row($"Discount ({offer.DiscountPercent:F1}%):", $"−{Fmt(offer.DiscountAmount, offer.Currency)}", color: Colors.Green.Darken2);
-                            Row("VAT base:", Fmt(offer.VatBase, offer.Currency));
+                            SummaryRow($"Discount ({offer.DiscountPercent:F1}%)",
+                                $"−{Fmt(offer.DiscountAmount, offer.Currency)}");
                         }
 
-                        if (!offer.IsVatExempt && offer.VatRate > 0)
-                            Row($"{offer.VatLabel}:", Fmt(offer.VatAmount, offer.Currency));
-                        else
-                            Row(offer.VatLabel + ":", Fmt(0, offer.Currency), color: Colors.Grey.Medium);
+                        SummaryRow(offer.VatLabel, Fmt(offer.VatAmount, offer.Currency));
 
-                        totals.Item().PaddingTop(4).Row(r =>
+                        // Total divider
+                        totals.Item().PaddingTop(4).LineHorizontal(1).LineColor(Colors.Grey.Lighten2);
+
+                        totals.Item().PaddingTop(6).Row(r =>
                         {
-                            r.RelativeItem().PaddingRight(24).AlignRight().Text("TOTAL:").Bold().FontSize(12);
-                            r.ConstantItem(130).AlignRight().Text(Fmt(offer.Total, offer.Currency)).Bold().FontSize(14);
+                            r.ConstantItem(130).AlignRight().PaddingRight(24)
+                                .Text("Total").Bold().FontSize(11);
+                            r.ConstantItem(100).AlignRight()
+                                .Text(Fmt(offer.Total, offer.Currency)).Bold().FontSize(11);
                         });
                     });
 
-                    // VAT legal notes
-                    var hasNote = !string.IsNullOrWhiteSpace(offer.VatNote);
-                    if (hasNote)
+                    // ── VAT legal note ──────────────────────────────────────────────
+                    if (!string.IsNullOrWhiteSpace(offer.VatNote))
+                    {
+                        col.Item().PaddingTop(24).Column(c =>
+                        {
+                            c.Item().Text($"* {offer.VatNote}")
+                                .FontSize(8).FontColor(Colors.Grey.Medium).Italic();
+                        });
+                    }
+
+                    // ── Offer notes ─────────────────────────────────────────────────
+                    if (!string.IsNullOrWhiteSpace(offer.Notes))
                     {
                         col.Item().PaddingTop(20).Column(c =>
                         {
-                            c.Item().Text("* " + offer.VatNote)
-                                .FontSize(8).FontColor(Colors.Grey.Darken1).Italic();
+                            c.Item().PaddingBottom(4).Text("Notes")
+                                .FontSize(8).FontColor(Colors.Grey.Medium).Bold();
+                            c.Item().Text(offer.Notes).FontSize(9).FontColor(Colors.Grey.Darken1);
                         });
                     }
+                });
 
-                    // Offer notes
-                    if (!string.IsNullOrWhiteSpace(offer.Notes))
+                page.Footer().PaddingTop(12).BorderTop(1).BorderColor(Colors.Grey.Lighten3)
+                    .AlignCenter().Text(x =>
                     {
-                        col.Item().PaddingTop(hasNote ? 8 : 24).Column(c =>
-                        {
-                            c.Item().Text("Notes").FontSize(9).FontColor(Colors.Grey.Medium).Bold();
-                            c.Item().PaddingTop(4).Text(offer.Notes).FontColor(Colors.Grey.Darken1);
-                        });
-                    }
-                });
-
-                page.Footer().AlignCenter().Text(x =>
-                {
-                    x.Span("Page ").FontSize(8).FontColor(Colors.Grey.Medium);
-                    x.CurrentPageNumber().FontSize(8).FontColor(Colors.Grey.Medium);
-                    x.Span(" of ").FontSize(8).FontColor(Colors.Grey.Medium);
-                    x.TotalPages().FontSize(8).FontColor(Colors.Grey.Medium);
-                });
+                        x.Span("Page ").FontSize(8).FontColor(Colors.Grey.Medium);
+                        x.CurrentPageNumber().FontSize(8).FontColor(Colors.Grey.Medium);
+                        x.Span(" of ").FontSize(8).FontColor(Colors.Grey.Medium);
+                        x.TotalPages().FontSize(8).FontColor(Colors.Grey.Medium);
+                    });
             });
         }).GeneratePdf();
     }
 
-    private static string Fmt(decimal amount, string currency) =>
-        amount.ToString("N2") + " " + currency;
+    private static string Fmt(decimal amount, string currency)
+    {
+        var symbol = currency switch
+        {
+            "EUR" => "€",
+            "USD" => "$",
+            "GBP" => "£",
+            "CHF" => "CHF ",
+            _ => currency + " "
+        };
+        return $"{symbol}{amount:N2}";
+    }
 }

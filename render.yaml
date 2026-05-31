@@ -1,0 +1,49 @@
+services:
+  - type: web
+    name: proposly-api
+    runtime: dotnet
+    region: frankfurt
+    plan: free
+    buildCommand: dotnet publish src/Proposly.API/Proposly.API.csproj -c Release -o out
+    startCommand: ASPNETCORE_URLS=http://0.0.0.0:$PORT dotnet out/Proposly.API.dll
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ConnectionStrings__DefaultConnection
+        sync: false
+      - key: Jwt__Secret
+        sync: false
+      - key: Jwt__Issuer
+        value: proposly
+      - key: Jwt__Audience
+        value: proposly-users
+      - key: Smtp__Host
+        sync: false
+      - key: Smtp__Port
+        value: "465"
+      - key: Smtp__UseSsl
+        value: "true"
+      - key: Smtp__Username
+        sync: false
+      - key: Smtp__Password
+        sync: false
+      - key: Smtp__SenderEmail
+        sync: false
+      - key: Smtp__SenderName
+        value: Proposly
+      - key: AppUrl
+        sync: false
+      - key: Cors__AllowedOrigin
+        sync: false
+
+staticSites:
+  - name: proposly
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: frontend/dist
+    envVars:
+      - key: VITE_API_BASE_URL
+        sync: false
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

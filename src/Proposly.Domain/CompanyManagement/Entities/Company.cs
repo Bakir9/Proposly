@@ -31,6 +31,13 @@ public sealed class Company : AggregateRoot<Guid>, IAuditableEntity
     public int? MaxProjects { get; private set; } = 3;
     public DateTime? PlanExpiresAt { get; private set; }
 
+    // Contact info (shown in PDF header)
+    public string? CompanyEmail { get; private set; }
+    public string? CompanyPhone { get; private set; }
+    public string? CompanyStreet { get; private set; }
+    public string? CompanyCity { get; private set; }
+    public string? CompanyPostalCode { get; private set; }
+
     // VAT settings
     public string? CompanyCountry { get; private set; }
     public bool IsVatRegistered { get; private set; }
@@ -44,6 +51,21 @@ public sealed class Company : AggregateRoot<Guid>, IAuditableEntity
         if (fiscalYearStartMonth is < 1 or > 12)
             throw new InvalidOperationException("Fiscal year start month must be between 1 and 12.");
         FiscalYearStartMonth = fiscalYearStartMonth;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void UpdateContactInfo(
+        string? email,
+        string? phone,
+        string? street,
+        string? city,
+        string? postalCode)
+    {
+        CompanyEmail = email;
+        CompanyPhone = phone;
+        CompanyStreet = street;
+        CompanyCity = city;
+        CompanyPostalCode = postalCode;
         UpdatedAt = DateTime.UtcNow;
     }
 

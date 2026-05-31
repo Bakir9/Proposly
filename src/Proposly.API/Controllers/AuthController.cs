@@ -1,10 +1,12 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Proposly.Application.Abstractions;
 using Proposly.Application.Auth.Commands.AcceptInvite;
 using Proposly.Application.Auth.Commands.ForgotPassword;
 using Proposly.Application.Auth.Commands.Login;
 using Proposly.Application.Auth.Commands.Register;
 using Proposly.Application.Auth.Commands.ResetPassword;
+using Proposly.Application.Auth.Commands.VerifyEmail;
 using Proposly.Application.Auth.Responses;
 
 namespace Proposly.API.Controllers;
@@ -13,19 +15,32 @@ namespace Proposly.API.Controllers;
 [Route("api/[controller]")]
 public sealed class AuthController : ControllerBase
 {
-    /// <summary>Create a new company and owner account.</summary>
+    /// <summary>Create a new company and owner account. Sends a verification email.</summary>
     [HttpPost("register")]
-    public async Task<ActionResult<AuthResponse>> Register(
+    [EnableRateLimiting("auth")]
+    public async Task<IActionResult> Register(
         [FromBody] RegisterCommand command,
-        [FromServices] ICommandHandler<RegisterCommand, AuthResponse> handler,
+        [FromServices] ICommandHandler<RegisterCommand> handler,
         CancellationToken ct)
     {
-        var result = await handler.HandleAsync(command, ct);
+        await handler.HandleAsync(command, ct);
+        return Ok(new { message = "Registration successful. Please check your email to verify your account." });
+    }
+
+    /// <summary>Verify email address using the token from the verification email.</summary>
+    [HttpGet("verify-email")]
+    public async Task<ActionResult<AuthResponse>> VerifyEmail(
+        [FromQuery] string token,
+        [FromServices] ICommandHandler<VerifyEmailCommand, AuthResponse> handler,
+        CancellationToken ct)
+    {
+        var result = await handler.HandleAsync(new VerifyEmailCommand(token), ct);
         return Ok(result);
     }
 
     /// <summary>Login and receive a JWT token.</summary>
     [HttpPost("login")]
+    [EnableRateLimiting("auth")]
     public async Task<ActionResult<AuthResponse>> Login(
         [FromBody] LoginCommand command,
         [FromServices] ICommandHandler<LoginCommand, AuthResponse> handler,
@@ -37,6 +52,7 @@ public sealed class AuthController : ControllerBase
 
     /// <summary>Request a password reset email.</summary>
     [HttpPost("forgot-password")]
+    [EnableRateLimiting("auth")]
     public async Task<IActionResult> ForgotPassword(
         [FromBody] ForgotPasswordCommand command,
         [FromServices] ICommandHandler<ForgotPasswordCommand> handler,
