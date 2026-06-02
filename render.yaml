@@ -36,14 +36,3 @@ services:
       - key: Cors__AllowedOrigin
         sync: false
 
-staticSites:
-  - name: proposly
-    buildCommand: cd frontend && npm install && npm run build
-    staticPublishPath: frontend/dist
-    envVars:
-      - key: VITE_API_BASE_URL
-        sync: false
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html

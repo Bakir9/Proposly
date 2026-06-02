@@ -24,7 +24,7 @@ public sealed class DataSeeder
         _passwordHasher = passwordHasher;
     }
 
-    public async Task SeedAsync(CancellationToken ct = default)
+    public async Task EnsureSuperAdminAsync(CancellationToken ct = default)
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(_configuration.GetConnectionString("DefaultConnection"))
@@ -32,7 +32,6 @@ public sealed class DataSeeder
 
         await using var context = new AppDbContext(options, new SeedCurrentUserService(), new NoOpDispatcher());
 
-        // Seed SuperAdmin (dev only — use a strong password in production via config)
         var superAdminEmail = _configuration["Seed:SuperAdminEmail"] ?? "admin@proposly.io";
         var superAdminPassword = _configuration["Seed:SuperAdminPassword"] ?? "SuperAdmin123!";
         if (!await context.Users.IgnoreQueryFilters().AnyAsync(u => u.Email == superAdminEmail, ct))
@@ -45,6 +44,15 @@ public sealed class DataSeeder
             await context.Users.AddAsync(superAdmin, ct);
             await context.SaveChangesAsync(ct);
         }
+    }
+
+    public async Task SeedAsync(CancellationToken ct = default)
+    {
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseNpgsql(_configuration.GetConnectionString("DefaultConnection"))
+            .Options;
+
+        await using var context = new AppDbContext(options, new SeedCurrentUserService(), new NoOpDispatcher());
 
         if (await context.Companies.AnyAsync(ct))
             return;

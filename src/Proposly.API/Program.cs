@@ -26,6 +26,7 @@ builder.Services.AddControllers()
         o.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()));
 builder.Services.AddOpenApi();
 builder.Services.AddMemoryCache();
+builder.Services.AddHealthChecks();
 
 builder.Services.AddHttpContextAccessor();
 
@@ -60,6 +61,9 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<Proposly.Infrastructure.Persistence.AppDbContext>();
     await db.Database.MigrateAsync();
+
+    var seeder = scope.ServiceProvider.GetRequiredService<Proposly.Infrastructure.Persistence.DataSeeder>();
+    await seeder.EnsureSuperAdminAsync();
 }
 
 if (app.Environment.IsDevelopment())
@@ -120,6 +124,7 @@ app.UseRateLimiter();
 app.UseAuthentication();
 app.UseMiddleware<TenantMiddleware>();
 app.UseAuthorization();
+app.MapHealthChecks("/health");
 app.MapControllers();
 
 app.Run();
