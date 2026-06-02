@@ -19,9 +19,9 @@ services:
       - key: Smtp__Host
         sync: false
       - key: Smtp__Port
-        value: "465"
+        sync: false
       - key: Smtp__UseSsl
-        value: "true"
+        sync: false
       - key: Smtp__Username
         sync: false
       - key: Smtp__Password
