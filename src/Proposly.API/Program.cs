@@ -12,7 +12,7 @@ using Scalar.AspNetCore;
 var builder = WebApplication.CreateBuilder(args);
 
 var allowedOrigin = builder.Configuration["Cors:AllowedOrigin"] ?? "http://localhost:5173";
-
+Console.WriteLine($"=== CORS ORIGIN BEING USED: {allowedOrigin} ===");
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("Frontend", policy =>
