@@ -1,11 +1,10 @@
 services:
   - type: web
     name: proposly-api
-    runtime: dotnet
+    env: docker
+    dockerfilePath: ./Dockerfile
     region: frankfurt
     plan: free
-    buildCommand: dotnet publish src/Proposly.API/Proposly.API.csproj -c Release -o out
-    startCommand: ASPNETCORE_URLS=http://0.0.0.0:$PORT dotnet out/Proposly.API.dll
     envVars:
       - key: ASPNETCORE_ENVIRONMENT
         value: Production
