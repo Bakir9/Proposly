@@ -1,117 +1,175 @@
-# Proposly
+# Proposly — Source Code
 
-Business management platform for small and medium agencies. Covers the full client lifecycle — from writing offers to running projects and tracking profitability — in a single tool.
+Multi-tenant SaaS platform for small and medium businesses to manage proposals, projects, and profitability.
 
-The core pitch: most agencies use a proposals tool (PandaDoc, Bonsai) **and** a project management tool (Asana, Monday) separately. Proposly combines both — an accepted offer becomes a project automatically, and the quoted budget flows into profitability tracking.
+**The core idea:** most businesses use a proposals tool and a project management tool separately. Proposly combines both — an accepted proposal becomes a project automatically, and the quoted budget flows into real-time profitability tracking.
 
 ---
 
-## Features
+## What's included
 
-| Area | What it covers |
-|---|---|
-| **Offers** | Create, send, accept/reject with line items, discounts, VAT, PDF export, email delivery |
-| **Projects** | Kanban board, Gantt chart, burndown chart, task dependencies, time logging, expenses, milestones, notes |
-| **Clients** | Profiles with status (Active / Lead / Inactive), notes, offer history and revenue stats |
-| **Calendar** | Schedule meetings, invite team members, accept / decline / propose reschedule, pending invitations inbox |
-| **Reports** | Quarterly P&L — offer funnel, labor costs, expenses by category, gross profit, PDF export |
-| **Team** | Email invites, role-based access (Owner / Admin / Member), disable/enable accounts |
-| **Notifications** | In-app notifications for task assignments, meeting invitations, and meeting lifecycle events |
+| Module | Features |
+| --- | --- |
+| **Proposals** | Itemized line items, VAT, discounts, PDF generation, email delivery, status lifecycle (Draft → Sent → Accepted / Rejected / Expired) |
+| **Projects** | Kanban board, Gantt chart, tasks with dependencies, time logging, expenses, milestones, notes |
+| **Profitability** | Labor cost (hours × rate) + expenses vs. quoted amount — with historical snapshots so past records never change |
+| **Clients** | Profiles, notes, offer history |
+| **Calendar** | Meeting scheduling, invitations, accept / decline / reschedule flow |
+| **Reports** | Quarterly P&L breakdown — offer funnel, labor, expenses by category, PDF export |
+| **Team** | Email invites, role-based access (Owner / Admin / Member), disable accounts |
+| **Notifications** | In-app notifications for task assignments, meeting invitations, and calendar events |
+| **Subscription Plans** | Free / Starter / Pro / Business tiers with user and project limits enforced at domain level |
+| **SuperAdmin Panel** | Manage all tenants, update plans, view usage across all companies |
 
 ---
 
 ## Tech stack
 
 | Layer | Technology |
-|---|---|
-| API | .NET 10, ASP.NET Core, C# |
-| Database | PostgreSQL via Entity Framework Core + Npgsql |
-| Auth | JWT Bearer tokens |
+| --- | --- |
+| Backend | .NET 10, ASP.NET Core, Clean Architecture (5 layers) |
+| Database | PostgreSQL + Entity Framework Core |
+| Frontend | React 19 + TypeScript + Vite |
+| UI | Tailwind CSS + shadcn/ui + Recharts + Tiptap |
 | PDF | QuestPDF |
-| Email | MailKit |
-| Validation | FluentValidation |
-| Frontend | React 19, TypeScript, Vite |
-| UI | Tailwind CSS, shadcn/ui, Recharts, Tiptap |
-| State | TanStack Query |
+| Email | MailKit (any SMTP provider) |
+| Auth | JWT Bearer tokens |
+| Deployment | Docker + Render.com (`render.yaml` included) |
 
 ---
 
-## Architecture
-
-Five-layer clean architecture with CQRS (no MediatR):
-
-```
-src/
-├── Proposly.Shared/        # Value objects, base classes — no dependencies
-├── Proposly.Domain/        # Entities, aggregates, repository interfaces
-├── Proposly.Application/   # Commands, queries, handlers, service interfaces
-├── Proposly.Infrastructure/# EF Core, repositories, PDF/email services
-└── Proposly.API/           # Controllers, middleware, DI wiring
-
-frontend/                   # React + TypeScript SPA
-tests/
-├── Proposly.Domain.Tests/
-└── Proposly.Application.Tests/
-```
-
-**Dependency flow:** `API → Application → Domain ← Infrastructure`
-
-**Multi-tenancy:** Every entity implements `ITenantEntity` (`CompanyId`). EF Core global query filters enforce tenant isolation automatically on every query — no per-query `.Where(x => x.CompanyId == ...)` required.
-
-**CQRS:** Custom `ICommandHandler<T>` / `IQueryHandler<T, R>` interfaces auto-registered by reflection. No pipeline library.
-
-**Domain events:** Raised inside aggregates, dispatched in `AppDbContext.SaveChangesAsync`, handled by `IDomainEventHandler<T>` implementations (auto-registered). Used to create in-app notifications for task and calendar events.
-
-**Snapshot pattern:** Financial figures (offer amounts, hourly rates) are stored at the moment of use. Changing a rate later does not alter historical records.
-
----
-
-## Getting started
+## Local setup
 
 ### Prerequisites
 
-- .NET 10 SDK
-- Node.js 20+
-- PostgreSQL
+- [.NET 10 SDK](https://dotnet.microsoft.com/download)
+- [Node.js 20+](https://nodejs.org)
+- PostgreSQL running locally
 
-### Run the API
+### 1. Configure the API
 
-```bash
-# Configure connection string in appsettings.Development.json
-# "ConnectionStrings__DefaultConnection": "Host=localhost;Database=proposly;Username=...;Password=..."
+Create `src/Proposly.API/appsettings.Development.json`:
 
-dotnet run --project src/Proposly.API/Proposly.API.csproj
-# API available at http://localhost:5143
+```json
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Host=localhost;Database=proposly;Username=YOUR_USER;Password=YOUR_PASSWORD"
+  },
+  "Jwt": {
+    "Secret": "your-secret-key-minimum-32-characters-long"
+  },
+  "Smtp": {
+    "Host": "your.smtp.host",
+    "Port": 465,
+    "UseSsl": true,
+    "Username": "your@email.com",
+    "Password": "your-smtp-password",
+    "SenderEmail": "noreply@yourdomain.com",
+    "SenderName": "Proposly"
+  },
+  "AppUrl": "http://localhost:5173",
+  "Cors": {
+    "AllowedOrigin": "http://localhost:5173"
+  }
+}
 ```
 
-### Apply migrations
+### 2. Run database migrations
 
 ```bash
 dotnet ef database update --project src/Proposly.Infrastructure --startup-project src/Proposly.API
 ```
 
-### Run the frontend
+This creates the schema and seeds a SuperAdmin user and demo data automatically.
+
+### 3. Start the API
+
+```bash
+dotnet run --project src/Proposly.API/Proposly.API.csproj
+# Runs on http://localhost:5143
+```
+
+### 4. Start the frontend
 
 ```bash
 cd frontend
 npm install
 npm run dev
-# Runs on http://localhost:5173 — proxies /api to http://localhost:5143
+# Runs on http://localhost:5173
 ```
+
+Open [http://localhost:5173](http://localhost:5173) in your browser.
+
+### Default credentials
+
+```text
+SuperAdmin
+  Email:    admin@proposly.io
+  Password: Admin@123!
+
+Demo company user
+  Email:    owner@demo.com
+  Password: Owner@123!
+```
+
+> Change these passwords immediately after first login.
 
 ---
 
-## Commands
+## Deploy to Render
+
+A `render.yaml` is included — it defines a Docker web service for the API and a static site for the frontend.
+
+### Steps
+
+1. Push the repo to GitHub
+1. Go to [render.com](https://render.com) → New → Blueprint → connect your repo
+1. Set the following environment variables in the Render dashboard:
+
+| Variable | Value |
+| --- | --- |
+| `ConnectionStrings__DefaultConnection` | PostgreSQL connection string |
+| `Jwt__Secret` | Random string, min 32 characters |
+| `Smtp__Host` | Your SMTP server |
+| `Smtp__Port` | `465` |
+| `Smtp__UseSsl` | `true` |
+| `Smtp__Username` | SMTP username |
+| `Smtp__Password` | SMTP password |
+| `Smtp__SenderEmail` | From address |
+| `Smtp__SenderName` | `Proposly` (or your brand name) |
+| `AppUrl` | Your frontend URL (e.g. `https://app.yourdomain.com`) |
+| `Cors__AllowedOrigin` | Same as `AppUrl` |
+| `ASPNETCORE_ENVIRONMENT` | `Production` |
+
+1. Set `VITE_API_BASE_URL` in the frontend static site settings to your API URL
+
+Render will build and deploy automatically on every push to `main`.
+
+---
+
+## Customization
+
+| What | Where |
+| --- | --- |
+| App name and branding | `frontend/src/` — layout components and Tailwind config |
+| Email templates | `src/Proposly.Infrastructure/Services/Email/` |
+| PDF templates | `src/Proposly.Infrastructure/Services/Pdf/` |
+| Plan limits (users/projects per tier) | `src/Proposly.Domain/CompanyManagement/Entities/Company.cs` → `SetPlan()` |
+| SMTP provider | Any provider works — Mailgun, SendGrid, Brevo, your own server |
+
+---
+
+## Useful commands
 
 ```bash
-# Build
+# Build the solution
 dotnet build
 
-# Test
+# Run all tests
 dotnet test
 
-# Add a migration
-dotnet ef migrations add <Name> --project src/Proposly.Infrastructure --startup-project src/Proposly.API
+# Add a new migration
+dotnet ef migrations add <MigrationName> --project src/Proposly.Infrastructure --startup-project src/Proposly.API
 
 # Apply migrations
 dotnet ef database update --project src/Proposly.Infrastructure --startup-project src/Proposly.API
@@ -119,29 +177,15 @@ dotnet ef database update --project src/Proposly.Infrastructure --startup-projec
 
 ---
 
-## Domain overview
+## Architecture notes
 
-### OfferManagement
-- `Offer` aggregate — lifecycle: Draft → Sent → Accepted / Rejected / Expired
-- `Client` entity — status, notes, linked offers
-- `OfferExpiryJob` background service — auto-expires sent offers past their validity date
-
-### ProjectManagement
-- `Project` aggregate — linked to a client via FK (name snapshot prevents drift)
-- `ProjectTask` — Todo → InProgress → Done, estimated + actual hours, task dependencies with cycle detection
-- `TimeEntry`, `Expense`, `Milestone`, `ProjectNote`, `TaskComment` sub-entities
-
-### CalendarManagement
-- `Termin` aggregate — meeting with start/end, location, organizer
-- `TerminInvitation` — per-invitee status: Pending / Accepted / Declined / RescheduleProposed
-- Full lifecycle: create → invite → respond → reschedule → cancel / delete
-
-### CompanyManagement
-- `Company` — multi-tenant root, stores fiscal year start month for quarterly reports
-- `User` — roles, email invite flow, password reset tokens
+- **Multi-tenancy** — every entity is scoped by `CompanyId`. EF Core global query filters enforce isolation automatically on every query.
+- **Snapshot pattern** — hourly rates and offer amounts are stored at the moment of use. Changing a rate later never corrupts historical records.
+- **CQRS** — custom `ICommandHandler` / `IQueryHandler` interfaces, no MediatR.
+- **Domain events** — raised inside aggregates, dispatched on `SaveChangesAsync`, used to trigger in-app notifications.
 
 ---
 
 ## License
 
-MIT
+Single-site commercial use. You may deploy this code, sell access to it as a SaaS, and modify it freely. You may not resell the source code itself.
