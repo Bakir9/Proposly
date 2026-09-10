@@ -26,6 +26,12 @@ import { ProfilePage } from './features/profile/ProfilePage'
 import { NotificationsPage } from './features/notifications/NotificationsPage'
 import { QuarterlyFinancialReportPage } from './features/reports/QuarterlyFinancialReportPage'
 import { CalendarPage } from './features/calendar/CalendarPage'
+import { TimesheetPage } from './features/worktime/TimesheetPage'
+import { ApprovalsPage } from './features/worktime/ApprovalsPage'
+import { CompanyOverviewPage } from './features/worktime/CompanyOverviewPage'
+import { WorkTimePolicyPage } from './features/settings/WorkTimePolicyPage'
+import { AbsencesPage } from './features/absences/AbsencesPage'
+import { AbsenceApprovalsPage } from './features/absences/AbsenceApprovalsPage'
 import { AdminCompaniesPage } from './features/admin/AdminCompaniesPage'
 import { useAuth } from './features/auth/AuthContext'
 
@@ -64,6 +70,12 @@ export default function App() {
         <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/reports" element={<QuarterlyFinancialReportPage />} />
         <Route path="/calendar" element={<CalendarPage />} />
+        <Route path="/worktime" element={<TimesheetPage />} />
+        <Route path="/worktime/approvals" element={<ApprovalsPage />} />
+        <Route path="/worktime/company" element={<CompanyOverviewPage />} />
+        <Route path="/settings/worktime-rules" element={<WorkTimePolicyPage />} />
+        <Route path="/absences" element={<AbsencesPage />} />
+        <Route path="/absences/approvals" element={<AbsenceApprovalsPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/admin/companies" element={<AdminRoute><AdminCompaniesPage /></AdminRoute>} />

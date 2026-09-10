@@ -8,6 +8,7 @@ using Proposly.Domain.CompanyManagement.Repositories;
 using Proposly.Domain.Notifications;
 using Proposly.Domain.OfferManagement.Repositories;
 using Proposly.Domain.ProjectManagement.Repositories;
+using Proposly.Domain.WorkTimeManagement.Repositories;
 using Proposly.Infrastructure.Persistence;
 using Proposly.Infrastructure.Persistence.Repositories;
 using Proposly.Infrastructure.Services;
@@ -32,6 +33,12 @@ public static class DependencyInjection
 
         services.AddScoped<IDomainEventDispatcher, DomainEventDispatcher>();
 
+        // Injectable clock. Used by WorkTimeManagement, whose rules are almost entirely
+        // date/time based (rest periods across midnight, averaging windows, year-end balance
+        // carry) and need a controllable clock to be testable. Existing code keeps using
+        // DateTime.UtcNow directly — not retrofitted.
+        services.AddSingleton(TimeProvider.System);
+
         services.AddScoped<ITerminRepository, TerminRepository>();
         services.AddScoped<ICompanyRepository, CompanyRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
@@ -39,6 +46,9 @@ public static class DependencyInjection
         services.AddScoped<IOfferRepository, OfferRepository>();
         services.AddScoped<IClientRepository, ClientRepository>();
         services.AddScoped<INotificationRepository, NotificationRepository>();
+        services.AddScoped<ITimesheetRepository, TimesheetRepository>();
+        services.AddScoped<IWorkTimePolicyRepository, WorkTimePolicyRepository>();
+        services.AddScoped<IAbsenceRepository, AbsenceRepository>();
 
         services.AddSingleton<IAppSettings, AppSettings>();
         services.AddSingleton<IPasswordHasher, PasswordHasher>();

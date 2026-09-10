@@ -23,4 +23,16 @@ public static class Policies
 
     /// <summary>SuperAdmin only. Use for cross-tenant administration (plan management, company listing).</summary>
     public const string SuperAdminOnly = nameof(SuperAdminOnly);
+
+    /// <summary>Any employee (Owner, Admin, Member). Use for recording own working time and requesting own absence.</summary>
+    public const string RecordOwnWorkTime = nameof(RecordOwnWorkTime);
+
+    /// <summary>Owner or Admin. Use for approving timesheets and absence requests.</summary>
+    public const string ApproveWorkTime = nameof(ApproveWorkTime);
+
+    /// <summary>Owner or Admin. Use for employment terms, the holiday calendar, and the working time policy.</summary>
+    public const string ManageWorkTimeSettings = nameof(ManageWorkTimeSettings);
+
+    /// <summary>Owner or Admin. Use for company-wide working time, compliance, and report views.</summary>
+    public const string ViewAllWorkTime = nameof(ViewAllWorkTime);
 }

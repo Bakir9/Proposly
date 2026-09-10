@@ -26,6 +26,23 @@ public static class AuthorizationExtensions
 
             options.AddPolicy(Policies.SuperAdminOnly, policy =>
                 policy.RequireRole(UserRole.SuperAdmin.ToString()));
+
+            // Every employee records their own working time and absence. SuperAdmin is excluded
+            // deliberately — it is a cross-tenant admin role with no company of its own.
+            options.AddPolicy(Policies.RecordOwnWorkTime, policy =>
+                policy.RequireRole(
+                    UserRole.Owner.ToString(),
+                    UserRole.Admin.ToString(),
+                    UserRole.Member.ToString()));
+
+            options.AddPolicy(Policies.ApproveWorkTime, policy =>
+                policy.RequireRole(UserRole.Owner.ToString(), UserRole.Admin.ToString()));
+
+            options.AddPolicy(Policies.ManageWorkTimeSettings, policy =>
+                policy.RequireRole(UserRole.Owner.ToString(), UserRole.Admin.ToString()));
+
+            options.AddPolicy(Policies.ViewAllWorkTime, policy =>
+                policy.RequireRole(UserRole.Owner.ToString(), UserRole.Admin.ToString()));
         });
 
         return services;
