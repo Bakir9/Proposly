@@ -20,6 +20,8 @@ public class TimesheetHandlerTests
     private readonly IUserRepository _users = Substitute.For<IUserRepository>();
     private readonly IWorkTimePolicyRepository _policies = Substitute.For<IWorkTimePolicyRepository>();
     private readonly IAbsenceRepository _absences = Substitute.For<IAbsenceRepository>();
+    private readonly IEmploymentTermsRepository _terms = Substitute.For<IEmploymentTermsRepository>();
+    private readonly INonWorkingDayRepository _calendar = Substitute.For<INonWorkingDayRepository>();
     private readonly ICurrentUserService _currentUser = Substitute.For<ICurrentUserService>();
 
     private static readonly Guid CompanyId = Guid.NewGuid();
@@ -167,7 +169,8 @@ public class TimesheetHandlerTests
 
         _currentUser.UserId.Returns(ApproverId);
         _currentUser.CanViewAllEmployees.Returns(true);
-        var handler = new ApproveTimesheetCommandHandler(_timesheets, _policies, _absences, _currentUser);
+        var handler = new ApproveTimesheetCommandHandler(
+            _timesheets, _policies, _absences, _terms, _calendar, _currentUser);
 
         await handler.HandleAsync(new ApproveTimesheetCommand(sheet.Id));
 
@@ -186,7 +189,8 @@ public class TimesheetHandlerTests
 
         _currentUser.UserId.Returns(ApproverId);
         _currentUser.CanViewAllEmployees.Returns(true);
-        var handler = new ApproveTimesheetCommandHandler(_timesheets, _policies, _absences, _currentUser);
+        var handler = new ApproveTimesheetCommandHandler(
+            _timesheets, _policies, _absences, _terms, _calendar, _currentUser);
 
         await handler.HandleAsync(new ApproveTimesheetCommand(sheet.Id));
 
@@ -199,7 +203,8 @@ public class TimesheetHandlerTests
         // A member's query filter hides other employees' rows, so the lookup returns null and the
         // handler reports not found rather than leaking that the row exists.
         _timesheets.GetByIdAsync(Arg.Any<Guid>()).Returns((Timesheet?)null);
-        var handler = new ApproveTimesheetCommandHandler(_timesheets, _policies, _absences, _currentUser);
+        var handler = new ApproveTimesheetCommandHandler(
+            _timesheets, _policies, _absences, _terms, _calendar, _currentUser);
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
             () => handler.HandleAsync(new ApproveTimesheetCommand(Guid.NewGuid())));

@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import {
   getCompanyMonth, lockTimesheet, reopenTimesheet, type TimesheetStatus,
 } from '@/api/timesheets'
+import { getCompanyMonthOverview, signedHours } from '@/api/worktime-reports'
 import { getApiErrorMessage } from '@/lib/api-errors'
 import { Button } from '@/components/ui/button'
 import { ChevronLeft, ChevronRight, Users, Lock, RotateCcw, AlertTriangle } from 'lucide-react'
@@ -32,6 +33,15 @@ export function CompanyOverviewPage() {
     queryKey,
     queryFn: () => getCompanyMonth(year, month),
   })
+
+  // Month-end figures live in the reports endpoint; the timesheet list carries status and hours.
+  // Keyed by user so the two can be shown side by side without a second round trip per row.
+  const { data: figures } = useQuery({
+    queryKey: ['worktime', 'company-overview', year, month],
+    queryFn: () => getCompanyMonthOverview(year, month),
+  })
+
+  const figuresByUser = new Map((figures ?? []).map(f => [f.userId, f]))
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey })
 
@@ -96,9 +106,11 @@ export function CompanyOverviewPage() {
                 <tr className="text-left">
                   <th className="px-4 py-2 font-medium">Employee</th>
                   <th className="px-4 py-2 font-medium">Status</th>
+                  <th className="px-4 py-2 font-medium text-right">Target</th>
                   <th className="px-4 py-2 font-medium text-right">Recorded</th>
+                  <th className="px-4 py-2 font-medium text-right">Difference</th>
+                  <th className="px-4 py-2 font-medium text-right">Balance</th>
                   <th className="px-4 py-2 font-medium">Issues</th>
-                  <th className="px-4 py-2 font-medium">Approved</th>
                   <th className="px-4 py-2 font-medium w-48" />
                 </tr>
               </thead>
@@ -114,8 +126,38 @@ export function CompanyOverviewPage() {
                         <span className="ml-2 text-[11px] text-muted-foreground">self-approved</span>
                       )}
                     </td>
+                    <td className="px-4 py-2 text-right tabular-nums text-muted-foreground">
+                      {figuresByUser.get(row.userId)?.targetHours?.toFixed(2) ?? '—'}
+                    </td>
                     <td className="px-4 py-2 text-right tabular-nums">
                       {row.totalWorkedHours.toFixed(2)} h
+                    </td>
+                    <td className="px-4 py-2 text-right tabular-nums">
+                      {(() => {
+                        const diff = figuresByUser.get(row.userId)?.monthlyDifference
+                        if (diff === null || diff === undefined) return <span className="text-muted-foreground">—</span>
+                        return (
+                          <span className={diff >= 0 ? 'text-emerald-400' : 'text-amber-400'}>
+                            {signedHours(diff)}
+                          </span>
+                        )
+                      })()}
+                    </td>
+                    <td className="px-4 py-2 text-right tabular-nums">
+                      {(() => {
+                        const f = figuresByUser.get(row.userId)
+                        if (!f) return <span className="text-muted-foreground">—</span>
+                        return (
+                          <>
+                            {signedHours(f.closingBalanceHours)}
+                            {f.forfeitedHours > 0 && (
+                              <span className="block text-[11px] text-amber-400">
+                                −{f.forfeitedHours.toFixed(2)} forfeited
+                              </span>
+                            )}
+                          </>
+                        )
+                      })()}
                     </td>
                     <td className="px-4 py-2">
                       {row.breachCount > 0 ? (
@@ -126,9 +168,9 @@ export function CompanyOverviewPage() {
                       ) : (
                         <span className="text-muted-foreground text-xs">none</span>
                       )}
-                    </td>
-                    <td className="px-4 py-2 text-muted-foreground">
-                      {row.approvedAt ? new Date(row.approvedAt).toLocaleDateString() : '—'}
+                      {figuresByUser.get(row.userId)?.isRevised && (
+                        <span className="block text-[11px] text-amber-400 mt-0.5">revised</span>
+                      )}
                     </td>
                     <td className="px-4 py-2">
                       <div className="flex justify-end gap-2">
@@ -159,9 +201,9 @@ export function CompanyOverviewPage() {
               </tbody>
               <tfoot className="bg-muted/50 font-semibold">
                 <tr>
-                  <td className="px-4 py-2" colSpan={2}>Total</td>
+                  <td className="px-4 py-2" colSpan={3}>Total</td>
                   <td className="px-4 py-2 text-right tabular-nums">{totalHours.toFixed(2)} h</td>
-                  <td colSpan={3} />
+                  <td colSpan={4} />
                 </tr>
               </tfoot>
             </table>

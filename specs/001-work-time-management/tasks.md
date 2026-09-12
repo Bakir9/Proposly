@@ -400,26 +400,26 @@ and exports.
 
 ### Tests for User Story 4
 
-- [ ] T119 [P] [US4] `BalanceCalculator` tests in `tests/Proposly.Domain.Tests/WorkTimeManagement/BalanceCalculatorTests.cs` — surplus held at the cap with forfeiture reported, deficit past the floor reported but **not** clamped, null cap and floor unbounded, and December to January carry with no reset
-- [ ] T120 [P] [US4] Snapshot test asserting an approved month's figures do not change when terms, policy, or holidays change afterwards (FR-060, SC-006)
+- [X] T119 [P] [US4] `BalanceCalculator` tests in `tests/Proposly.Domain.Tests/WorkTimeManagement/BalanceCalculatorTests.cs` — surplus held at the cap with forfeiture reported, deficit past the floor reported but **not** clamped, null cap and floor unbounded, and December to January carry with no reset
+- [X] T120 [P] [US4] Snapshot test asserting an approved month's figures do not change when terms, policy, or holidays change afterwards (FR-060, SC-006)
 
 ### Implementation for User Story 4
 
-- [ ] T121 [US4] `BalanceCalculator` pure domain service in `src/Proposly.Domain/WorkTimeManagement/Services/BalanceCalculator.cs` returning closing balance, forfeited hours, and a deficit-floor-breached flag
-- [ ] T122 [US4] Add snapshot fields to `Timesheet` — `TargetHoursSnapshot`, `ActualHoursSnapshot`, `OpeningBalanceHours`, `ClosingBalanceHours`, `ForfeitedHours`, `IsRevised`, `IsSelfApproved` — written by `ApplySnapshot` from the approve path only
-- [ ] T123 [US4] Update `TimesheetConfiguration` for the new columns; generate and commit migration `AddWorkTimeReportSnapshots`
-- [ ] T124 [US4] Compute and persist the snapshot inside `ApproveTimesheetCommandHandler`, reading the prior month's closing balance as the opening balance
-- [ ] T125 [P] [US4] `IWorkTimeReportPdfService` in `src/Proposly.Application/WorkTimeManagement/Services/IWorkTimeReportPdfService.cs`
-- [ ] T126 [US4] `WorkTimeReportPdfService` in `src/Proposly.Infrastructure/Services/Pdf/WorkTimeReportPdfService.cs` using QuestPDF, modelled on `QuarterlyReportPdfService`; content per FR-029, provisional months watermarked. Register as `Singleton`
-- [ ] T127 [P] [US4] `WorkTimeReportResponses.cs` in `.../Responses/` per contracts/worktime-reports.md
-- [ ] T128 [P] [US4] `GetMonthlyWorkTimeReportQuery` + handler in `.../Queries/GetMonthlyWorkTimeReport/` — snapshot for Approved and Locked, live and marked provisional otherwise
-- [ ] T129 [P] [US4] `GetMonthlyWorkTimeReportPdfQuery` and `GetCompanyMonthOverviewQuery` + handlers in `.../Queries/`
-- [ ] T130 [US4] Mark a locked month revised when an absence, holiday, or terms change affects it (FR-032)
-- [ ] T131 [US4] `WorkTimeReportsController` in `src/Proposly.API/Controllers/` per contracts/worktime-reports.md
-- [ ] T132 [P] [US4] `frontend/src/api/worktime-reports.ts`
-- [ ] T133 [US4] `MonthlyReportPage.tsx` in `frontend/src/features/worktime/` — figures, absence breakdown, breaches, forfeiture shown explicitly, approaching-cap warning, PDF download
-- [ ] T134 [US4] Extend `CompanyOverviewPage.tsx` with the company month figures
-- [ ] T135 [US4] Add routes and nav entries
+- [X] T121 [US4] `BalanceCalculator` pure domain service in `src/Proposly.Domain/WorkTimeManagement/Services/BalanceCalculator.cs` returning closing balance, forfeited hours, and a deficit-floor-breached flag
+- [X] T122 [US4] Add snapshot fields to `Timesheet` — `TargetHoursSnapshot`, `ActualHoursSnapshot`, `OpeningBalanceHours`, `ClosingBalanceHours`, `ForfeitedHours`, `IsRevised`, `IsSelfApproved` — written by `ApplySnapshot` from the approve path only
+- [X] T123 [US4] Update `TimesheetConfiguration` for the new columns; generate and commit migration `AddWorkTimeReportSnapshots`
+- [X] T124 [US4] Compute and persist the snapshot inside `ApproveTimesheetCommandHandler`, reading the prior month's closing balance as the opening balance
+- [X] T125 [P] [US4] `IWorkTimeReportPdfService` in `src/Proposly.Application/WorkTimeManagement/Services/IWorkTimeReportPdfService.cs`
+- [X] T126 [US4] `WorkTimeReportPdfService` in `src/Proposly.Infrastructure/Services/Pdf/WorkTimeReportPdfService.cs` using QuestPDF, modelled on `QuarterlyReportPdfService`; content per FR-029, provisional months watermarked. Register as `Singleton`
+- [X] T127 [P] [US4] `WorkTimeReportResponses.cs` in `.../Responses/` per contracts/worktime-reports.md
+- [X] T128 [P] [US4] `GetMonthlyWorkTimeReportQuery` + handler in `.../Queries/GetMonthlyWorkTimeReport/` — snapshot for Approved and Locked, live and marked provisional otherwise
+- [X] T129 [P] [US4] `GetMonthlyWorkTimeReportPdfQuery` and `GetCompanyMonthOverviewQuery` + handlers in `.../Queries/`
+- [X] T130 [US4] Mark a locked month revised when an absence, holiday, or terms change affects it (FR-032)
+- [X] T131 [US4] `WorkTimeReportsController` in `src/Proposly.API/Controllers/` per contracts/worktime-reports.md
+- [X] T132 [P] [US4] `frontend/src/api/worktime-reports.ts`
+- [X] T133 [US4] `MonthlyReportPage.tsx` in `frontend/src/features/worktime/` — figures, absence breakdown, breaches, forfeiture shown explicitly, approaching-cap warning, PDF download
+- [X] T134 [US4] Extend `CompanyOverviewPage.tsx` with the company month figures
+- [X] T135 [US4] Add routes and nav entries
 
 **Checkpoint**: Five stories work. Run the Phase 5 section of quickstart.md. Shippable.
 
@@ -433,16 +433,44 @@ and exports.
 
 ### Tests for User Story 5
 
-- [ ] T136 [P] [US5] Handler tests in `tests/Proposly.Application.Tests/WorkTimeManagement/ReconciliationTests.cs` — hours summed across multiple `ProjectMember` rows for one user, over-booking flagged not errored, unresolvable memberships reported as unattributed
-- [ ] T137 [P] [US5] **Regression test** asserting project labour cost and profitability are unchanged and no `TimeEntry` row is written (FR-034, FR-035, SC-009)
+- [X] T136 [P] [US5] Handler tests in `tests/Proposly.Application.Tests/WorkTimeManagement/ReconciliationTests.cs` — hours summed across multiple `ProjectMember` rows for one user, over-booking flagged not errored, unresolvable memberships reported as unattributed
+- [X] T137 [P] [US5] **Regression test** asserting project labour cost and profitability are unchanged and no `TimeEntry` row is written (FR-034, FR-035, SC-009)
 
 ### Implementation for User Story 5
 
-- [ ] T138 [US5] `GetReconciliationQuery` + handler in `src/Proposly.Application/WorkTimeManagement/Queries/GetReconciliation/` — joins `TimeEntry.MemberId` → `ProjectMember.Id` → `ProjectMember.UserId`, strictly read-only (research.md Decision 8)
-- [ ] T139 [US5] Add `ReconciliationResponse` to `WorkTimeReportResponses.cs` and the route to `WorkTimeReportsController`
-- [ ] T140 [US5] `ReconciliationPanel.tsx` in `frontend/src/features/worktime/`, surfaced on the monthly report for Owner and Admin
+- [X] T138 [US5] `GetReconciliationQuery` + handler in `src/Proposly.Application/WorkTimeManagement/Queries/GetReconciliation/` — joins `TimeEntry.MemberId` → `ProjectMember.Id` → `ProjectMember.UserId`, strictly read-only (research.md Decision 8)
+- [X] T139 [US5] Add `ReconciliationResponse` to `WorkTimeReportResponses.cs` and the route to `WorkTimeReportsController`
+- [X] T140 [US5] `ReconciliationPanel.tsx` in `frontend/src/features/worktime/`, surfaced on the monthly report for Owner and Admin
 
 **Checkpoint**: All six stories work. Run the Phase 6 section of quickstart.md.
+
+### Phase 7 and 8 deviations and notes
+
+1. **`MonthEndFigures` is the single arbiter of a month's numbers.** It decides snapshot vs live
+   and is used by both the approval path (to create the snapshot) and every read path (to display
+   it), so what an approver signed off is exactly what the report and the PDF show.
+2. **The deficit floor reports; the cap forfeits.** Deliberately asymmetric. Clamping a deficit
+   would quietly forgive hours the employee still owes, so it is flagged instead. Surplus above the
+   cap really is lost, so it is held at the cap and the forfeited figure is stated everywhere —
+   report, overview, and PDF.
+3. **A month with no employment terms moves the balance by nothing**, rather than by a fictitious
+   full-month deficit. `MonthlyDifference` comes back null and the UI says "unavailable".
+4. **Revision is marked at the point of change**, not detected on read. `ApproveAbsence` and
+   `CancelAbsence` call `RevisedMonthMarker`, which flags any already-reported month the absence
+   touches. The reported figures never move; reopening stays an approver's decision.
+5. **Reopening clears the snapshot as well as the breaches.** Stale figures would be worse than
+   none — the month is recomputed live until it is approved again.
+6. **Project bookings are read through a new `IProjectBookingReader` seam**, not through
+   `IProjectRepository`. This module must never write project data, and `ProjectManagement` should
+   not grow an interface for another context's benefit. The implementation walks
+   `TimeEntry → ProjectMember → User` and sums across every membership one person holds.
+7. **`UnbookedHours` is never negative.** An over-booked month is reported through the `OverBooked`
+   flag instead, since a negative "unbooked" figure would read as nonsense.
+8. **A test caught a sloppy expectation, not a bug**: the approaching-cap warning fires within
+   5 hours of the cap, and 74 against an 80 cap is 6 away. Expectations corrected and the boundary
+   case (75) added.
+9. **The PDF watermarks a provisional month**, so an unapproved draft cannot be passed off as a
+   final record.
 
 ---
 

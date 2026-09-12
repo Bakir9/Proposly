@@ -1,4 +1,5 @@
 using Proposly.Application.Abstractions;
+using Proposly.Application.WorkTimeManagement.Services;
 using Proposly.Domain.WorkTimeManagement.Enums;
 using Proposly.Domain.WorkTimeManagement.Repositories;
 
@@ -7,11 +8,16 @@ namespace Proposly.Application.WorkTimeManagement.Commands.CancelAbsence;
 public sealed class CancelAbsenceCommandHandler : ICommandHandler<CancelAbsenceCommand>
 {
     private readonly IAbsenceRepository _absences;
+    private readonly ITimesheetRepository _timesheets;
     private readonly TimeProvider _clock;
 
-    public CancelAbsenceCommandHandler(IAbsenceRepository absences, TimeProvider clock)
+    public CancelAbsenceCommandHandler(
+        IAbsenceRepository absences,
+        ITimesheetRepository timesheets,
+        TimeProvider clock)
     {
         _absences = absences;
+        _timesheets = timesheets;
         _clock = clock;
     }
 
@@ -33,6 +39,13 @@ public sealed class CancelAbsenceCommandHandler : ICommandHandler<CancelAbsenceC
                 absence.UserId, absence.StartDate.Year, ct);
 
             entitlement?.Release(absence.ConsumedDays);
+        }
+
+        // Withdrawing approved leave raises the target hours of any month it covered.
+        if (wasApproved)
+        {
+            await RevisedMonthMarker.MarkAffectedMonthsAsync(
+                absence.UserId, absence.StartDate, absence.EndDate, _timesheets, ct);
         }
 
         await _absences.SaveChangesAsync(ct);

@@ -62,6 +62,26 @@ public sealed class Timesheet : AggregateRoot<Guid>, ITenantEntity, IAuditableEn
     /// <summary>True when the approver was the employee themselves — surfaced on the report.</summary>
     public bool IsSelfApproved { get; private set; }
 
+    /// <summary>
+    /// Set when something behind an already-approved month changed — a retroactively approved
+    /// absence, say. The figures are not silently recomputed; the month is marked so a human can
+    /// decide whether to reopen it.
+    /// </summary>
+    public bool IsRevised { get; private set; }
+
+    // --- Month-end figures, frozen at approval ---
+    //
+    // Snapshotted rather than recomputed so a later change to employment terms, the holiday
+    // calendar, or the working time policy cannot rewrite a month that has been reported.
+
+    public decimal? TargetHoursSnapshot { get; private set; }
+    public decimal? ActualHoursSnapshot { get; private set; }
+    public decimal? OpeningBalanceHours { get; private set; }
+    public decimal? ClosingBalanceHours { get; private set; }
+
+    /// <summary>Surplus lost to the flexitime cap this month. Always stated, never silent.</summary>
+    public decimal? ForfeitedHours { get; private set; }
+
     public DateTime CreatedAt { get; private set; }
     public DateTime UpdatedAt { get; private set; }
 
@@ -185,6 +205,42 @@ public sealed class Timesheet : AggregateRoot<Guid>, ITenantEntity, IAuditableEn
             Id, CompanyId, UserId, Year, Month, approverId, reason));
     }
 
+    /// <summary>
+    /// Freezes the month-end figures. Called from the approval path only, so an approved month's
+    /// report can never shift under a later change to terms, holidays, or policy.
+    /// </summary>
+    public void ApplySnapshot(
+        decimal? targetHours,
+        decimal actualHours,
+        decimal openingBalance,
+        decimal closingBalance,
+        decimal forfeitedHours)
+    {
+        if (Status != TimesheetStatus.Approved)
+            throw new InvalidOperationException(
+                "Month-end figures are frozen at approval, not before or after.");
+
+        TargetHoursSnapshot = targetHours;
+        ActualHoursSnapshot = actualHours;
+        OpeningBalanceHours = openingBalance;
+        ClosingBalanceHours = closingBalance;
+        ForfeitedHours = forfeitedHours;
+        IsRevised = false;
+        Touch();
+    }
+
+    /// <summary>
+    /// Flags that an input behind a reported month has changed. The figures stay as reported —
+    /// reopening the month is a decision for an approver, not a silent recalculation.
+    /// </summary>
+    public void MarkRevised()
+    {
+        if (Status is not (TimesheetStatus.Approved or TimesheetStatus.Locked)) return;
+
+        IsRevised = true;
+        Touch();
+    }
+
     /// <summary>Payroll close. Distinct from approval so a closed period can be told apart.</summary>
     public void Lock()
     {
@@ -209,10 +265,16 @@ public sealed class Timesheet : AggregateRoot<Guid>, ITenantEntity, IAuditableEn
         IsSelfApproved = false;
         ReopenedById = approverId;
         ReopenedAt = DateTime.UtcNow;
+        IsRevised = false;
 
-        // The snapshotted breaches belonged to the withdrawn approval. While the month is open
-        // again they are recomputed on read, and re-acknowledged on the next approval.
+        // The snapshotted breaches and figures belonged to the withdrawn approval. While the month
+        // is open again everything is recomputed on read, and frozen afresh on the next approval.
         _breaches.Clear();
+        TargetHoursSnapshot = null;
+        ActualHoursSnapshot = null;
+        OpeningBalanceHours = null;
+        ClosingBalanceHours = null;
+        ForfeitedHours = null;
 
         Touch();
     }

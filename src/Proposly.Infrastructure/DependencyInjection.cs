@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Proposly.Application.Abstractions;
 using Proposly.Application.Reports.Services;
+using Proposly.Application.WorkTimeManagement.Services;
 using Proposly.Domain.CalendarManagement.Repositories;
 using Proposly.Domain.CompanyManagement.Repositories;
 using Proposly.Domain.Notifications;
@@ -51,12 +52,14 @@ public static class DependencyInjection
         services.AddScoped<IAbsenceRepository, AbsenceRepository>();
         services.AddScoped<IEmploymentTermsRepository, EmploymentTermsRepository>();
         services.AddScoped<INonWorkingDayRepository, NonWorkingDayRepository>();
+        services.AddScoped<IProjectBookingReader, ProjectBookingReader>();
 
         services.AddSingleton<IAppSettings, AppSettings>();
         services.AddSingleton<IPasswordHasher, PasswordHasher>();
         services.AddScoped<IJwtService, JwtService>();
         services.AddSingleton<IPdfService, OfferPdfService>();
         services.AddSingleton<IReportPdfService, QuarterlyReportPdfService>();
+        services.AddSingleton<IWorkTimeReportPdfService, WorkTimeReportPdfService>();
         services.AddScoped<IEmailService, MailKitEmailService>();
 
         services.AddScoped<DataSeeder>();

@@ -1,5 +1,5 @@
 using Proposly.Application.Abstractions;
-using Proposly.Domain.WorkTimeManagement.Entities;
+using Proposly.Application.WorkTimeManagement.Services;
 using Proposly.Domain.WorkTimeManagement.Repositories;
 
 namespace Proposly.Application.WorkTimeManagement.Commands.ApproveAbsence;
@@ -7,13 +7,16 @@ namespace Proposly.Application.WorkTimeManagement.Commands.ApproveAbsence;
 public sealed class ApproveAbsenceCommandHandler : ICommandHandler<ApproveAbsenceCommand>
 {
     private readonly IAbsenceRepository _absences;
+    private readonly ITimesheetRepository _timesheets;
     private readonly ICurrentUserService _currentUser;
 
     public ApproveAbsenceCommandHandler(
         IAbsenceRepository absences,
+        ITimesheetRepository timesheets,
         ICurrentUserService currentUser)
     {
         _absences = absences;
+        _timesheets = timesheets;
         _currentUser = currentUser;
     }
 
@@ -36,6 +39,11 @@ public sealed class ApproveAbsenceCommandHandler : ICommandHandler<ApproveAbsenc
             // Refuses to overdraw, so approving cannot grant days the employee does not have.
             entitlement.Consume(absence.ConsumedDays);
         }
+
+        // Approving leave over a month already reported changes that month's target hours. The
+        // reported figures stand; the month is flagged for a human to look at.
+        await RevisedMonthMarker.MarkAffectedMonthsAsync(
+            absence.UserId, absence.StartDate, absence.EndDate, _timesheets, ct);
 
         await _absences.SaveChangesAsync(ct);
     }

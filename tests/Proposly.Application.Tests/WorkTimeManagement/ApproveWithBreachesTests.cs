@@ -17,6 +17,8 @@ public class ApproveWithBreachesTests
     private readonly ITimesheetRepository _timesheets = Substitute.For<ITimesheetRepository>();
     private readonly IWorkTimePolicyRepository _policies = Substitute.For<IWorkTimePolicyRepository>();
     private readonly IAbsenceRepository _absences = Substitute.For<IAbsenceRepository>();
+    private readonly IEmploymentTermsRepository _terms = Substitute.For<IEmploymentTermsRepository>();
+    private readonly INonWorkingDayRepository _calendar = Substitute.For<INonWorkingDayRepository>();
     private readonly ICurrentUserService _currentUser = Substitute.For<ICurrentUserService>();
 
     private static readonly Guid CompanyId = Guid.NewGuid();
@@ -35,6 +37,16 @@ public class ApproveWithBreachesTests
 
         _absences.GetApprovedInRangeAsync(
             Arg.Any<Guid>(), Arg.Any<DateOnly>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
+            .Returns([]);
+
+        // No terms and an empty calendar: the approval snapshot computes a null target, which is
+        // fine here — these tests are about the breach acknowledgement, not the figures.
+        _terms.GetForRangeAsync(
+            Arg.Any<Guid>(), Arg.Any<DateOnly>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
+            .Returns([]);
+
+        _calendar.GetForRangeAsync(
+            Arg.Any<DateOnly>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
             .Returns([]);
     }
 
@@ -66,7 +78,7 @@ public class ApproveWithBreachesTests
     }
 
     private ApproveTimesheetCommandHandler Handler()
-        => new(_timesheets, _policies, _absences, _currentUser);
+        => new(_timesheets, _policies, _absences, _terms, _calendar, _currentUser);
 
     [Fact]
     public async Task Approving_a_month_with_breaches_without_acknowledging_is_refused()

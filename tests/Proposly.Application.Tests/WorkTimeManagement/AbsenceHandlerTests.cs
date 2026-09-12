@@ -17,6 +17,7 @@ namespace Proposly.Application.Tests.WorkTimeManagement;
 public class AbsenceHandlerTests
 {
     private readonly IAbsenceRepository _absences = Substitute.For<IAbsenceRepository>();
+    private readonly ITimesheetRepository _timesheets = Substitute.For<ITimesheetRepository>();
     private readonly IEmploymentTermsRepository _terms = Substitute.For<IEmploymentTermsRepository>();
     private readonly INonWorkingDayRepository _calendar = Substitute.For<INonWorkingDayRepository>();
     private readonly ICompanyRepository _companies = Substitute.For<ICompanyRepository>();
@@ -193,7 +194,7 @@ public class AbsenceHandlerTests
         _absences.GetByIdAsync(absence.Id).Returns(absence);
         _currentUser.UserId.Returns(ApproverId);
 
-        await new ApproveAbsenceCommandHandler(_absences, _currentUser)
+        await new ApproveAbsenceCommandHandler(_absences, _timesheets, _currentUser)
             .HandleAsync(new ApproveAbsenceCommand(absence.Id));
 
         Assert.Equal(AbsenceStatus.Approved, absence.Status);
@@ -209,7 +210,7 @@ public class AbsenceHandlerTests
         _absences.GetByIdAsync(absence.Id).Returns(absence);
         _currentUser.UserId.Returns(ApproverId);
 
-        await new ApproveAbsenceCommandHandler(_absences, _currentUser)
+        await new ApproveAbsenceCommandHandler(_absences, _timesheets, _currentUser)
             .HandleAsync(new ApproveAbsenceCommand(absence.Id));
 
         Assert.Equal(AbsenceStatus.Approved, absence.Status);
@@ -223,7 +224,7 @@ public class AbsenceHandlerTests
         _absences.GetByIdAsync(Arg.Any<Guid>()).Returns((AbsenceRequest?)null);
 
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => new ApproveAbsenceCommandHandler(_absences, _currentUser)
+            () => new ApproveAbsenceCommandHandler(_absences, _timesheets, _currentUser)
                 .HandleAsync(new ApproveAbsenceCommand(Guid.NewGuid())));
     }
 
@@ -238,7 +239,7 @@ public class AbsenceHandlerTests
         entitlement.Consume(absence.ConsumedDays);
         _absences.GetByIdAsync(absence.Id).Returns(absence);
 
-        await new CancelAbsenceCommandHandler(_absences, _clock)
+        await new CancelAbsenceCommandHandler(_absences, _timesheets, _clock)
             .HandleAsync(new CancelAbsenceCommand(absence.Id));
 
         Assert.Equal(AbsenceStatus.Cancelled, absence.Status);
@@ -252,7 +253,7 @@ public class AbsenceHandlerTests
         var absence = Existing();
         _absences.GetByIdAsync(absence.Id).Returns(absence);
 
-        await new CancelAbsenceCommandHandler(_absences, _clock)
+        await new CancelAbsenceCommandHandler(_absences, _timesheets, _clock)
             .HandleAsync(new CancelAbsenceCommand(absence.Id));
 
         Assert.Equal(AbsenceStatus.Cancelled, absence.Status);

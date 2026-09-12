@@ -29,6 +29,7 @@ import { CalendarPage } from './features/calendar/CalendarPage'
 import { TimesheetPage } from './features/worktime/TimesheetPage'
 import { ApprovalsPage } from './features/worktime/ApprovalsPage'
 import { CompanyOverviewPage } from './features/worktime/CompanyOverviewPage'
+import { MonthlyReportPage } from './features/worktime/MonthlyReportPage'
 import { WorkTimePolicyPage } from './features/settings/WorkTimePolicyPage'
 import { EmploymentTermsPage } from './features/settings/EmploymentTermsPage'
 import { HolidayCalendarPage } from './features/settings/HolidayCalendarPage'
@@ -75,6 +76,7 @@ export default function App() {
         <Route path="/worktime" element={<TimesheetPage />} />
         <Route path="/worktime/approvals" element={<ApprovalsPage />} />
         <Route path="/worktime/company" element={<CompanyOverviewPage />} />
+        <Route path="/worktime/report" element={<MonthlyReportPage />} />
         <Route path="/settings/worktime-rules" element={<WorkTimePolicyPage />} />
         <Route path="/settings/employment-terms" element={<EmploymentTermsPage />} />
         <Route path="/settings/holidays" element={<HolidayCalendarPage />} />

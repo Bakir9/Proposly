@@ -14,6 +14,13 @@ public sealed class TimesheetConfiguration : IEntityTypeConfiguration<Timesheet>
 
         builder.Property(t => t.Status).HasConversion<string>().HasMaxLength(20);
 
+        // Month-end figures, frozen at approval.
+        builder.Property(t => t.TargetHoursSnapshot).HasColumnType("numeric(7,2)");
+        builder.Property(t => t.ActualHoursSnapshot).HasColumnType("numeric(7,2)");
+        builder.Property(t => t.OpeningBalanceHours).HasColumnType("numeric(7,2)");
+        builder.Property(t => t.ClosingBalanceHours).HasColumnType("numeric(7,2)");
+        builder.Property(t => t.ForfeitedHours).HasColumnType("numeric(7,2)");
+
         builder.HasMany(t => t.Days)
             .WithOne()
             .HasForeignKey(d => d.TimesheetId)
