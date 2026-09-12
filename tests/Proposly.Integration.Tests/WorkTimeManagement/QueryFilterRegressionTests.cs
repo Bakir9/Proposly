@@ -81,9 +81,26 @@ public class QueryFilterRegressionTests
             {
                 nameof(AbsenceEntitlement),
                 nameof(AbsenceRequest),
+                nameof(EmploymentTerms),
                 nameof(Timesheet),
             },
             userOwned);
+    }
+
+    [Fact]
+    public void Company_reference_data_is_not_user_owned()
+    {
+        using var context = CreateContext();
+
+        // NonWorkingDay and WorkTimePolicy shape every employee's target hours and absence counts,
+        // so scoping them to one person would hide the rules from the people they apply to.
+        foreach (var type in new[] { typeof(NonWorkingDay), typeof(WorkTimePolicy) })
+        {
+            var filter = context.Model.FindEntityType(type)!.GetQueryFilter()!.ToString();
+
+            Assert.Contains("CompanyId", filter, StringComparison.Ordinal);
+            Assert.DoesNotContain("UserId", filter, StringComparison.Ordinal);
+        }
     }
 
     [Fact]

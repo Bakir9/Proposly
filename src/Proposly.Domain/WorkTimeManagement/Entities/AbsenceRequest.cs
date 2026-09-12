@@ -165,6 +165,24 @@ public sealed class AbsenceRequest : AggregateRoot<Guid>, ITenantEntity, IAudita
         => Status is AbsenceStatus.Pending or AbsenceStatus.Approved
            && date >= StartDate && date <= EndDate;
 
+    /// <summary>
+    /// How much of a day this absence takes: 1, 0.5 for a half-day boundary, or 0 when the date
+    /// is not covered. Used wherever absence has to net off against a day's expected hours.
+    /// </summary>
+    public decimal DayFraction(DateOnly date)
+    {
+        if (!CoversDate(date)) return 0m;
+
+        // A single-day absence marked half either way is half a day, not none.
+        if (StartDate == EndDate)
+            return FirstDayIsHalf || LastDayIsHalf ? 0.5m : 1m;
+
+        if (date == StartDate && FirstDayIsHalf) return 0.5m;
+        if (date == EndDate && LastDayIsHalf) return 0.5m;
+
+        return 1m;
+    }
+
     private void EnsurePending(string action)
     {
         if (Status != AbsenceStatus.Pending)

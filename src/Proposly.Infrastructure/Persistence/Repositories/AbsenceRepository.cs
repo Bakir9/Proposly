@@ -60,6 +60,14 @@ public sealed class AbsenceRepository : IAbsenceRepository
             .OrderBy(a => a.StartDate)
             .ToListAsync(ct);
 
+    public async Task<IReadOnlyList<AbsenceRequest>> GetApprovedCoveringDateAsync(
+        DateOnly date, CancellationToken ct = default)
+        => await _context.AbsenceRequests
+            .Where(a => a.Status == AbsenceStatus.Approved
+                     && a.StartDate <= date
+                     && a.EndDate >= date)
+            .ToListAsync(ct);
+
     public async Task AddAsync(AbsenceRequest request, CancellationToken ct = default)
     {
         await _context.AbsenceRequests.AddAsync(request, ct);

@@ -1,5 +1,6 @@
 using Proposly.Application.Abstractions;
 using Proposly.Application.WorkTimeManagement.Responses;
+using Proposly.Application.WorkTimeManagement.Services;
 using Proposly.Domain.WorkTimeManagement.Enums;
 using Proposly.Domain.WorkTimeManagement.Repositories;
 using Proposly.Domain.WorkTimeManagement.Services;
@@ -10,13 +11,19 @@ public sealed class PreviewAbsenceQueryHandler
     : IQueryHandler<PreviewAbsenceQuery, AbsencePreviewResponse>
 {
     private readonly IAbsenceRepository _absences;
+    private readonly IEmploymentTermsRepository _terms;
+    private readonly INonWorkingDayRepository _calendar;
     private readonly ICurrentUserService _currentUser;
 
     public PreviewAbsenceQueryHandler(
         IAbsenceRepository absences,
+        IEmploymentTermsRepository terms,
+        INonWorkingDayRepository calendar,
         ICurrentUserService currentUser)
     {
         _absences = absences;
+        _terms = terms;
+        _calendar = calendar;
         _currentUser = currentUser;
     }
 
@@ -26,10 +33,17 @@ public sealed class PreviewAbsenceQueryHandler
         if (query.EndDate < query.StartDate)
             return new AbsencePreviewResponse(0m, null, false, false, []);
 
-        var consumedDays = WorkingDayCalculator.ConsumedDays(
-            query.StartDate, query.EndDate, query.FirstDayIsHalf, query.LastDayIsHalf);
+        // Same inputs as the request handler, so the preview cannot promise a figure the request
+        // then refuses.
+        var (pattern, calendar) = await WorkCalendarContext.LoadAsync(
+            _currentUser.UserId, query.StartDate, query.EndDate, _terms, _calendar, ct);
 
-        var excluded = WorkingDayCalculator.NonWorkingDatesInRange(query.StartDate, query.EndDate);
+        var consumedDays = WorkingDayCalculator.ConsumedDays(
+            query.StartDate, query.EndDate, query.FirstDayIsHalf, query.LastDayIsHalf,
+            pattern, calendar);
+
+        var excluded = WorkingDayCalculator.NonWorkingDatesInRange(
+            query.StartDate, query.EndDate, pattern, calendar);
 
         var overlapping = await _absences.GetOverlappingAsync(
             _currentUser.UserId, query.StartDate, query.EndDate, ct);

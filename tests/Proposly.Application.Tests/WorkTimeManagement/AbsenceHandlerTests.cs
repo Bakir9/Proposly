@@ -17,6 +17,8 @@ namespace Proposly.Application.Tests.WorkTimeManagement;
 public class AbsenceHandlerTests
 {
     private readonly IAbsenceRepository _absences = Substitute.For<IAbsenceRepository>();
+    private readonly IEmploymentTermsRepository _terms = Substitute.For<IEmploymentTermsRepository>();
+    private readonly INonWorkingDayRepository _calendar = Substitute.For<INonWorkingDayRepository>();
     private readonly ICompanyRepository _companies = Substitute.For<ICompanyRepository>();
     private readonly ICurrentUserService _currentUser = Substitute.For<ICurrentUserService>();
     private readonly TimeProvider _clock = new FakeClock(new DateTime(2026, 6, 1, 9, 0, 0, DateTimeKind.Utc));
@@ -42,6 +44,16 @@ public class AbsenceHandlerTests
         _absences.GetOverlappingAsync(
             Arg.Any<Guid>(), Arg.Any<DateOnly>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
             .Returns([]);
+
+        // No terms and an empty calendar: the calculator falls back to Monday-to-Friday with no
+        // holidays, which is what these fixtures assume.
+        _terms.GetForRangeAsync(
+            Arg.Any<Guid>(), Arg.Any<DateOnly>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
+            .Returns([]);
+
+        _calendar.GetForRangeAsync(
+            Arg.Any<DateOnly>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
+            .Returns([]);
     }
 
     private AbsenceEntitlement WithEntitlement(decimal entitled = 25m, decimal used = 0m)
@@ -53,7 +65,10 @@ public class AbsenceHandlerTests
     }
 
     private RequestAbsenceCommandHandler RequestHandler()
-        => new(_absences, _companies, _currentUser);
+        => new(_absences, _terms, _calendar, _companies, _currentUser);
+
+    private PreviewAbsenceQueryHandler PreviewHandler()
+        => new(_absences, _terms, _calendar, _currentUser);
 
     private static RequestAbsenceCommand Request(
         AbsenceType type = AbsenceType.Vacation, bool firstHalf = false, bool lastHalf = false)
@@ -251,7 +266,7 @@ public class AbsenceHandlerTests
     {
         WithEntitlement(entitled: 25m, used: 5m);
 
-        var result = await new PreviewAbsenceQueryHandler(_absences, _currentUser)
+        var result = await PreviewHandler()
             .HandleAsync(new PreviewAbsenceQuery(AbsenceType.Vacation, Start, End));
 
         Assert.Equal(10m, result.ConsumedDays);
@@ -266,7 +281,7 @@ public class AbsenceHandlerTests
     {
         WithEntitlement(entitled: 25m, used: 20m);
 
-        var result = await new PreviewAbsenceQueryHandler(_absences, _currentUser)
+        var result = await PreviewHandler()
             .HandleAsync(new PreviewAbsenceQuery(AbsenceType.Vacation, Start, End));
 
         Assert.True(result.ExceedsEntitlement);
@@ -280,7 +295,7 @@ public class AbsenceHandlerTests
         _absences.GetOverlappingAsync(UserId, Start, End, Arg.Any<CancellationToken>())
             .Returns([Existing()]);
 
-        var result = await new PreviewAbsenceQueryHandler(_absences, _currentUser)
+        var result = await PreviewHandler()
             .HandleAsync(new PreviewAbsenceQuery(AbsenceType.Vacation, Start, End));
 
         Assert.True(result.OverlapsExisting);

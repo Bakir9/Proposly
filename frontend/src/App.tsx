@@ -30,6 +30,8 @@ import { TimesheetPage } from './features/worktime/TimesheetPage'
 import { ApprovalsPage } from './features/worktime/ApprovalsPage'
 import { CompanyOverviewPage } from './features/worktime/CompanyOverviewPage'
 import { WorkTimePolicyPage } from './features/settings/WorkTimePolicyPage'
+import { EmploymentTermsPage } from './features/settings/EmploymentTermsPage'
+import { HolidayCalendarPage } from './features/settings/HolidayCalendarPage'
 import { AbsencesPage } from './features/absences/AbsencesPage'
 import { AbsenceApprovalsPage } from './features/absences/AbsenceApprovalsPage'
 import { AdminCompaniesPage } from './features/admin/AdminCompaniesPage'
@@ -74,6 +76,8 @@ export default function App() {
         <Route path="/worktime/approvals" element={<ApprovalsPage />} />
         <Route path="/worktime/company" element={<CompanyOverviewPage />} />
         <Route path="/settings/worktime-rules" element={<WorkTimePolicyPage />} />
+        <Route path="/settings/employment-terms" element={<EmploymentTermsPage />} />
+        <Route path="/settings/holidays" element={<HolidayCalendarPage />} />
         <Route path="/absences" element={<AbsencesPage />} />
         <Route path="/absences/approvals" element={<AbsenceApprovalsPage />} />
         <Route path="/settings" element={<SettingsPage />} />

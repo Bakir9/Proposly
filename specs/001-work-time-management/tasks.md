@@ -1,4 +1,4 @@
-?---
+---
 
 description: "Task list for Work Time Management implementation"
 ---
@@ -324,34 +324,68 @@ read back the correct expected working days and target hours for March.
 
 ### Tests for User Story 3
 
-- [ ] T097 [P] [US3] `EmploymentTerms` versioning tests in `tests/Proposly.Domain.Tests/WorkTimeManagement/EmploymentTermsTests.cs` — successor closes predecessor, and **negative**: history is immutable, `ValidFrom` must advance
-- [ ] T098 [P] [US3] `WorkingDayCalculator` tests in `.../WorkingDayCalculatorTests.cs` — weekends and holidays excluded, half days, holiday on a non-working weekday has no effect, null target when no terms, closure day stays a working day
-- [ ] T099 [P] [US3] Handler test asserting a non-working day cannot be created twice on one date
+- [X] T097 [P] [US3] `EmploymentTerms` versioning tests in `tests/Proposly.Domain.Tests/WorkTimeManagement/EmploymentTermsTests.cs` — successor closes predecessor, and **negative**: history is immutable, `ValidFrom` must advance
+- [X] T098 [P] [US3] `WorkingDayCalculator` tests in `.../WorkingDayCalculatorTests.cs` — weekends and holidays excluded, half days, holiday on a non-working weekday has no effect, null target when no terms, closure day stays a working day
+- [X] T099 [P] [US3] Handler test asserting a non-working day cannot be created twice on one date
 
 ### Implementation for User Story 3
 
-- [ ] T100 [P] [US3] `WeekDays` flags enum and `NonWorkingDayKind` enum in `src/Proposly.Domain/WorkTimeManagement/Enums/`
-- [ ] T101 [P] [US3] `EmploymentTerms` entity in `.../Entities/EmploymentTerms.cs` — no mutators beyond `CloseAt`
-- [ ] T102 [P] [US3] `NonWorkingDay` entity in `.../Entities/NonWorkingDay.cs` — `Kind`, `ConsumesVacation`, `Source`; holidays never consume, closures consume by default
-- [ ] T103 [US3] `WorkingDayCalculator` pure domain service in `.../Services/WorkingDayCalculator.cs`
-- [ ] T104 [P] [US3] `IEmploymentTermsRepository` and `INonWorkingDayRepository` in `.../Repositories/`
-- [ ] T105 [P] [US3] `EmploymentTermsConfiguration` and `NonWorkingDayConfiguration` in `src/Proposly.Infrastructure/Persistence/Configurations/`, unique index `(CompanyId, Date)` on non-working days
-- [ ] T106 [US3] Add both `DbSet`s to `AppDbContext`, implement both repositories, register them `Scoped`
-- [ ] T107 [US3] Generate and commit migration `AddWorkTimeTermsAndCalendar`
-- [ ] T108 [P] [US3] `CreateEmploymentTermsCommand` + handler + **validator** in `.../Commands/CreateEmploymentTerms/`
-- [ ] T109 [P] [US3] `CreateNonWorkingDayCommand`, `UpdateNonWorkingDayCommand` + handlers + **validators**, and `DeleteNonWorkingDayCommand` + handler (id-only) in `.../Commands/`
-- [ ] T110 [P] [US3] `WorkTimeSettingsResponses.cs` in `.../Responses/` per contracts/worktime-settings.md
-- [ ] T111 [P] [US3] `GetEmploymentTermsQuery`, `GetMyEmploymentTermsQuery`, `GetTargetHoursQuery`, `GetNonWorkingDaysQuery` + handlers in `.../Queries/`
-- [ ] T112 [US3] Retrofit `PreviewAbsenceQueryHandler` and `RequestAbsenceCommandHandler` to use `WorkingDayCalculator` with real terms and holidays instead of the Phase 5 placeholder
-- [ ] T113 [US3] Add terms and non-working-day routes to `WorkTimeSettingsController`, with `GET terms/mine` and `GET non-working-days` at action-level `RecordOwnWorkTime`
-- [ ] T114 [US3] Guard `UpdateNonWorkingDayCommand` and `DeleteNonWorkingDayCommand` against dates inside a month already approved for any employee — flag the month for review instead (FR-032, FR-071)
-- [ ] T115 [US3] `EmploymentTermsPage.tsx` in `frontend/src/features/settings/` — version history plus new-version form
-- [ ] T116 [US3] `HolidayCalendarPage.tsx` in `frontend/src/features/settings/` — manual entry, holiday vs closure day. **No import button (deferred)**
-- [ ] T117 [US3] Render non-working days and the viewer's own approved absences as **read-only markers** in the existing calendar components under `frontend/src/features/calendar/`. Create no `Termin` rows (FR-074)
-- [ ] T118 [US3] Add routes and nav entries
+- [X] T100 [P] [US3] `WeekDays` flags enum and `NonWorkingDayKind` enum in `src/Proposly.Domain/WorkTimeManagement/Enums/`
+- [X] T101 [P] [US3] `EmploymentTerms` entity in `.../Entities/EmploymentTerms.cs` — no mutators beyond `CloseAt`
+- [X] T102 [P] [US3] `NonWorkingDay` entity in `.../Entities/NonWorkingDay.cs` — `Kind`, `ConsumesVacation`, `Source`; holidays never consume, closures consume by default
+- [X] T103 [US3] `WorkingDayCalculator` pure domain service in `.../Services/WorkingDayCalculator.cs`
+- [X] T104 [P] [US3] `IEmploymentTermsRepository` and `INonWorkingDayRepository` in `.../Repositories/`
+- [X] T105 [P] [US3] `EmploymentTermsConfiguration` and `NonWorkingDayConfiguration` in `src/Proposly.Infrastructure/Persistence/Configurations/`, unique index `(CompanyId, Date)` on non-working days
+- [X] T106 [US3] Add both `DbSet`s to `AppDbContext`, implement both repositories, register them `Scoped`
+- [X] T107 [US3] Generate and commit migration `AddWorkTimeTermsAndCalendar`
+- [X] T108 [P] [US3] `CreateEmploymentTermsCommand` + handler + **validator** in `.../Commands/CreateEmploymentTerms/`
+- [X] T109 [P] [US3] `CreateNonWorkingDayCommand`, `UpdateNonWorkingDayCommand` + handlers + **validators**, and `DeleteNonWorkingDayCommand` + handler (id-only) in `.../Commands/`
+- [X] T110 [P] [US3] `WorkTimeSettingsResponses.cs` in `.../Responses/` per contracts/worktime-settings.md
+- [X] T111 [P] [US3] `GetEmploymentTermsQuery`, `GetMyEmploymentTermsQuery`, `GetTargetHoursQuery`, `GetNonWorkingDaysQuery` + handlers in `.../Queries/`
+- [X] T112 [US3] Retrofit `PreviewAbsenceQueryHandler` and `RequestAbsenceCommandHandler` to use `WorkingDayCalculator` with real terms and holidays instead of the Phase 5 placeholder
+- [X] T113 [US3] Add terms and non-working-day routes to `WorkTimeSettingsController`, with `GET terms/mine` and `GET non-working-days` at action-level `RecordOwnWorkTime`
+- [X] T114 [US3] Guard `UpdateNonWorkingDayCommand` and `DeleteNonWorkingDayCommand` against dates inside a month already approved for any employee — flag the month for review instead (FR-032, FR-071)
+- [X] T115 [US3] `EmploymentTermsPage.tsx` in `frontend/src/features/settings/` — version history plus new-version form
+- [X] T116 [US3] `HolidayCalendarPage.tsx` in `frontend/src/features/settings/` — manual entry, holiday vs closure day. **No import button (deferred)**
+- [X] T117 [US3] Render non-working days and the viewer's own approved absences as **read-only markers** in the existing calendar components under `frontend/src/features/calendar/`. Create no `Termin` rows (FR-074)
+- [X] T118 [US3] Add routes and nav entries
 
 **Checkpoint**: US1 + US6 + US2 + US3 work. Run the Phase 4 section of quickstart.md, skipping the
 deferred import scenarios 8–12. Shippable.
+
+### Phase 6 deviations and notes
+
+1. **One chargeability rule serves both calculations.** A day counts when it is in the employee's
+   working pattern *and* is not a non-working day that costs them nothing. So a public holiday
+   neither consumes vacation nor adds to the target, while a company closure does both — the
+   employee is expected to cover it, and covers it with entitlement. Absence counting and target
+   hours cannot drift apart, because they ask the same question.
+2. **Terms are resolved per day, not per month.** `TargetHoursForMonth` picks the version in force
+   on each date, so a contract change taking effect mid-month produces a genuine blend rather than
+   whichever version happened to start the month. Tested.
+3. **T112 was not a retrofit.** Because `WorkingDayCalculator` was built in Phase 5 with optional
+   parameters, the call sites in `RequestAbsenceCommandHandler` and `PreviewAbsenceQueryHandler`
+   only gained arguments. A new `WorkCalendarContext` helper loads the pattern and calendar once so
+   the request and its preview cannot disagree.
+4. **Daily hours divide by the pattern, not by five.** A 32-hour four-day week is 8-hour days, not
+   6.4 — which is what makes a four-day employee's target correct.
+5. **Deleting a holiday is refused when an approved absence covers it** (beyond the approved-month
+   guard). Removing it would make the day chargeable again and leave the absence short, so rather
+   than silently adjusting someone's entitlement the deletion is blocked and the administrator is
+   pointed at the affected requests. Needed a new repository method,
+   `GetApprovedCoveringDateAsync` — the existing per-user one would have matched nothing.
+6. **`NonWorkingDay` and `WorkTimePolicy` are deliberately NOT user-owned.** They are company
+   reference data that shapes everyone's figures; scoping them per user would hide the rules from
+   the people they apply to. A new test asserts their filters mention `CompanyId` and never
+   `UserId`.
+7. **A public holiday that consumes vacation is refused at the domain level**, not merely
+   defaulted — it would be wrong in every jurisdiction this module targets.
+8. **Calendar markers are read-only and private.** Non-working days plus *the viewer's own*
+   approved absences render as markers in the existing month grid. Colleagues' absences are not
+   shown, and no `Termin` row is created.
+9. **Encoding note**: `tasks.md` had a stray `?` byte at offset 0, left by the Phase 5 PowerShell
+   repair — a UTF-8 BOM has no Windows-1252 mapping, so it round-tripped to `?`. Stripped; the
+   frontmatter now parses again.
 
 ---
 

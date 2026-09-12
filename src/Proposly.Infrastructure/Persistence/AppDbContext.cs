@@ -29,6 +29,8 @@ public sealed class AppDbContext : DbContext
     public DbSet<WorkTimePolicy> WorkTimePolicies => Set<WorkTimePolicy>();
     public DbSet<AbsenceRequest> AbsenceRequests => Set<AbsenceRequest>();
     public DbSet<AbsenceEntitlement> AbsenceEntitlements => Set<AbsenceEntitlement>();
+    public DbSet<EmploymentTerms> EmploymentTerms => Set<EmploymentTerms>();
+    public DbSet<NonWorkingDay> NonWorkingDays => Set<NonWorkingDay>();
 
     // WorkDayEntry, TimesheetBreach and BreakRule are deliberately NOT exposed as DbSets. It is a child of Timesheet and carries
     // no CompanyId, so a direct query on it would bypass both the tenant and the per-employee

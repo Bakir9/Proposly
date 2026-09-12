@@ -49,6 +49,8 @@ public static class DependencyInjection
         services.AddScoped<ITimesheetRepository, TimesheetRepository>();
         services.AddScoped<IWorkTimePolicyRepository, WorkTimePolicyRepository>();
         services.AddScoped<IAbsenceRepository, AbsenceRepository>();
+        services.AddScoped<IEmploymentTermsRepository, EmploymentTermsRepository>();
+        services.AddScoped<INonWorkingDayRepository, NonWorkingDayRepository>();
 
         services.AddSingleton<IAppSettings, AppSettings>();
         services.AddSingleton<IPasswordHasher, PasswordHasher>();

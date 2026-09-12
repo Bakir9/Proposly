@@ -35,6 +35,14 @@ public interface IAbsenceRepository
     Task<IReadOnlyList<AbsenceRequest>> GetApprovedInRangeAsync(
         Guid userId, DateOnly from, DateOnly to, CancellationToken ct = default);
 
+    /// <summary>
+    /// Approved absences covering a date, across everyone the caller can see. Used before
+    /// removing a holiday, since that would make the day chargeable again for anyone already
+    /// approved over it.
+    /// </summary>
+    Task<IReadOnlyList<AbsenceRequest>> GetApprovedCoveringDateAsync(
+        DateOnly date, CancellationToken ct = default);
+
     Task AddAsync(AbsenceRequest request, CancellationToken ct = default);
 
     Task<AbsenceEntitlement?> GetEntitlementAsync(

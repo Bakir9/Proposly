@@ -11,15 +11,21 @@ namespace Proposly.Application.WorkTimeManagement.Commands.RequestAbsence;
 public sealed class RequestAbsenceCommandHandler : ICommandHandler<RequestAbsenceCommand, Guid>
 {
     private readonly IAbsenceRepository _absences;
+    private readonly IEmploymentTermsRepository _terms;
+    private readonly INonWorkingDayRepository _calendar;
     private readonly ICompanyRepository _companies;
     private readonly ICurrentUserService _currentUser;
 
     public RequestAbsenceCommandHandler(
         IAbsenceRepository absences,
+        IEmploymentTermsRepository terms,
+        INonWorkingDayRepository calendar,
         ICompanyRepository companies,
         ICurrentUserService currentUser)
     {
         _absences = absences;
+        _terms = terms;
+        _calendar = calendar;
         _companies = companies;
         _currentUser = currentUser;
     }
@@ -39,9 +45,16 @@ public sealed class RequestAbsenceCommandHandler : ICommandHandler<RequestAbsenc
                 $"from {clash.StartDate:yyyy-MM-dd} to {clash.EndDate:yyyy-MM-dd}.");
         }
 
+        // Counted against the employee's real working pattern and the company calendar, so a
+        // public holiday inside the range costs nothing and a day they never work is not charged.
+        var (pattern, calendar) = await WorkCalendarContext.LoadAsync(
+            _currentUser.UserId, command.StartDate, command.EndDate, _terms, _calendar, ct);
+
         // Calculated here rather than trusted from the client, and then frozen on the row.
         var consumedDays = WorkingDayCalculator.ConsumedDays(
-            command.StartDate, command.EndDate, command.FirstDayIsHalf, command.LastDayIsHalf);
+            command.StartDate, command.EndDate,
+            command.FirstDayIsHalf, command.LastDayIsHalf,
+            pattern, calendar);
 
         if (consumedDays == 0m)
             throw new InvalidOperationException(
