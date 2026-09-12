@@ -320,7 +320,7 @@ export function TimesheetPage() {
   }
 
   return (
-    <div className="p-6 space-y-5 max-w-6xl">
+    <div className="p-6 space-y-5 max-w-6xl mx-auto">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
