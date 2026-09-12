@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { useState, useEffect, useMemo } from 'react'
+import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { LayoutDashboard, FileText, FolderKanban, Users, LogOut, Building2, Settings, BarChart3, CalendarDays, ShieldCheck, Clock, ClipboardCheck, CalendarOff, CalendarCheck } from 'lucide-react'
 import { useAuth } from '@/features/auth/AuthContext'
 import { useQueryClient } from '@tanstack/react-query'
@@ -46,6 +46,20 @@ export function AppShell() {
     return !isSuperAdmin
   })
 
+  const { pathname } = useLocation()
+
+  // NavLink's own isActive matches on prefix, which lights up a parent entry whenever a child
+  // route is open — /worktime/approvals would highlight both "Work time" and "Approvals". Marking
+  // the parents `end` instead would leave routes like /worktime/report highlighting nothing, so
+  // the most specific matching entry wins and it alone is active.
+  const activePath = useMemo(() => {
+    const matches = navItems
+      .filter(item => pathname === item.to || pathname.startsWith(`${item.to}/`))
+      .sort((a, b) => b.to.length - a.to.length)
+
+    return matches[0]?.to ?? null
+  }, [navItems, pathname])
+
   useEffect(() => {
     const handler = () => setAvatarColorState(getAvatarColor())
     window.addEventListener('avatarChanged', handler)
@@ -80,14 +94,12 @@ export function AppShell() {
             <NavLink
               key={to}
               to={to}
-              className={({ isActive }) =>
-                cn(
-                  'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
-                  isActive
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                )
-              }
+              className={cn(
+                'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                activePath === to
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+              )}
             >
               <Icon className="h-4 w-4" />
               {label}
