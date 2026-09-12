@@ -14,12 +14,12 @@ project with the quoted amount snapshotted, and profitability is tracked against
 It is a working, deployed product (Docker → Render), not a greenfield scaffold. Backend in `src/`,
 React frontend in `frontend/`, tests in `tests/`, solution `Proposly.slnx`.
 
-**Domain contexts** (5): `OfferManagement`, `ProjectManagement`, `CompanyManagement`,
-`CalendarManagement`, `Notifications`.
+**Domain contexts** (6): `OfferManagement`, `ProjectManagement`, `CompanyManagement`,
+`CalendarManagement`, `WorkTimeManagement`, `Notifications`.
 
-**Application modules** (12): `Abstractions`, `Admin`, `Auth`, `CalendarManagement`, `Dashboard`,
+**Application modules** (13): `Abstractions`, `Admin`, `Auth`, `CalendarManagement`, `Dashboard`,
 `Notifications`, `OfferManagement`, `ProjectManagement`, `Reports`, `Search`, `Settings`,
-`UserManagement`.
+`UserManagement`, `WorkTimeManagement`.
 
 ## Commands
 
@@ -135,7 +135,7 @@ Abstractions/     → ICommand, ICommand<T>, ICommandHandler<T>, ICommandHandler
   Services/         → module-specific service interfaces, e.g. Reports/Services/IReportPdfService.cs
 ```
 
-Roughly 59 commands, 24 query handlers, 40 command validators, 8 domain event handlers.
+Roughly 76 commands, 41 query handlers, 57 command validators, 14 domain event handlers.
 
 Exceptions to the folder-per-operation rule: `Search/` is flat (`SearchQuery.cs`,
 `SearchQueryHandler.cs`, `SearchResultItem.cs`). Response DTOs are **grouped** into
@@ -153,9 +153,10 @@ Persistence/
   AppDbContext.cs          → single DbContext; tenant filters, audit fields, event dispatch
   AppDbContextFactory.cs   → design-time only, hardcoded local connection string
   DataSeeder.cs            → EnsureSuperAdminAsync() (all envs) + SeedAsync() (Development only)
-  Configurations/          → 17 IEntityTypeConfiguration<T> classes
-  Repositories/            → 7 repositories (Client, Company, Notification, Offer, Project,
-                             Termin, User)
+  Configurations/          → 26 IEntityTypeConfiguration<T> classes
+  Repositories/            → 12 repositories + ProjectBookingReader (a read-only seam
+                             WorkTimeManagement uses to read project time logs without
+                             depending on IProjectRepository)
 Migrations/                → EF Core migrations (top level, NOT under Persistence/)
 Services/
   Auth/                    → JwtService, PasswordHasher
@@ -178,8 +179,9 @@ and services **explicitly**. Preserve the existing lifetimes: repositories and p
 ### Proposly.API
 
 ```
-Controllers/     → 13 controllers: Admin, Auth, Calendar, Clients, Dashboard, Diagnostics,
-                   Notifications, Offers, Projects, Reports, Search, Settings, Users
+Controllers/     → 17 controllers: Admin, Auth, Calendar, Clients, Dashboard, Diagnostics,
+                   Notifications, Offers, Projects, Reports, Search, Settings, Users,
+                   Timesheets, Absences, WorkTimeSettings, WorkTimeReports
 Authorization/   → Policies.cs — the single registry of policy name constants
 Extensions/      → JwtExtensions (AddJwtAuthentication), AuthorizationExtensions
                    (AddProposlyAuthorization)
@@ -199,6 +201,25 @@ there are no remaining `TODO` markers.
 new entity gets isolation for free, and one that skips the interface silently leaks across tenants.
 Only cross-tenant SuperAdmin paths use `IgnoreQueryFilters()` (see
 `CompanyRepository.GetAllWithCountsAsync` and `Admin/`), guarded by `Policies.SuperAdminOnly`.
+
+**Per-employee visibility.** A second marker, `IUserOwnedEntity` (`UserId`), narrows rows to one
+person *inside* a company. `OnModelCreating` dispatches: entities with only `ITenantEntity` get
+the tenant filter unchanged, entities with both get a composed predicate:
+
+```csharp
+e.CompanyId == _currentUserService.CompanyId
+&& (e.UserId == _currentUserService.UserId || _currentUserService.CanViewAllEmployees)
+```
+
+`CanViewAllEmployees` is true for Owner, Admin, and SuperAdmin, and is deliberately non-throwing —
+the filter can be evaluated outside an HTTP request (seeding, background jobs), where it returns
+false.
+
+**Approver access is expressed inside the predicate, never via `IgnoreQueryFilters()`.** That
+method drops *every* filter including the company one, so using it to reach a colleague's row
+would silently allow cross-tenant reads. Nothing in `WorkTimeManagement` calls it. Company
+reference data that everyone must read — `NonWorkingDay`, `WorkTimePolicy` — deliberately stays
+tenant-only. `QueryFilterRegressionTests` asserts both halves of this.
 
 **CQRS without MediatR.** Hand-rolled `ICommandHandler<T>` / `ICommandHandler<T,R>` /
 `IQueryHandler<T,R>` in `Application/Abstractions/`, injected straight into controller actions via
@@ -296,7 +317,8 @@ public async Task<ActionResult<Guid>> Create(
 Return shapes: `CreatedAtAction` for creates, `NoContent()` for state transitions, `NotFound()`
 when a query returns `null`. Policy names always come from `Policies` constants — never inline
 strings. Available policies: `OwnerOnly`, `ManageUsers`, `ManageOffers`, `ManageClients`,
-`ManageProjects`, `SuperAdminOnly`.
+`ManageProjects`, `SuperAdminOnly`, `RecordOwnWorkTime`, `ApproveWorkTime`,
+`ManageWorkTimeSettings`, `ViewAllWorkTime`.
 
 ## Frontend
 
@@ -355,10 +377,16 @@ Stripe, and any error-tracking SDK.
 
 ## Known Gaps
 
-- `Proposly.Integration.Tests` is an empty placeholder (`UnitTest1.cs`); `Application.Tests` also
-  still has a stub `UnitTest1.cs`. Real coverage is 4 handler tests and 4 domain test classes.
+- `Proposly.Integration.Tests` holds only the query-filter regression tests; there is still no
+  database-backed integration coverage. The composed query filter in particular cannot be proven
+  correct by a unit test — only a real Postgres round trip shows whether the generated SQL keeps
+  one employee's rows away from another. Testcontainers + Respawn would close this, and would need
+  a constitution amendment for the dependency.
 - No project-level access control: members with `ManageProjects` see all company projects, not only
-  those where they appear in `ProjectMembers`.
+  those where they appear in `ProjectMembers`. `IUserOwnedEntity` is the mechanism that would fix
+  this, but it has deliberately not been retrofitted to `ProjectMember` — that is its own change.
+- Holiday import for `WorkTimeManagement` is specified (FR-066–FR-072) but unbuilt. It would add
+  the codebase's first outbound HTTP integration and needs a constitution amendment first.
 - No structured logging, error tracking, or payment integration.
 - `DiagnosticsController` exposes `POST /api/diagnostics/email-test?to=…` for SMTP smoke tests —
   a debug surface, not a product feature.

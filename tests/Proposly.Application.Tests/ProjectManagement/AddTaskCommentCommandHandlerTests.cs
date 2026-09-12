@@ -41,7 +41,7 @@ public sealed class AddTaskCommentCommandHandlerTests
         var task = project.AddTask("T", null, null, null, null);
         var user = MakeUser();
 
-        _projects.GetByIdAsync(project.Id).Returns(project);
+        _projects.GetByIdForWriteAsync(project.Id).Returns(project);
         _users.GetByIdAsync(_userId).Returns(user);
 
         var cmd = new AddTaskCommentCommand(project.Id, task.Id, "Great work!");
@@ -60,7 +60,7 @@ public sealed class AddTaskCommentCommandHandlerTests
         var task = project.AddTask("T", null, null, null, null);
         var user = MakeUser();
 
-        _projects.GetByIdAsync(project.Id).Returns(project);
+        _projects.GetByIdForWriteAsync(project.Id).Returns(project);
         _users.GetByIdAsync(_userId).Returns(user);
 
         await _sut.HandleAsync(new AddTaskCommentCommand(project.Id, task.Id, "LGTM"));
@@ -71,7 +71,7 @@ public sealed class AddTaskCommentCommandHandlerTests
     [Fact]
     public async Task HandleAsync_ProjectNotFound_Throws()
     {
-        _projects.GetByIdAsync(Arg.Any<Guid>()).Returns((Project?)null);
+        _projects.GetByIdForWriteAsync(Arg.Any<Guid>()).Returns((Project?)null);
 
         await Assert.ThrowsAsync<InvalidOperationException>(
             () => _sut.HandleAsync(new AddTaskCommentCommand(Guid.NewGuid(), Guid.NewGuid(), "body")));
@@ -83,7 +83,7 @@ public sealed class AddTaskCommentCommandHandlerTests
         var project = MakeProject();
         var task = project.AddTask("T", null, null, null, null);
 
-        _projects.GetByIdAsync(project.Id).Returns(project);
+        _projects.GetByIdForWriteAsync(project.Id).Returns(project);
         _users.GetByIdAsync(_userId).Returns((User?)null);
 
         await Assert.ThrowsAsync<InvalidOperationException>(
@@ -97,7 +97,7 @@ public sealed class AddTaskCommentCommandHandlerTests
         var task = project.AddTask("T", null, null, null, null);
         var user = User.Create(_companyId, "x@x.com", "hash", "Jane", "Doe");
 
-        _projects.GetByIdAsync(project.Id).Returns(project);
+        _projects.GetByIdForWriteAsync(project.Id).Returns(project);
         _users.GetByIdAsync(_userId).Returns(user);
 
         await _sut.HandleAsync(new AddTaskCommentCommand(project.Id, task.Id, "hello"));

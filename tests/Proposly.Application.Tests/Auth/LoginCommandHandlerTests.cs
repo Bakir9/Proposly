@@ -23,6 +23,7 @@ public sealed class LoginCommandHandlerTests
     public async Task HandleAsync_ValidCredentials_ReturnsToken()
     {
         var user = User.Create(Guid.NewGuid(), "alice@test.com", "hash", "Alice", "Smith", UserRole.Member);
+        user.MarkEmailVerified();
         _users.GetByEmailAsync("alice@test.com").Returns(user);
         _hasher.Verify("secret", "hash").Returns(true);
         _jwt.GenerateToken(user).Returns("jwt-token");
@@ -57,19 +58,38 @@ public sealed class LoginCommandHandlerTests
     [Fact]
     public async Task HandleAsync_DisabledUser_ThrowsUnauthorized()
     {
+        // Verified first, so this actually reaches the disabled check rather than tripping on the
+        // unverified-email guard and passing for the wrong reason.
         var user = User.Create(Guid.NewGuid(), "alice@test.com", "hash", "Alice", "Smith");
+        user.MarkEmailVerified();
         user.Disable();
         _users.GetByEmailAsync("alice@test.com").Returns(user);
         _hasher.Verify("secret", "hash").Returns(true);
 
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(
+        var ex = await Assert.ThrowsAsync<UnauthorizedAccessException>(
             () => _sut.HandleAsync(new LoginCommand("alice@test.com", "secret")));
+
+        Assert.Contains("disabled", ex.Message);
+    }
+
+    [Fact]
+    public async Task HandleAsync_UnverifiedEmail_ThrowsUnauthorized()
+    {
+        var user = User.Create(Guid.NewGuid(), "alice@test.com", "hash", "Alice", "Smith");
+        _users.GetByEmailAsync("alice@test.com").Returns(user);
+        _hasher.Verify("secret", "hash").Returns(true);
+
+        var ex = await Assert.ThrowsAsync<UnauthorizedAccessException>(
+            () => _sut.HandleAsync(new LoginCommand("alice@test.com", "secret")));
+
+        Assert.Contains("verify your email", ex.Message);
     }
 
     [Fact]
     public async Task HandleAsync_ValidLogin_CallsGenerateToken()
     {
         var user = User.Create(Guid.NewGuid(), "alice@test.com", "hash", "Alice", "Smith");
+        user.MarkEmailVerified();
         _users.GetByEmailAsync("alice@test.com").Returns(user);
         _hasher.Verify("secret", "hash").Returns(true);
         _jwt.GenerateToken(user).Returns("token");

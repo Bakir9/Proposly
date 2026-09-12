@@ -476,14 +476,14 @@ and exports.
 
 ## Phase 9: Polish & Cross-Cutting Concerns
 
-- [ ] T141 [P] Confirm no file in the module calls `IgnoreQueryFilters()` — `grep -rn IgnoreQueryFilters src/` and check every hit predates this feature
-- [ ] T142 [P] Confirm every command carrying a payload has a sibling validator; list any id-only commands deliberately without one
-- [ ] T143 Run the full cross-cutting checklist at the end of [quickstart.md](./quickstart.md)
-- [ ] T144 [P] Update `CLAUDE.md` — 6 domain contexts, 13 application modules, the new `IUserOwnedEntity` rule, and the four new policies
-- [ ] T145 [P] Update `.specify/memory/constitution.md` if the per-employee filter should become a stated principle for future modules
-- [ ] T146 Verify `dotnet build`, `dotnet test`, `npm run build`, and `npm run lint` are all clean
-- [ ] T147 Confirm the container still builds — no new project was added, so the `Dockerfile` and `Proposly.slnx` must be unchanged
-- [ ] T148 **Pre-existing test debt, found during Phase 2 — not caused by this feature.** 8 tests in `Proposly.Application.Tests` fail on `main`, from two earlier features that landed without updating their mocks: (a) 6 tests in `ProjectManagement/UpdateTaskStatusCommandHandlerTests.cs` and `ProjectManagement/AddTaskCommentCommandHandlerTests.cs` stub `GetByIdAsync` while the handlers now call `GetByIdForWriteAsync`, so the stub returns null; (b) 2 tests in `Auth/LoginCommandHandlerTests.cs` never mark the user email-verified, which login now requires. Fix the mocks so the suite is green, since the constitution's definition of done includes `dotnet test` passing
+- [X] T141 [P] Confirm no file in the module calls `IgnoreQueryFilters()` — `grep -rn IgnoreQueryFilters src/` and check every hit predates this feature
+- [X] T142 [P] Confirm every command carrying a payload has a sibling validator; list any id-only commands deliberately without one
+- [X] T143 Run the full cross-cutting checklist at the end of [quickstart.md](./quickstart.md)
+- [X] T144 [P] Update `CLAUDE.md` — 6 domain contexts, 13 application modules, the new `IUserOwnedEntity` rule, and the four new policies
+- [X] T145 [P] Update `.specify/memory/constitution.md` if the per-employee filter should become a stated principle for future modules
+- [X] T146 Verify `dotnet build`, `dotnet test`, `npm run build`, and `npm run lint` are all clean
+- [X] T147 Confirm the container still builds — no new project was added, so the `Dockerfile` and `Proposly.slnx` must be unchanged
+- [X] T148 **Pre-existing test debt, found during Phase 2 — not caused by this feature.** 8 tests in `Proposly.Application.Tests` fail on `main`, from two earlier features that landed without updating their mocks: (a) 6 tests in `ProjectManagement/UpdateTaskStatusCommandHandlerTests.cs` and `ProjectManagement/AddTaskCommentCommandHandlerTests.cs` stub `GetByIdAsync` while the handlers now call `GetByIdForWriteAsync`, so the stub returns null; (b) 2 tests in `Auth/LoginCommandHandlerTests.cs` never mark the user email-verified, which login now requires. Fix the mocks so the suite is green, since the constitution's definition of done includes `dotnet test` passing
 
 ---
 

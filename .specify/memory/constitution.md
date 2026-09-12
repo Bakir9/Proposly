@@ -33,6 +33,14 @@ AMENDMENT 1.0.0 → 1.0.1 (2026-09-08, PATCH — factual correction after a full
   - Principle V: scoped the validator requirement to new commands and grandfathered the 19
     existing id-only commands that have no validator, so Principle I is not violated to satisfy it.
   - Review gates: reworded the money trigger to match Principle IV.
+
+AMENDMENT 1.0.1 → 1.1.0 (2026-09-12, MINOR — guidance materially expanded):
+  - Principle IV gains the per-employee visibility rule. WorkTimeManagement introduced
+    `IUserOwnedEntity` and proved the hazard it guards against: reaching a colleague's row via
+    `IgnoreQueryFilters()` drops the *tenant* filter too, so a per-employee question becomes a
+    cross-tenant leak. The rule is stated for every future module rather than left as a fact
+    about one of them.
+  - Review gates gain the matching trigger.
 -->
 
 # Proposly Constitution
@@ -136,6 +144,11 @@ protects every module.
 - Global query filters MUST NOT be bypassed with `IgnoreQueryFilters()` except in explicitly
   cross-tenant SuperAdmin paths guarded by `Policies.SuperAdminOnly`, and each such use MUST
   carry a comment naming the reason.
+- Entities holding data private to one employee MUST implement `IUserOwnedEntity` (`UserId`), so
+  `AppDbContext` narrows rows to that person automatically. Broader access for approvers MUST be
+  expressed inside the filter predicate — `IgnoreQueryFilters()` drops the tenant filter along
+  with the user one, turning a per-employee question into a cross-tenant leak. Company reference
+  data that every employee must read stays tenant-only.
 - Monetary state MUST be held as the `Money` value object from `Proposly.Shared/ValueObjects/` in
   domain entities and their EF configurations. Wire contracts (commands, queries, response DTOs)
   carry a raw `decimal` plus a `Currency` string, and the handler MUST construct `Money` at that
@@ -236,8 +249,9 @@ implementation begins.
 
 **Review gates.** Every change is reviewed against this constitution. A reviewer MUST reject:
 restructuring of existing code, a command without a validator, a tenant-scoped entity that skips
-`ITenantEntity`, a bare `decimal` amount stored on a domain entity, controller-level exception
-mapping, a second
+`ITenantEntity`, an employee-private entity that skips `IUserOwnedEntity`, any use of
+`IgnoreQueryFilters()` to reach another employee's row, a bare `decimal` amount stored on a domain
+entity, controller-level exception mapping, a second
 `DbContext` or auth scheme, an edited historical migration, and business logic that landed in a
 handler instead of an entity.
 
@@ -269,4 +283,4 @@ Core Principles and the review gates above. Constitution Check failures block th
 the code. Principles I and IV are non-negotiable: a violation of either is rejected outright and
 cannot be waived by Complexity Tracking.
 
-**Version**: 1.0.1 | **Ratified**: 2026-09-08 | **Last Amended**: 2026-09-08
+**Version**: 1.1.0 | **Ratified**: 2026-09-08 | **Last Amended**: 2026-09-12
