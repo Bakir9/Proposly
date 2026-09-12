@@ -13,7 +13,9 @@ internal readonly record struct MonthFigures(
     decimal? SurplusCapHours,
     decimal? DeficitFloorHours,
     IReadOnlyList<AbsenceDays> AbsenceDays,
-    bool IsProvisional);
+    bool IsProvisional,
+    bool IsAllIn = false,
+    decimal? OvertimeLumpSumHours = null);
 
 internal readonly record struct AbsenceDays(AbsenceType Type, decimal Days);
 
@@ -50,12 +52,24 @@ internal static class MonthEndFigures
 
         var isClosed = timesheet.Status is TimesheetStatus.Approved or TimesheetStatus.Locked;
 
+        // The contract terms in force at month end decide how the month's overtime was treated.
+        var contract = await ContractForMonthAsync(timesheet, terms, ct);
+
         if (isClosed && timesheet.ClosingBalanceHours.HasValue)
         {
             // Read back exactly what was frozen — never recomputed.
+            var difference = Round(
+                (timesheet.ActualHoursSnapshot ?? 0m) - (timesheet.TargetHoursSnapshot ?? 0m));
+
+            var absorbed = timesheet.AbsorbedByLumpSumHours ?? 0m;
+            var covered = timesheet.CoveredByAllInHours ?? 0m;
+
             var snapshot = new BalanceResult(
                 timesheet.OpeningBalanceHours ?? 0m,
-                Round((timesheet.ActualHoursSnapshot ?? 0m) - (timesheet.TargetHoursSnapshot ?? 0m)),
+                difference,
+                absorbed,
+                covered,
+                Round(difference - absorbed - covered),
                 timesheet.ClosingBalanceHours.Value,
                 timesheet.ForfeitedHours ?? 0m,
                 policy?.DeficitFloorHours is { } floor && timesheet.ClosingBalanceHours.Value < floor);
@@ -67,7 +81,9 @@ internal static class MonthEndFigures
                 policy?.SurplusCapHours,
                 policy?.DeficitFloorHours,
                 absenceDays,
-                IsProvisional: false);
+                IsProvisional: false,
+                IsAllIn: contract.IsAllIn,
+                OvertimeLumpSumHours: contract.LumpSum);
         }
 
         var live = await ComputeAsync(
@@ -104,6 +120,11 @@ internal static class MonthEndFigures
         var actualHours = timesheet.TotalWorkedHours;
         var openingBalance = await OpeningBalanceAsync(timesheet, timesheets, ct);
 
+        // The version in force at month end decides how this month's overtime is compensated. A
+        // contract change mid-month is rare and the later terms are the ones being paid under.
+        var contract = ContractFrom(WorkingDayCalculator.TermsOn(termsVersions, monthEnd)
+                                    ?? termsVersions.LastOrDefault());
+
         // With no employment terms there is nothing to measure against, so the month moves the
         // balance by nothing rather than by a fictitious deficit.
         var balance = BalanceCalculator.Calculate(
@@ -111,7 +132,9 @@ internal static class MonthEndFigures
             targetHours ?? actualHours,
             actualHours,
             policy?.SurplusCapHours,
-            policy?.DeficitFloorHours);
+            policy?.DeficitFloorHours,
+            contract.IsAllIn,
+            contract.LumpSum);
 
         return new MonthFigures(
             targetHours,
@@ -120,8 +143,28 @@ internal static class MonthEndFigures
             policy?.SurplusCapHours,
             policy?.DeficitFloorHours,
             SummariseAbsence(approvedAbsences, monthStart, monthEnd),
-            IsProvisional: true);
+            IsProvisional: true,
+            IsAllIn: contract.IsAllIn,
+            OvertimeLumpSumHours: contract.LumpSum);
     }
+
+    /// <summary>
+    /// The compensation terms that applied to a month — the version in force on its last day.
+    /// </summary>
+    private static async Task<(bool IsAllIn, decimal? LumpSum)> ContractForMonthAsync(
+        Timesheet timesheet, IEmploymentTermsRepository terms, CancellationToken ct)
+    {
+        var monthStart = new DateOnly(timesheet.Year, timesheet.Month, 1);
+        var monthEnd = monthStart.AddMonths(1).AddDays(-1);
+
+        var versions = await terms.GetForRangeAsync(timesheet.UserId, monthStart, monthEnd, ct);
+
+        return ContractFrom(WorkingDayCalculator.TermsOn(versions, monthEnd)
+                            ?? versions.LastOrDefault());
+    }
+
+    private static (bool IsAllIn, decimal? LumpSum) ContractFrom(EmploymentTerms? terms)
+        => terms is null ? (false, null) : (terms.IsAllIn, terms.OvertimeLumpSumHours);
 
     /// <summary>
     /// The previous month's closing balance, or zero when there is no closed month before this one

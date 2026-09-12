@@ -80,6 +80,12 @@ public sealed class GetMonthlyWorkTimeReportQueryHandler
             DeficitFloorBreached: figures.Balance.DeficitFloorBreached,
             ApproachingCap: figures.Balance.ApproachingCap(figures.SurplusCapHours),
 
+            IsAllIn: figures.IsAllIn,
+            OvertimeLumpSumHours: figures.OvertimeLumpSumHours,
+            AbsorbedByLumpSumHours: figures.Balance.AbsorbedByLumpSumHours,
+            CoveredByAllInHours: figures.Balance.CoveredByAllInHours,
+            CarriedForwardHours: figures.Balance.CarriedForward,
+
             Breaches: breaches.Select(b => b.ToResponse()).ToList(),
             Days: timesheet.Days
                 .OrderBy(d => d.Date)

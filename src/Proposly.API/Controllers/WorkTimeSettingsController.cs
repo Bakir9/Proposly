@@ -91,7 +91,8 @@ public sealed class WorkTimeSettingsController : ControllerBase
     {
         var id = await handler.HandleAsync(
             new CreateEmploymentTermsCommand(
-                userId, body.ValidFrom, body.WeeklyHours, body.WorkingDays, body.AnnualVacationDays),
+                userId, body.ValidFrom, body.WeeklyHours, body.WorkingDays, body.AnnualVacationDays,
+                body.EmploymentType, body.IsAllIn, body.OvertimeLumpSumHours),
             ct);
 
         return CreatedAtAction(nameof(GetTerms), new { userId }, id);
@@ -174,7 +175,10 @@ public sealed record CreateEmploymentTermsRequest(
     DateOnly ValidFrom,
     decimal WeeklyHours,
     WeekDays WorkingDays,
-    decimal AnnualVacationDays);
+    decimal AnnualVacationDays,
+    EmploymentType EmploymentType = EmploymentType.FullTime,
+    bool IsAllIn = false,
+    decimal? OvertimeLumpSumHours = null);
 
 public sealed record UpdateNonWorkingDayRequest(
     string Name,

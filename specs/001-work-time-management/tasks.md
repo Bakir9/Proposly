@@ -487,6 +487,38 @@ and exports.
 
 ---
 
+## Phase 10: Employment type and contract overtime arrangements (FR-075 to FR-081)
+
+Added 2026-09-12, after the feature shipped. An increment on top of Phase 6's employment terms,
+not a rework of it: three columns on `EmploymentTerms`, two snapshot columns on `Timesheet`, and
+one rewritten domain calculation. No existing table or endpoint changed shape.
+
+- [X] T149 `Domain/WorkTimeManagement/Enums/EmploymentType.cs` — `FullTime`, `PartTime`, `MarginalEmployment`, `Apprentice`, `Other`
+- [X] T150 `EmploymentTerms` — add `EmploymentType`, `IsAllIn`, `OvertimeLumpSumHours`; guard in `Create` that all-in and a lump sum cannot coexist (FR-078)
+- [X] T151 Rewrite `BalanceCalculator` to return a `BalanceResult` record: opening, monthly difference, absorbed by lump sum, covered by all-in, carried forward, closing, forfeited, floor breached (FR-079, FR-080)
+- [X] T152 `Timesheet` — snapshot fields `AbsorbedByLumpSumHours` and `CoveredByAllInHours`; `ApplySnapshot` takes both, `Reopen` clears them (FR-081)
+- [X] T153 [P] `EmploymentTermsConfiguration` and `TimesheetConfiguration` — the five new columns, `EmploymentType` stored as a string with a `FullTime` default so existing rows stay valid
+- [X] T154 `MonthEndFigures.ContractForMonthAsync` — resolve `(IsAllIn, LumpSum)` from the terms version in force on the **last day** of the reported month (FR-081)
+- [X] T155 [P] Extend `CreateEmploymentTermsCommand` + validator (mutual exclusion, lump sum 0–200 h) and `MonthlyWorkTimeReportResponse` with the five new figures
+- [X] T156 [P] `ContractCompensationTests` and `EmploymentTypeTests` — absorption order, all-in coverage, neither offsetting a shortfall, and every hour reconciling
+- [X] T157 `dotnet ef migrations add AddEmploymentTypeAndContractTerms` — verify it is five `AddColumn`s and nothing else
+- [X] T158 [P] Frontend `EmploymentTermsPage` — type dropdown that *suggests* hours (FR-075), all-in checkbox, Überstundenpauschale input, the two mutually exclusive in the form; type and overtime columns in the history table
+- [X] T159 [P] Frontend `MonthlyReportPage` — absorbed / covered / carried rows in the flexitime balance, with a note explaining why a surplus did not bank
+- [X] T160 [P] `WorkTimeReportPdfService` — the same three lines and the same explanatory note in the exported document (FR-080)
+
+### Phase 10 decisions
+
+- **The type suggests, never enforces.** `SUGGESTED_WEEKLY_HOURS` pre-fills the form and the field
+  stays freely editable. A part-time employee on 32 hours and one on 12 are both just `PartTime`.
+- **All-in surplus is recorded and reported, never banked.** Refusing to record it would falsify
+  the statutory record; banking it would pay twice.
+- **The lump sum absorbs first, all-in covers the remainder, then the cap applies.** Order matters
+  and is asserted by test.
+- **Neither offsets a shortfall.** An employee below target still carries the deficit — overtime
+  compensation is not a credit line.
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase dependencies

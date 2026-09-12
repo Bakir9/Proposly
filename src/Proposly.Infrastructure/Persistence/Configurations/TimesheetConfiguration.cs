@@ -20,6 +20,8 @@ public sealed class TimesheetConfiguration : IEntityTypeConfiguration<Timesheet>
         builder.Property(t => t.OpeningBalanceHours).HasColumnType("numeric(7,2)");
         builder.Property(t => t.ClosingBalanceHours).HasColumnType("numeric(7,2)");
         builder.Property(t => t.ForfeitedHours).HasColumnType("numeric(7,2)");
+        builder.Property(t => t.AbsorbedByLumpSumHours).HasColumnType("numeric(7,2)");
+        builder.Property(t => t.CoveredByAllInHours).HasColumnType("numeric(7,2)");
 
         builder.HasMany(t => t.Days)
             .WithOne()

@@ -82,6 +82,12 @@ public sealed class Timesheet : AggregateRoot<Guid>, ITenantEntity, IAuditableEn
     /// <summary>Surplus lost to the flexitime cap this month. Always stated, never silent.</summary>
     public decimal? ForfeitedHours { get; private set; }
 
+    /// <summary>Surplus absorbed by an Überstundenpauschale — already paid, so not banked.</summary>
+    public decimal? AbsorbedByLumpSumHours { get; private set; }
+
+    /// <summary>Surplus covered by an all-in agreement — salary compensates it, so not banked.</summary>
+    public decimal? CoveredByAllInHours { get; private set; }
+
     public DateTime CreatedAt { get; private set; }
     public DateTime UpdatedAt { get; private set; }
 
@@ -214,7 +220,9 @@ public sealed class Timesheet : AggregateRoot<Guid>, ITenantEntity, IAuditableEn
         decimal actualHours,
         decimal openingBalance,
         decimal closingBalance,
-        decimal forfeitedHours)
+        decimal forfeitedHours,
+        decimal absorbedByLumpSumHours = 0m,
+        decimal coveredByAllInHours = 0m)
     {
         if (Status != TimesheetStatus.Approved)
             throw new InvalidOperationException(
@@ -225,6 +233,8 @@ public sealed class Timesheet : AggregateRoot<Guid>, ITenantEntity, IAuditableEn
         OpeningBalanceHours = openingBalance;
         ClosingBalanceHours = closingBalance;
         ForfeitedHours = forfeitedHours;
+        AbsorbedByLumpSumHours = absorbedByLumpSumHours;
+        CoveredByAllInHours = coveredByAllInHours;
         IsRevised = false;
         Touch();
     }
@@ -275,6 +285,8 @@ public sealed class Timesheet : AggregateRoot<Guid>, ITenantEntity, IAuditableEn
         OpeningBalanceHours = null;
         ClosingBalanceHours = null;
         ForfeitedHours = null;
+        AbsorbedByLumpSumHours = null;
+        CoveredByAllInHours = null;
 
         Touch();
     }

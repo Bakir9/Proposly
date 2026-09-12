@@ -37,6 +37,19 @@ public sealed record MonthlyWorkTimeReportResponse(
     bool DeficitFloorBreached,
     bool ApproachingCap,
 
+    // --- How the contract compensated this month's overtime ---
+
+    /// <summary>Salary covers additional hours, so surplus is reported but not banked.</summary>
+    bool IsAllIn,
+    /// <summary>Überstundenpauschale in hours per month, or null when there is none.</summary>
+    decimal? OvertimeLumpSumHours,
+    /// <summary>Surplus absorbed by the lump sum — already paid.</summary>
+    decimal AbsorbedByLumpSumHours,
+    /// <summary>Surplus covered by the all-in agreement.</summary>
+    decimal CoveredByAllInHours,
+    /// <summary>What actually reached the balance, after compensation.</summary>
+    decimal CarriedForwardHours,
+
     IReadOnlyList<BreachResponse> Breaches,
     IReadOnlyList<WorkDayResponse> Days);
 

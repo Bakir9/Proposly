@@ -418,6 +418,30 @@ break, with the applicable limits stated.
   month from their effective employment terms and the holiday calendar.
 - **FR-026**: Where an employee has no employment terms for a period, the system MUST report target
   hours as unavailable and MUST still report actual recorded hours.
+
+**Employment type and contract overtime arrangements** *(added 2026-09-12)*
+
+- **FR-075**: Employment terms MUST carry an employment type — full-time, part-time, marginal
+  employment, apprentice, or other. The type MUST be descriptive only: it MAY suggest a weekly
+  figure when terms are being entered, but MUST NOT constrain or validate the hours recorded,
+  because a full-time week is 38.5 hours in one company and 40 in another.
+- **FR-076**: Employment terms MUST be able to record an all-in arrangement, meaning the salary
+  covers additional hours.
+- **FR-077**: Employment terms MUST be able to record an overtime lump sum
+  (*Überstundenpauschale*) as a number of hours per month.
+- **FR-078**: An all-in arrangement and an overtime lump sum MUST be mutually exclusive on the same
+  terms version, since all-in already covers every additional hour and a lump sum on top would
+  compensate the same overtime twice.
+- **FR-079**: Where a compensation arrangement applies, the month's surplus MUST be absorbed before
+  it reaches the flexitime balance — the lump sum absorbing up to its monthly hours first, an
+  all-in arrangement covering whatever remains. Neither MUST ever offset a *shortfall*: an employee
+  who worked less than target still carries that deficit.
+- **FR-080**: The month-end report and its exported document MUST state the hours absorbed by a
+  lump sum, the hours covered by an all-in arrangement, and the hours that actually reached the
+  balance, as separate figures. Compensated surplus MUST NOT simply disappear from the report.
+- **FR-081**: The absorbed and covered figures MUST be frozen into the month-end snapshot at
+  approval, alongside the other reported figures, and MUST be resolved from the terms version in
+  force on the last day of the month being reported.
 - **FR-065**: The system MUST allow a holiday region to be set per company — a country and, where
   the country has them, a subdivision — because public holidays differ by subdivision in both
   Austria and Germany. The holiday region MUST be settable independently of the company's postal

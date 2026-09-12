@@ -53,7 +53,9 @@ public sealed class ApproveTimesheetCommandHandler : ICommandHandler<ApproveTime
             figures.ActualHours,
             figures.Balance.OpeningBalance,
             figures.Balance.ClosingBalance,
-            figures.Balance.ForfeitedHours);
+            figures.Balance.ForfeitedHours,
+            figures.Balance.AbsorbedByLumpSumHours,
+            figures.Balance.CoveredByAllInHours);
 
         await _timesheets.UpdateAsync(timesheet, ct);
     }

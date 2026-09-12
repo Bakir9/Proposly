@@ -8,10 +8,13 @@ public sealed record EmploymentTermsResponse(
     Guid UserId,
     DateOnly ValidFrom,
     DateOnly? ValidTo,
+    EmploymentType EmploymentType,
     decimal WeeklyHours,
     IReadOnlyList<string> WorkingDays,
     decimal DailyHours,
-    decimal AnnualVacationDays);
+    decimal AnnualVacationDays,
+    bool IsAllIn,
+    decimal? OvertimeLumpSumHours);
 
 /// <summary>
 /// Derived expected working days and target hours for a month.
@@ -42,10 +45,13 @@ public static class EmploymentTermsMappingExtensions
             terms.UserId,
             terms.ValidFrom,
             terms.ValidTo,
+            terms.EmploymentType,
             terms.WeeklyHours,
             terms.WorkingDays.ToNames(),
             terms.DailyHours,
-            terms.AnnualVacationDays);
+            terms.AnnualVacationDays,
+            terms.IsAllIn,
+            terms.OvertimeLumpSumHours);
 
     public static NonWorkingDayResponse ToResponse(this NonWorkingDay day)
         => new(day.Id, day.Date, day.Name, day.Kind, day.ConsumesVacation, day.Source);

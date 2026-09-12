@@ -15,6 +15,13 @@ public sealed class EmploymentTermsConfiguration : IEntityTypeConfiguration<Empl
         builder.Property(t => t.WeeklyHours).HasColumnType("numeric(5,2)");
         builder.Property(t => t.AnnualVacationDays).HasColumnType("numeric(5,1)");
 
+        builder.Property(t => t.EmploymentType)
+            .HasConversion<string>().HasMaxLength(30)
+            .HasDefaultValue(Domain.WorkTimeManagement.Enums.EmploymentType.FullTime);
+
+        // Überstundenpauschale: null means no lump sum at all, which is not the same as zero.
+        builder.Property(t => t.OvertimeLumpSumHours).HasColumnType("numeric(6,2)");
+
         // Flags enum stored as an int — a set of at most seven bits, read on every target-hour
         // calculation, so not worth a child table or a string conversion.
         builder.Property(t => t.WorkingDays).HasConversion<int>();

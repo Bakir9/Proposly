@@ -36,6 +36,17 @@ export interface MonthlyWorkTimeReport {
   deficitFloorBreached: boolean
   approachingCap: boolean
 
+  /** Salary covers additional hours, so surplus is reported but not banked. */
+  isAllIn: boolean
+  /** Überstundenpauschale in hours per month, or null when there is none. */
+  overtimeLumpSumHours: number | null
+  /** Surplus absorbed by the lump sum — already paid. */
+  absorbedByLumpSumHours: number
+  /** Surplus covered by the all-in agreement. */
+  coveredByAllInHours: number
+  /** What actually reached the balance, after compensation. */
+  carriedForwardHours: number
+
   breaches: Breach[]
   days: WorkDay[]
 }

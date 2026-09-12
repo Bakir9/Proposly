@@ -1,12 +1,19 @@
 namespace Proposly.Domain.WorkTimeManagement.Services;
 
 /// <summary>
-/// The month's flexitime arithmetic: what carried in, what the month added or took away, and what
-/// carries out once the agreed bounds are applied.
+/// The month's flexitime arithmetic, step by step, so a report can show where every hour went.
+/// <para>
+/// <c>MonthlyDifference</c> is what the month actually produced. From it, an overtime lump sum
+/// absorbs its share and an all-in agreement covers whatever surplus remains; only
+/// <c>CarriedForward</c> reaches the balance.
+/// </para>
 /// </summary>
 public readonly record struct BalanceResult(
     decimal OpeningBalance,
     decimal MonthlyDifference,
+    decimal AbsorbedByLumpSumHours,
+    decimal CoveredByAllInHours,
+    decimal CarriedForward,
     decimal ClosingBalance,
     decimal ForfeitedHours,
     bool DeficitFloorBreached)
@@ -14,12 +21,16 @@ public readonly record struct BalanceResult(
     /// <summary>True when the balance is close enough to the cap to warn the employee.</summary>
     public bool ApproachingCap(decimal? surplusCap, decimal warnWithin = 5m)
         => surplusCap.HasValue && ClosingBalance >= surplusCap.Value - warnWithin;
+
+    /// <summary>True when some part of the month's surplus never reached the balance.</summary>
+    public bool HasCompensatedHours => AbsorbedByLumpSumHours > 0m || CoveredByAllInHours > 0m;
 }
 
 /// <summary>
-/// Carries a flexitime balance from one month to the next, bounded by the company's agreement.
+/// Carries a flexitime balance from one month to the next, applying the contract's compensation
+/// terms and then the company's agreed bounds.
 /// <para>
-/// The two bounds behave deliberately differently. Surplus above the cap is <b>forfeited</b> and
+/// The bounds behave deliberately differently. Surplus above the cap is <b>forfeited</b> and
 /// reported as a distinct figure, because the employee needs to see hours they are about to lose.
 /// A deficit past the floor is <b>not</b> clamped: writing it off would quietly forgive time the
 /// employee still owes, so the breach is flagged for the employer to decide.
@@ -36,10 +47,33 @@ public static class BalanceCalculator
         decimal targetHours,
         decimal actualHours,
         decimal? surplusCapHours = null,
-        decimal? deficitFloorHours = null)
+        decimal? deficitFloorHours = null,
+        bool isAllIn = false,
+        decimal? overtimeLumpSumHours = null)
     {
         var difference = Round(actualHours - targetHours);
-        var uncapped = Round(openingBalance + difference);
+        var remaining = difference;
+
+        // A lump sum is paid whether or not it is used, so it absorbs the surplus first — up to
+        // its size, and never more than the month actually produced.
+        var absorbed = 0m;
+        if (overtimeLumpSumHours is > 0m && remaining > 0m)
+        {
+            absorbed = Math.Min(remaining, overtimeLumpSumHours.Value);
+            remaining = Round(remaining - absorbed);
+        }
+
+        // All-in salary covers whatever surplus is left. A shortfall still carries: the agreement
+        // covers overtime, not undertime.
+        var coveredByAllIn = 0m;
+        if (isAllIn && remaining > 0m)
+        {
+            coveredByAllIn = remaining;
+            remaining = 0m;
+        }
+
+        var carriedForward = Round(remaining);
+        var uncapped = Round(openingBalance + carriedForward);
 
         var forfeited = 0m;
         var closing = uncapped;
@@ -54,7 +88,14 @@ public static class BalanceCalculator
         var floorBreached = deficitFloorHours.HasValue && closing < deficitFloorHours.Value;
 
         return new BalanceResult(
-            Round(openingBalance), difference, closing, forfeited, floorBreached);
+            Round(openingBalance),
+            difference,
+            Round(absorbed),
+            Round(coveredByAllIn),
+            carriedForward,
+            closing,
+            forfeited,
+            floorBreached);
     }
 
     private static decimal Round(decimal value)

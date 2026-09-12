@@ -16,15 +16,47 @@ export interface NonWorkingDay {
   source: EntrySource
 }
 
+export type EmploymentType =
+  | 'FullTime'
+  | 'PartTime'
+  | 'MarginalEmployment'
+  | 'Apprentice'
+  | 'Other'
+
 export interface EmploymentTerms {
   id: string
   userId: string
   validFrom: string
   validTo: string | null
+  employmentType: EmploymentType
   weeklyHours: number
   workingDays: WeekDayName[]
   dailyHours: number
   annualVacationDays: number
+  /** Salary covers additional hours: surplus is reported but never banked. */
+  isAllIn: boolean
+  /** Überstundenpauschale in hours per month, or null when there is none. */
+  overtimeLumpSumHours: number | null
+}
+
+export const EMPLOYMENT_TYPE_LABELS: Record<EmploymentType, string> = {
+  FullTime: 'Full-time',
+  PartTime: 'Part-time',
+  MarginalEmployment: 'Marginal (geringfügig)',
+  Apprentice: 'Apprentice',
+  Other: 'Other',
+}
+
+/**
+ * A starting figure only — the form pre-fills it and you edit freely. A full-time week is 38.5
+ * hours in one company and 40 in another, so nothing here is enforced.
+ */
+export const SUGGESTED_WEEKLY_HOURS: Record<EmploymentType, number | null> = {
+  FullTime: 38.5,
+  PartTime: 20,
+  MarginalEmployment: 8,
+  Apprentice: 38.5,
+  Other: null,
 }
 
 export interface TargetHours {
@@ -42,6 +74,10 @@ export interface CreateEmploymentTermsRequest {
   weeklyHours: number
   workingDays: WeekDayName[]
   annualVacationDays: number
+  employmentType: EmploymentType
+  isAllIn: boolean
+  /** Null when the contract carries no lump sum. Rejected together with `isAllIn`. */
+  overtimeLumpSumHours: number | null
 }
 
 export interface CreateNonWorkingDayRequest {

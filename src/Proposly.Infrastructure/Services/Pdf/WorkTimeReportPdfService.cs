@@ -146,6 +146,21 @@ public sealed class WorkTimeReportPdfService : IWorkTimeReportPdfService
             Line(table, "This month", r.MonthlyDifference.HasValue
                 ? Signed(r.MonthlyDifference.Value) : "—");
 
+            // What the contract already paid for. Stated as its own line so the document shows
+            // why a surplus did not reach the balance, rather than appearing to lose it.
+            if (r.AbsorbedByLumpSumHours > 0m)
+            {
+                Line(table,
+                    $"Covered by the {Hours(r.OvertimeLumpSumHours ?? 0m)} Überstundenpauschale",
+                    $"−{Hours(r.AbsorbedByLumpSumHours)}");
+            }
+
+            if (r.CoveredByAllInHours > 0m)
+                Line(table, "Covered by the all-in salary", $"−{Hours(r.CoveredByAllInHours)}");
+
+            if (r.AbsorbedByLumpSumHours > 0m || r.CoveredByAllInHours > 0m)
+                Line(table, "Carried to the balance", Signed(r.CarriedForwardHours));
+
             if (r.ForfeitedHours > 0m)
             {
                 // Forfeiture is never silent: the employee sees exactly what the cap cost them.
@@ -155,6 +170,23 @@ public sealed class WorkTimeReportPdfService : IWorkTimeReportPdfService
 
             Line(table, "Closing balance", Signed(r.ClosingBalanceHours), bold: true);
         });
+
+        if (r.IsAllIn)
+        {
+            col.Item().PaddingBottom(6)
+                .Text("All-in contract: additional hours are part of the salary. A surplus is " +
+                      "recorded and reported in full but is not banked as flexitime; a shortfall " +
+                      "still counts.")
+                .FontSize(9).Italic().FontColor(Colors.Grey.Darken1);
+        }
+        else if (r.OvertimeLumpSumHours > 0m)
+        {
+            col.Item().PaddingBottom(6)
+                .Text($"Overtime lump sum of {Hours(r.OvertimeLumpSumHours.Value)} per month: that " +
+                      "much surplus is already paid and is not banked again. Hours above it are, " +
+                      "and a shortfall is never offset by it.")
+                .FontSize(9).Italic().FontColor(Colors.Grey.Darken1);
+        }
 
         if (r.DeficitFloorBreached)
         {

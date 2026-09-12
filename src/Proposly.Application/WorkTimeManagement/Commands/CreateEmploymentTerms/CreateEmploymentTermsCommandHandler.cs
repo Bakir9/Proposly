@@ -33,7 +33,10 @@ public sealed class CreateEmploymentTermsCommandHandler
             command.ValidFrom,
             command.WeeklyHours,
             command.WorkingDays,
-            command.AnnualVacationDays);
+            command.AnnualVacationDays,
+            command.EmploymentType,
+            command.IsAllIn,
+            command.OvertimeLumpSumHours);
 
         // Closing the predecessor keeps version ranges contiguous and non-overlapping, so
         // "which terms applied in March" stays a single range predicate.

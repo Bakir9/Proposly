@@ -3,7 +3,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
   getEmploymentTerms, createEmploymentTerms, getTargetHours,
-  WEEK_DAYS, type WeekDayName,
+  WEEK_DAYS, EMPLOYMENT_TYPE_LABELS, SUGGESTED_WEEKLY_HOURS,
+  type WeekDayName, type EmploymentType,
 } from '@/api/worktime-calendar'
 import { getUsers } from '@/api/users'
 import { getApiErrorMessage } from '@/lib/api-errors'
@@ -125,10 +126,12 @@ export function EmploymentTermsPage() {
               <tr className="text-left">
                 <th className="px-4 py-2 font-medium">From</th>
                 <th className="px-4 py-2 font-medium">To</th>
+                <th className="px-4 py-2 font-medium">Type</th>
                 <th className="px-4 py-2 font-medium text-right">Weekly</th>
                 <th className="px-4 py-2 font-medium text-right">Daily</th>
                 <th className="px-4 py-2 font-medium">Working days</th>
                 <th className="px-4 py-2 font-medium text-right">Vacation</th>
+                <th className="px-4 py-2 font-medium">Overtime</th>
               </tr>
             </thead>
             <tbody>
@@ -138,12 +141,21 @@ export function EmploymentTermsPage() {
                   <td className="px-4 py-2 tabular-nums">
                     {row.validTo ?? <span className="text-emerald-400">current</span>}
                   </td>
+                  <td className="px-4 py-2 text-xs">
+                    {EMPLOYMENT_TYPE_LABELS[row.employmentType]}
+                  </td>
                   <td className="px-4 py-2 text-right tabular-nums">{row.weeklyHours} h</td>
                   <td className="px-4 py-2 text-right tabular-nums">{row.dailyHours} h</td>
                   <td className="px-4 py-2 text-xs">
                     {row.workingDays.map(d => d.slice(0, 2)).join(' · ')}
                   </td>
                   <td className="px-4 py-2 text-right tabular-nums">{row.annualVacationDays} d</td>
+                  <td className="px-4 py-2 text-xs">
+                    <OvertimeTerms
+                      isAllIn={row.isAllIn}
+                      lumpSumHours={row.overtimeLumpSumHours}
+                    />
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -161,6 +173,32 @@ export function EmploymentTermsPage() {
   )
 }
 
+/**
+ * The two options are mutually exclusive — all-in already covers every additional hour, so a lump
+ * sum on top would pay the same overtime twice. The backend rejects the combination.
+ */
+function OvertimeTerms({
+  isAllIn, lumpSumHours,
+}: { isAllIn: boolean; lumpSumHours: number | null }) {
+  if (isAllIn) {
+    return (
+      <span className="rounded-md bg-violet-500/10 text-violet-400 px-1.5 py-0.5 font-medium">
+        All-in
+      </span>
+    )
+  }
+
+  if (lumpSumHours && lumpSumHours > 0) {
+    return (
+      <span className="rounded-md bg-sky-500/10 text-sky-400 px-1.5 py-0.5 font-medium tabular-nums">
+        Pauschale {lumpSumHours} h/mo
+      </span>
+    )
+  }
+
+  return <span className="text-muted-foreground">—</span>
+}
+
 function Stat({ label, value, muted }: { label: string; value: string; muted?: boolean }) {
   return (
     <div className="rounded-lg border p-3">
@@ -176,15 +214,34 @@ function TermsDialog({
   open, userId, onClose, onDone,
 }: { open: boolean; userId: string; onClose: () => void; onDone: () => void }) {
   const [validFrom, setValidFrom] = useState(new Date().toISOString().slice(0, 10))
+  const [employmentType, setEmploymentType] = useState<EmploymentType>('FullTime')
   const [weeklyHours, setWeeklyHours] = useState(38.5)
   const [annualVacationDays, setAnnualVacationDays] = useState(25)
   const [workingDays, setWorkingDays] = useState<WeekDayName[]>([
     'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday',
   ])
+  const [isAllIn, setIsAllIn] = useState(false)
+  const [lumpSum, setLumpSum] = useState('')
+
+  /**
+   * The type only *suggests* hours — a full-time week is 38.5 in one company and 40 in another,
+   * so the figure stays freely editable and nothing is enforced against the type.
+   */
+  const changeType = (type: EmploymentType) => {
+    setEmploymentType(type)
+    const suggested = SUGGESTED_WEEKLY_HOURS[type]
+    if (suggested !== null) setWeeklyHours(suggested)
+  }
+
+  const lumpSumHours = lumpSum.trim() === '' ? null : Number(lumpSum)
 
   const save = useMutation({
     mutationFn: () =>
-      createEmploymentTerms(userId, { validFrom, weeklyHours, workingDays, annualVacationDays }),
+      createEmploymentTerms(userId, {
+        validFrom, weeklyHours, workingDays, annualVacationDays,
+        employmentType, isAllIn,
+        overtimeLumpSumHours: isAllIn ? null : lumpSumHours,
+      }),
     onSuccess: () => {
       toast.success('New version saved. It applies from its start date onward.')
       onDone()
@@ -208,6 +265,22 @@ function TermsDialog({
           <Input type="date" value={validFrom} onChange={e => setValidFrom(e.target.value)} />
           <p className="text-xs text-muted-foreground">
             Must be later than the current version's start date.
+          </p>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label>Employment type</Label>
+          <Select
+            value={employmentType}
+            onChange={e => changeType(e.target.value as EmploymentType)}
+          >
+            {(Object.keys(EMPLOYMENT_TYPE_LABELS) as EmploymentType[]).map(type => (
+              <option key={type} value={type}>{EMPLOYMENT_TYPE_LABELS[type]}</option>
+            ))}
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            Picking a type fills in a typical week. The hours below are what actually count — edit
+            them to whatever the contract says.
           </p>
         </div>
 
@@ -252,10 +325,52 @@ function TermsDialog({
           </p>
         </div>
 
+        <div className="space-y-3 rounded-lg border p-3">
+          <div>
+            <Label>Overtime arrangement</Label>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Optional. Choose at most one — an all-in salary already covers additional hours, so a
+              lump sum on top would pay the same overtime twice.
+            </p>
+          </div>
+
+          <label className="flex items-start gap-2 text-sm cursor-pointer">
+            <input
+              type="checkbox"
+              className="mt-0.5"
+              checked={isAllIn}
+              onChange={e => { setIsAllIn(e.target.checked); if (e.target.checked) setLumpSum('') }}
+            />
+            <span>
+              All-in contract
+              <span className="block text-xs text-muted-foreground">
+                Surplus hours are still recorded and reported, but never banked into the balance.
+              </span>
+            </span>
+          </label>
+
+          <div className="space-y-1.5">
+            <Label>Überstundenpauschale (hours per month)</Label>
+            <Input
+              type="number" step={0.5} min={0} max={200} placeholder="none"
+              value={lumpSum}
+              disabled={isAllIn}
+              onChange={e => setLumpSum(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              The first hours of monthly surplus are already paid by the flat rate, so they are
+              absorbed here instead of being carried forward. Anything above it still banks.
+            </p>
+          </div>
+        </div>
+
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={onClose}>Cancel</Button>
           <Button
-            disabled={workingDays.length === 0 || weeklyHours <= 0 || save.isPending}
+            disabled={
+              workingDays.length === 0 || weeklyHours <= 0 || save.isPending ||
+              (lumpSumHours !== null && (Number.isNaN(lumpSumHours) || lumpSumHours < 0))
+            }
             onClick={() => save.mutate()}
           >
             Save version

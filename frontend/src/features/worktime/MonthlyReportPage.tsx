@@ -145,6 +145,24 @@ function Report({ report: r }: { report: MonthlyWorkTimeReport }) {
             value={r.monthlyDifference === null ? '—' : signedHours(r.monthlyDifference)}
           />
 
+          {r.absorbedByLumpSumHours > 0 && (
+            <Row
+              label={`Covered by the ${r.overtimeLumpSumHours?.toFixed(2)} h Überstundenpauschale`}
+              value={`−${r.absorbedByLumpSumHours.toFixed(2)} h`}
+            />
+          )}
+
+          {r.coveredByAllInHours > 0 && (
+            <Row
+              label="Covered by the all-in salary"
+              value={`−${r.coveredByAllInHours.toFixed(2)} h`}
+            />
+          )}
+
+          {(r.absorbedByLumpSumHours > 0 || r.coveredByAllInHours > 0) && (
+            <Row label="Carried to the balance" value={signedHours(r.carriedForwardHours)} />
+          )}
+
           {r.forfeitedHours > 0 && (
             <Row
               label={`Forfeited at the ${r.surplusCapHours?.toFixed(2)} h cap`}
@@ -155,6 +173,14 @@ function Report({ report: r }: { report: MonthlyWorkTimeReport }) {
 
           <Row label="Closing balance" value={signedHours(r.closingBalanceHours)} strong />
         </dl>
+
+        {(r.isAllIn || (r.overtimeLumpSumHours ?? 0) > 0) && (
+          <p className="px-4 py-2 border-t text-xs text-muted-foreground">
+            {r.isAllIn
+              ? 'Your contract is all-in: additional hours are part of the salary, so a surplus is recorded and reported in full but is not banked as flexitime. A shortfall still counts.'
+              : `Your contract includes an Überstundenpauschale of ${r.overtimeLumpSumHours?.toFixed(2)} h per month. That much surplus is already paid, so it is not banked again; anything above it is. A shortfall is never offset by it.`}
+          </p>
+        )}
       </section>
 
       {r.deficitFloorBreached && (
