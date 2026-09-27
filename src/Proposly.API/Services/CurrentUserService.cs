@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Proposly.Application.Abstractions;
+using Proposly.Domain.CompanyManagement.Enums;
 
 namespace Proposly.API.Services;
 
@@ -22,6 +23,20 @@ public sealed class CurrentUserService : ICurrentUserService
     public string Role =>
         _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.Role)
         ?? throw new UnauthorizedAccessException("Role claim is missing.");
+
+    // Deliberately non-throwing: this is read inside the IUserOwnedEntity query filter, which can
+    // be evaluated outside an HTTP request (seeding, background jobs). No context => false, the
+    // most restrictive answer.
+    public bool CanViewAllEmployees
+    {
+        get
+        {
+            var role = _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.Role);
+            return role == nameof(UserRole.Owner)
+                || role == nameof(UserRole.Admin)
+                || role == nameof(UserRole.SuperAdmin);
+        }
+    }
 
     private Guid GetGuidClaim(string claimType)
     {

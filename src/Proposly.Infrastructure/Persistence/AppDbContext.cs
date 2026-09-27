@@ -5,6 +5,7 @@ using Proposly.Domain.CompanyManagement.Entities;
 using Proposly.Domain.Notifications;
 using Proposly.Domain.OfferManagement.Entities;
 using Proposly.Domain.ProjectManagement.Entities;
+using Proposly.Domain.WorkTimeManagement.Entities;
 using Proposly.Shared.Interfaces;
 using Proposly.Shared.Primitives;
 
@@ -24,6 +25,17 @@ public sealed class AppDbContext : DbContext
     public DbSet<Client> Clients => Set<Client>();
     public DbSet<ClientNote> ClientNotes => Set<ClientNote>();
     public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<Timesheet> Timesheets => Set<Timesheet>();
+    public DbSet<WorkTimePolicy> WorkTimePolicies => Set<WorkTimePolicy>();
+    public DbSet<AbsenceRequest> AbsenceRequests => Set<AbsenceRequest>();
+    public DbSet<AbsenceEntitlement> AbsenceEntitlements => Set<AbsenceEntitlement>();
+    public DbSet<EmploymentTerms> EmploymentTerms => Set<EmploymentTerms>();
+    public DbSet<NonWorkingDay> NonWorkingDays => Set<NonWorkingDay>();
+
+    // WorkDayEntry, TimesheetBreach and BreakRule are deliberately NOT exposed as DbSets. It is a child of Timesheet and carries
+    // no CompanyId, so a direct query on it would bypass both the tenant and the per-employee
+    // filter. Reach day entries through Timesheet.Days; EF still maps the type via that
+    // navigation and WorkDayEntryConfiguration.
 
     public AppDbContext(
         DbContextOptions<AppDbContext> options,
@@ -44,8 +56,14 @@ public sealed class AppDbContext : DbContext
             if (!typeof(ITenantEntity).IsAssignableFrom(entityType.ClrType))
                 continue;
 
+            // Entities that also belong to a single employee get the composed tenant + user filter.
+            // Everything else keeps the tenant-only filter it has always had, unchanged.
+            var filterMethod = typeof(IUserOwnedEntity).IsAssignableFrom(entityType.ClrType)
+                ? nameof(SetTenantAndUserFilter)
+                : nameof(SetTenantFilter);
+
             var method = typeof(AppDbContext)
-                .GetMethod(nameof(SetTenantFilter), System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
+                .GetMethod(filterMethod, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
                 .MakeGenericMethod(entityType.ClrType);
 
             method.Invoke(this, [modelBuilder]);
@@ -58,6 +76,23 @@ public sealed class AppDbContext : DbContext
         where TEntity : class, ITenantEntity
     {
         modelBuilder.Entity<TEntity>().HasQueryFilter(e => e.CompanyId == _currentUserService.CompanyId);
+    }
+
+    /// <summary>
+    /// Tenant isolation ANDed with per-employee isolation, as a single predicate.
+    /// <para>
+    /// EF replaces rather than combines a second HasQueryFilter call on the same entity, so the two
+    /// rules are composed here. Approver access is expressed inside the predicate rather than via
+    /// IgnoreQueryFilters(), because that would drop the company filter too and allow cross-tenant
+    /// reads. Never bypass this filter to reach another employee's rows.
+    /// </para>
+    /// </summary>
+    private void SetTenantAndUserFilter<TEntity>(ModelBuilder modelBuilder)
+        where TEntity : class, ITenantEntity, IUserOwnedEntity
+    {
+        modelBuilder.Entity<TEntity>().HasQueryFilter(e =>
+            e.CompanyId == _currentUserService.CompanyId
+            && (e.UserId == _currentUserService.UserId || _currentUserService.CanViewAllEmployees));
     }
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

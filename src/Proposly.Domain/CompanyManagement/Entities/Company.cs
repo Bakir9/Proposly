@@ -109,6 +109,20 @@ public sealed class Company : AggregateRoot<Guid>, IAuditableEntity
         return limit.HasValue && projectCount >= limit.Value;
     }
 
+    /// <summary>
+    /// Whether the working time and absence module is available on the company's plan.
+    /// Gates writes only — a downgraded company keeps read access to records it already has.
+    /// An expired plan falls back to Free-tier behaviour, as the limit checks above do.
+    /// </summary>
+    public bool HasWorkTimeModule()
+    {
+        var effectiveTier = PlanExpiresAt.HasValue && PlanExpiresAt.Value < DateTime.UtcNow
+            ? PlanTier.Free
+            : PlanTier;
+
+        return effectiveTier is PlanTier.Pro or PlanTier.Business;
+    }
+
     public void Suspend()
     {
         if (Status == CompanyStatus.Suspended)

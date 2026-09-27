@@ -824,6 +824,448 @@ namespace Proposly.Infrastructure.Migrations
                     b.ToTable("TimeEntries", (string)null);
                 });
 
+            modelBuilder.Entity("Proposly.Domain.WorkTimeManagement.Entities.AbsenceEntitlement", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("CarriedOverDays")
+                        .HasColumnType("numeric(5,1)");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("EntitledDays")
+                        .HasColumnType("numeric(5,1)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("UsedDays")
+                        .HasColumnType("numeric(5,1)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId", "UserId", "Year")
+                        .IsUnique();
+
+                    b.ToTable("AbsenceEntitlements", (string)null);
+                });
+
+            modelBuilder.Entity("Proposly.Domain.WorkTimeManagement.Entities.AbsenceRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ApproverId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("ConsumedDays")
+                        .HasColumnType("numeric(5,1)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DecidedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DecisionReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateOnly>("EndDate")
+                        .HasColumnType("date");
+
+                    b.Property<bool>("FirstDayIsHalf")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("LastDayIsHalf")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateOnly>("StartDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId", "Status");
+
+                    b.HasIndex("CompanyId", "UserId", "StartDate");
+
+                    b.ToTable("AbsenceRequests", (string)null);
+                });
+
+            modelBuilder.Entity("Proposly.Domain.WorkTimeManagement.Entities.BreakRule", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("AboveHours")
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<int>("MinBreakMinutes")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("WorkTimePolicyId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WorkTimePolicyId", "AboveHours")
+                        .IsUnique();
+
+                    b.ToTable("BreakRules", (string)null);
+                });
+
+            modelBuilder.Entity("Proposly.Domain.WorkTimeManagement.Entities.EmploymentTerms", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("AnnualVacationDays")
+                        .HasColumnType("numeric(5,1)");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("EmploymentType")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasDefaultValue("FullTime");
+
+                    b.Property<bool>("IsAllIn")
+                        .HasColumnType("boolean");
+
+                    b.Property<decimal?>("OvertimeLumpSumHours")
+                        .HasColumnType("numeric(6,2)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("ValidFrom")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly?>("ValidTo")
+                        .HasColumnType("date");
+
+                    b.Property<decimal>("WeeklyHours")
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<int>("WorkingDays")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId", "UserId", "ValidFrom")
+                        .IsUnique();
+
+                    b.ToTable("EmploymentTerms", (string)null);
+                });
+
+            modelBuilder.Entity("Proposly.Domain.WorkTimeManagement.Entities.NonWorkingDay", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("ConsumesVacation")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId", "Date")
+                        .IsUnique();
+
+                    b.ToTable("NonWorkingDays", (string)null);
+                });
+
+            modelBuilder.Entity("Proposly.Domain.WorkTimeManagement.Entities.Timesheet", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("AbsorbedByLumpSumHours")
+                        .HasColumnType("numeric(7,2)");
+
+                    b.Property<decimal?>("ActualHoursSnapshot")
+                        .HasColumnType("numeric(7,2)");
+
+                    b.Property<DateTime?>("ApprovedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ApprovedById")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("ClosingBalanceHours")
+                        .HasColumnType("numeric(7,2)");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("CoveredByAllInHours")
+                        .HasColumnType("numeric(7,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal?>("ForfeitedHours")
+                        .HasColumnType("numeric(7,2)");
+
+                    b.Property<bool>("IsRevised")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsSelfApproved")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("LockedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Month")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal?>("OpeningBalanceHours")
+                        .HasColumnType("numeric(7,2)");
+
+                    b.Property<DateTime?>("ReopenedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ReopenedById")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime?>("SubmittedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal?>("TargetHoursSnapshot")
+                        .HasColumnType("numeric(7,2)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId", "Status");
+
+                    b.HasIndex("CompanyId", "Year", "Month");
+
+                    b.HasIndex("CompanyId", "UserId", "Year", "Month")
+                        .IsUnique();
+
+                    b.ToTable("Timesheets", (string)null);
+                });
+
+            modelBuilder.Entity("Proposly.Domain.WorkTimeManagement.Entities.TimesheetBreach", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("AcknowledgedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("AcknowledgedById")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("ActualValue")
+                        .HasColumnType("numeric(7,2)");
+
+                    b.Property<DateOnly?>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<decimal>("LimitValue")
+                        .HasColumnType("numeric(7,2)");
+
+                    b.Property<Guid>("TimesheetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly?>("WeekStartDate")
+                        .HasColumnType("date");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TimesheetId");
+
+                    b.ToTable("TimesheetBreaches", (string)null);
+                });
+
+            modelBuilder.Entity("Proposly.Domain.WorkTimeManagement.Entities.WorkDayEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("BreakMinutes")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("CrossesMidnight")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<TimeOnly>("EndTime")
+                        .HasColumnType("time without time zone");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<TimeOnly>("StartTime")
+                        .HasColumnType("time without time zone");
+
+                    b.Property<Guid>("TimesheetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("WorkedHours")
+                        .HasColumnType("numeric(6,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TimesheetId", "Date")
+                        .IsUnique();
+
+                    b.ToTable("WorkDayEntries", (string)null);
+                });
+
+            modelBuilder.Entity("Proposly.Domain.WorkTimeManagement.Entities.WorkTimePolicy", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("AveragingWindowWeeks")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal?>("DeficitFloorHours")
+                        .HasColumnType("numeric(7,2)");
+
+                    b.Property<string>("HolidayRegionCode")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Jurisdiction")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<decimal>("MaxAverageHoursPerWeek")
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<decimal>("MaxHoursPerDay")
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<decimal>("MaxHoursPerWeek")
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<decimal>("MinDailyRestHours")
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<decimal>("MinWeeklyRestHours")
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<decimal?>("SurplusCapHours")
+                        .HasColumnType("numeric(7,2)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly>("ValidFrom")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly?>("ValidTo")
+                        .HasColumnType("date");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId", "ValidFrom")
+                        .IsUnique();
+
+                    b.ToTable("WorkTimePolicies", (string)null);
+                });
+
             modelBuilder.Entity("ProjectTaskDependencies", b =>
                 {
                     b.HasOne("Proposly.Domain.ProjectManagement.Entities.ProjectTask", null)
@@ -1125,6 +1567,33 @@ namespace Proposly.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Proposly.Domain.WorkTimeManagement.Entities.BreakRule", b =>
+                {
+                    b.HasOne("Proposly.Domain.WorkTimeManagement.Entities.WorkTimePolicy", null)
+                        .WithMany("BreakRules")
+                        .HasForeignKey("WorkTimePolicyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Proposly.Domain.WorkTimeManagement.Entities.TimesheetBreach", b =>
+                {
+                    b.HasOne("Proposly.Domain.WorkTimeManagement.Entities.Timesheet", null)
+                        .WithMany("Breaches")
+                        .HasForeignKey("TimesheetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Proposly.Domain.WorkTimeManagement.Entities.WorkDayEntry", b =>
+                {
+                    b.HasOne("Proposly.Domain.WorkTimeManagement.Entities.Timesheet", null)
+                        .WithMany("Days")
+                        .HasForeignKey("TimesheetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Proposly.Domain.CalendarManagement.Entities.Termin", b =>
                 {
                     b.Navigation("Invitations");
@@ -1158,6 +1627,18 @@ namespace Proposly.Infrastructure.Migrations
             modelBuilder.Entity("Proposly.Domain.ProjectManagement.Entities.ProjectTask", b =>
                 {
                     b.Navigation("Comments");
+                });
+
+            modelBuilder.Entity("Proposly.Domain.WorkTimeManagement.Entities.Timesheet", b =>
+                {
+                    b.Navigation("Breaches");
+
+                    b.Navigation("Days");
+                });
+
+            modelBuilder.Entity("Proposly.Domain.WorkTimeManagement.Entities.WorkTimePolicy", b =>
+                {
+                    b.Navigation("BreakRules");
                 });
 #pragma warning restore 612, 618
         }

@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, FileText, FolderKanban, Users, LogOut, Building2, Settings, BarChart3, CalendarDays, ShieldCheck } from 'lucide-react'
+import { useState, useEffect, useMemo } from 'react'
+import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom'
+import { LayoutDashboard, FileText, FolderKanban, Users, LogOut, Building2, Settings, BarChart3, CalendarDays, ShieldCheck, Clock, ClipboardCheck, CalendarOff, CalendarCheck } from 'lucide-react'
 import { useAuth } from '@/features/auth/AuthContext'
 import { useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
@@ -15,6 +15,10 @@ const ALL_NAV_ITEMS = [
   { to: '/offers',           label: 'Offers',    icon: FileText,        adminOnly: true,  superAdminOnly: false },
   { to: '/projects',         label: 'Projects',  icon: FolderKanban,   adminOnly: false, superAdminOnly: false },
   { to: '/calendar',         label: 'Calendar',  icon: CalendarDays,   adminOnly: false, superAdminOnly: false },
+  { to: '/worktime',         label: 'Work time', icon: Clock,          adminOnly: false, superAdminOnly: false },
+  { to: '/absences',         label: 'Time off',  icon: CalendarOff,    adminOnly: false, superAdminOnly: false },
+  { to: '/worktime/approvals', label: 'Approvals', icon: ClipboardCheck, adminOnly: true, superAdminOnly: false },
+  { to: '/absences/approvals', label: 'Time off approvals', icon: CalendarCheck, adminOnly: true, superAdminOnly: false },
   { to: '/clients',          label: 'Clients',   icon: Building2,      adminOnly: true,  superAdminOnly: false },
   { to: '/users',            label: 'Team',      icon: Users,          adminOnly: true,  superAdminOnly: false },
   { to: '/reports',          label: 'Reports',   icon: BarChart3,      adminOnly: true,  superAdminOnly: false },
@@ -41,6 +45,20 @@ export function AppShell() {
     if (item.adminOnly) return isAdminOrOwner && !isSuperAdmin
     return !isSuperAdmin
   })
+
+  const { pathname } = useLocation()
+
+  // NavLink's own isActive matches on prefix, which lights up a parent entry whenever a child
+  // route is open — /worktime/approvals would highlight both "Work time" and "Approvals". Marking
+  // the parents `end` instead would leave routes like /worktime/report highlighting nothing, so
+  // the most specific matching entry wins and it alone is active.
+  const activePath = useMemo(() => {
+    const matches = navItems
+      .filter(item => pathname === item.to || pathname.startsWith(`${item.to}/`))
+      .sort((a, b) => b.to.length - a.to.length)
+
+    return matches[0]?.to ?? null
+  }, [navItems, pathname])
 
   useEffect(() => {
     const handler = () => setAvatarColorState(getAvatarColor())
@@ -76,14 +94,12 @@ export function AppShell() {
             <NavLink
               key={to}
               to={to}
-              className={({ isActive }) =>
-                cn(
-                  'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
-                  isActive
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                )
-              }
+              className={cn(
+                'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                activePath === to
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+              )}
             >
               <Icon className="h-4 w-4" />
               {label}

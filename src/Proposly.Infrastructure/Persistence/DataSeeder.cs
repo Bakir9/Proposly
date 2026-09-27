@@ -213,6 +213,10 @@ file sealed class SeedCurrentUserService : ICurrentUserService
     public Guid CompanyId => DataSeeder.SeedCompanyId;
     public Guid UserId    => DataSeeder.SeedUserId;
     public string Role    => "Owner";
+
+    // Consistent with Role: the seeder acts as an Owner, so it can read user-owned rows for
+    // every employee in the seeded company.
+    public bool CanViewAllEmployees => true;
 }
 
 file sealed class NoOpDispatcher : IDomainEventDispatcher
