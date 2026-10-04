@@ -27,6 +27,7 @@ import {
 import type { ProjectTask } from '@/api/projects'
 import { getActiveUsers } from '@/api/users'
 import { getClients } from '@/api/clients'
+import { ProjectDiscussionTab } from '@/features/chat/ProjectDiscussionTab'
 import { useAuth } from '@/features/auth/AuthContext'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -69,6 +70,7 @@ const TABS = [
   { id: 'expenses', label: 'Expenses' },
   { id: 'milestones', label: 'Milestones' },
   { id: 'notes', label: 'Notes' },
+  { id: 'discussion', label: 'Discussion' },
 ]
 
 // const TASK_STATUS_COLOR: Record<string, string> = {
@@ -1676,6 +1678,10 @@ export function ProjectDetailPage() {
 
             {activeTab === 'notes' && (
               <NotesTab projectId={p.id} notes={p.notes} />
+            )}
+
+            {activeTab === 'discussion' && (
+              <ProjectDiscussionTab projectId={p.id} />
             )}
 
             {activeTab === 'milestones' && (

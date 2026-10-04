@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Search, FolderKanban, FileText, Building2 } from 'lucide-react'
 import { search, type SearchResultItem } from '@/api/search'
 import { NotificationBell } from './NotificationBell'
+import { ChatHeaderButton } from '@/features/chat/ChatHeaderButton'
 import { cn } from '@/lib/utils'
 
 const TYPE_ICON: Record<string, React.ElementType> = {
@@ -126,7 +127,8 @@ export function TopBar() {
         )}
       </div>
 
-      <div className="ml-auto">
+      <div className="ml-auto flex items-center gap-1.5">
+        <ChatHeaderButton />
         <NotificationBell />
       </div>
     </div>

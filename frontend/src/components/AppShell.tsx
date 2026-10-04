@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom'
-import { LayoutDashboard, FileText, FolderKanban, Users, LogOut, Building2, Settings, BarChart3, CalendarDays, ShieldCheck, Clock, ClipboardCheck, CalendarOff, CalendarCheck } from 'lucide-react'
+import { LayoutDashboard, FileText, FolderKanban, Users, LogOut, Building2, Settings, BarChart3, CalendarDays, ShieldCheck, Clock, ClipboardCheck, CalendarOff, CalendarCheck, MessageCircle } from 'lucide-react'
 import { useAuth } from '@/features/auth/AuthContext'
 import { useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
@@ -9,6 +9,7 @@ import { getAvatarColor } from '@/features/profile/ProfilePage'
 import { TopBar } from './TopBar'
 import proposlyLogo from '@/assets/proposly.png'
 import { NotificationTaskProvider } from '@/contexts/NotificationTaskContext'
+import { useChatUnread } from '@/features/chat/useChatUnread'
 
 const ALL_NAV_ITEMS = [
   { to: '/dashboard',        label: 'Dashboard', icon: LayoutDashboard, adminOnly: false, superAdminOnly: false },
@@ -19,6 +20,7 @@ const ALL_NAV_ITEMS = [
   { to: '/absences',         label: 'Time off',  icon: CalendarOff,    adminOnly: false, superAdminOnly: false },
   { to: '/worktime/approvals', label: 'Approvals', icon: ClipboardCheck, adminOnly: true, superAdminOnly: false },
   { to: '/absences/approvals', label: 'Time off approvals', icon: CalendarCheck, adminOnly: true, superAdminOnly: false },
+  { to: '/chat',             label: 'Messages',  icon: MessageCircle,  adminOnly: false, superAdminOnly: false },
   { to: '/clients',          label: 'Clients',   icon: Building2,      adminOnly: true,  superAdminOnly: false },
   { to: '/users',            label: 'Team',      icon: Users,          adminOnly: true,  superAdminOnly: false },
   { to: '/reports',          label: 'Reports',   icon: BarChart3,      adminOnly: true,  superAdminOnly: false },
@@ -37,6 +39,7 @@ export function AppShell() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [avatarColor, setAvatarColorState] = useState(getAvatarColor)
+  const chatUnread = useChatUnread()
 
   const isSuperAdmin = user?.role === 'SuperAdmin'
   const isAdminOrOwner = user?.role === 'Owner' || user?.role === 'Admin'
@@ -102,7 +105,19 @@ export function AppShell() {
               )}
             >
               <Icon className="h-4 w-4" />
-              {label}
+              <span className="flex-1">{label}</span>
+              {to === '/chat' && chatUnread > 0 && (
+                <span
+                  className={cn(
+                    'min-w-5 h-5 px-1.5 rounded-full text-[11px] font-semibold flex items-center justify-center',
+                    activePath === to
+                      ? 'bg-primary-foreground text-primary'
+                      : 'bg-primary text-primary-foreground'
+                  )}
+                >
+                  {chatUnread > 99 ? '99+' : chatUnread}
+                </span>
+              )}
             </NavLink>
           ))}
         </nav>

@@ -25,8 +25,7 @@ public sealed class ChatReadService(AppDbContext context) : IChatReadService
             _ => query,
         };
 
-        var rows = await ProjectRows(query, userId)
-            .OrderByDescending(r => r.LastMessageAt ?? r.CreatedAt)
+        var rows = await ProjectRows(query.OrderByDescending(c => c.LastMessageAt ?? c.CreatedAt), userId)
             .ToListAsync(ct);
 
         return await ComposeAsync(rows, userId, ct);
