@@ -149,6 +149,7 @@ public sealed class Project : AggregateRoot<Guid>, ITenantEntity, IAuditableEnti
 
         var member = ProjectMember.Create(Id, userId, name, role, hourlyRate);
         _members.Add(member);
+        RaiseDomainEvent(new ProjectMemberAddedDomainEvent(Id, Name, userId, CompanyId));
         Touch();
         return member;
     }

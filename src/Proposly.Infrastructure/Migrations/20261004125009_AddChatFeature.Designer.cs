@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Proposly.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using Proposly.Infrastructure.Persistence;
 namespace Proposly.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261004125009_AddChatFeature")]
+    partial class AddChatFeature
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -257,9 +260,6 @@ namespace Proposly.Infrastructure.Migrations
 
                     b.Property<Guid>("ConversationId")
                         .HasColumnType("uuid");
-
-                    b.Property<bool>("IsMarkedUnread")
-                        .HasColumnType("boolean");
 
                     b.Property<DateTime?>("LastReadAt")
                         .HasColumnType("timestamp with time zone");

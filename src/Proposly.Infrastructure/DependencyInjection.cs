@@ -2,9 +2,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Proposly.Application.Abstractions;
+using Proposly.Application.Chat.Services;
 using Proposly.Application.Reports.Services;
 using Proposly.Application.WorkTimeManagement.Services;
 using Proposly.Domain.CalendarManagement.Repositories;
+using Proposly.Domain.Chat.Repositories;
 using Proposly.Domain.CompanyManagement.Repositories;
 using Proposly.Domain.Notifications;
 using Proposly.Domain.OfferManagement.Repositories;
@@ -17,6 +19,7 @@ using Proposly.Infrastructure.Services.Auth;
 using Proposly.Infrastructure.Services.Email;
 using Proposly.Infrastructure.Services.Events;
 using Proposly.Infrastructure.Services.Pdf;
+using Proposly.Infrastructure.Services.Storage;
 using QuestPDF.Infrastructure;
 
 namespace Proposly.Infrastructure;
@@ -53,6 +56,10 @@ public static class DependencyInjection
         services.AddScoped<IEmploymentTermsRepository, EmploymentTermsRepository>();
         services.AddScoped<INonWorkingDayRepository, NonWorkingDayRepository>();
         services.AddScoped<IProjectBookingReader, ProjectBookingReader>();
+        services.AddScoped<IConversationRepository, ConversationRepository>();
+        services.AddScoped<IChatMessageRepository, ChatMessageRepository>();
+        services.AddScoped<IChatReadService, ChatReadService>();
+        services.AddScoped<IFileStorage, DatabaseFileStorage>();
 
         services.AddSingleton<IAppSettings, AppSettings>();
         services.AddSingleton<IPasswordHasher, PasswordHasher>();

@@ -24,6 +24,7 @@ import { ClientDetailPage } from './features/clients/ClientDetailPage'
 import { SettingsPage } from './features/settings/SettingsPage'
 import { ProfilePage } from './features/profile/ProfilePage'
 import { NotificationsPage } from './features/notifications/NotificationsPage'
+import { ChatPage } from './features/chat/ChatPage'
 import { QuarterlyFinancialReportPage } from './features/reports/QuarterlyFinancialReportPage'
 import { CalendarPage } from './features/calendar/CalendarPage'
 import { TimesheetPage } from './features/worktime/TimesheetPage'
@@ -71,6 +72,8 @@ export default function App() {
         <Route path="/clients/:id" element={<ClientDetailPage />} />
         <Route path="/users" element={<UsersPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
+        <Route path="/chat" element={<ChatPage />} />
+        <Route path="/chat/:conversationId" element={<ChatPage />} />
         <Route path="/reports" element={<QuarterlyFinancialReportPage />} />
         <Route path="/calendar" element={<CalendarPage />} />
         <Route path="/worktime" element={<TimesheetPage />} />

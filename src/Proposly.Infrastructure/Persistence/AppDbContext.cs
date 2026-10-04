@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Proposly.Application.Abstractions;
 using Proposly.Domain.CalendarManagement.Entities;
+using Proposly.Domain.Chat.Entities;
 using Proposly.Domain.CompanyManagement.Entities;
 using Proposly.Domain.Notifications;
 using Proposly.Domain.OfferManagement.Entities;
@@ -31,6 +32,14 @@ public sealed class AppDbContext : DbContext
     public DbSet<AbsenceEntitlement> AbsenceEntitlements => Set<AbsenceEntitlement>();
     public DbSet<EmploymentTerms> EmploymentTerms => Set<EmploymentTerms>();
     public DbSet<NonWorkingDay> NonWorkingDays => Set<NonWorkingDay>();
+    public DbSet<Conversation> Conversations => Set<Conversation>();
+    public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
+    public DbSet<ChatAttachment> ChatAttachments => Set<ChatAttachment>();
+    public DbSet<Services.Storage.StoredFile> StoredFiles => Set<Services.Storage.StoredFile>();
+
+    // ConversationParticipant is deliberately NOT exposed as a DbSet. It is a child of
+    // Conversation and carries no CompanyId, so a direct query on it would bypass the tenant
+    // filter. Reach participants through Conversation.Participants.
 
     // WorkDayEntry, TimesheetBreach and BreakRule are deliberately NOT exposed as DbSets. It is a child of Timesheet and carries
     // no CompanyId, so a direct query on it would bypass both the tenant and the per-employee
