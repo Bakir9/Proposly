@@ -128,6 +128,25 @@ public sealed class Conversation : AggregateRoot<Guid>, ITenantEntity, IAuditabl
         participant.MarkRead(lastReadMessageId);
     }
 
+    public void MarkUnread(Guid userId)
+    {
+        var participant = _participants.FirstOrDefault(p => p.UserId == userId)
+            ?? throw new InvalidOperationException("Only participants can mark a conversation as unread.");
+        participant.MarkUnread();
+    }
+
+    /// <summary>
+    /// Deleting is reserved for direct and group chats. A project channel belongs to its
+    /// project and disappears only with it.
+    /// </summary>
+    public void EnsureDeletableBy(Guid userId)
+    {
+        if (Kind == ConversationKind.Project)
+            throw new InvalidOperationException("A project channel cannot be deleted — it belongs to the project.");
+        if (!IsParticipant(userId))
+            throw new InvalidOperationException("Only participants can delete this conversation.");
+    }
+
     public void RegisterMessageSent(DateTime sentAt)
     {
         LastMessageAt = sentAt;

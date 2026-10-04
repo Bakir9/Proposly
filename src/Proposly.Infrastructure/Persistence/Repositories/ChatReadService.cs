@@ -88,14 +88,23 @@ public sealed class ChatReadService(AppDbContext context) : IChatReadService
     }
 
     public async Task<int> GetUnreadTotalAsync(Guid userId, CancellationToken ct = default)
-        => await context.Conversations
+    {
+        var rows = await context.Conversations
             .Where(c => c.Participants.Any(p => p.UserId == userId))
-            .Select(c => context.ChatMessages.Count(m =>
-                m.ConversationId == c.Id
-                && m.AuthorUserId != userId
-                && (c.Participants.First(p => p.UserId == userId).LastReadAt == null
-                    || m.CreatedAt > c.Participants.First(p => p.UserId == userId).LastReadAt)))
-            .SumAsync(ct);
+            .Select(c => new
+            {
+                Count = context.ChatMessages.Count(m =>
+                    m.ConversationId == c.Id
+                    && m.AuthorUserId != userId
+                    && (c.Participants.First(p => p.UserId == userId).LastReadAt == null
+                        || m.CreatedAt > c.Participants.First(p => p.UserId == userId).LastReadAt)),
+                MarkedUnread = c.Participants.First(p => p.UserId == userId).IsMarkedUnread,
+            })
+            .ToListAsync(ct);
+
+        // A manually marked conversation counts as one unread even without new messages.
+        return rows.Sum(r => r.Count > 0 ? r.Count : r.MarkedUnread ? 1 : 0);
+    }
 
     public async Task<IReadOnlyList<ConversationFileResponse>> GetConversationFilesAsync(
         Guid conversationId, CancellationToken ct = default)
@@ -134,7 +143,7 @@ public sealed class ChatReadService(AppDbContext context) : IChatReadService
 
     private sealed record ConversationRow(
         Guid Id, ConversationKind Kind, string? Title, Guid? ProjectId, DateTime CreatedAt, DateTime? LastMessageAt,
-        List<Guid> ParticipantUserIds, int UnreadCount, LastMessageRow? Last);
+        List<Guid> ParticipantUserIds, int UnreadCount, bool IsMarkedUnread, LastMessageRow? Last);
 
     private IQueryable<ConversationRow> ProjectRows(IQueryable<Domain.Chat.Entities.Conversation> query, Guid userId)
         => query.Select(c => new ConversationRow(
@@ -150,6 +159,7 @@ public sealed class ChatReadService(AppDbContext context) : IChatReadService
                 && m.AuthorUserId != userId
                 && (c.Participants.First(p => p.UserId == userId).LastReadAt == null
                     || m.CreatedAt > c.Participants.First(p => p.UserId == userId).LastReadAt)),
+            c.Participants.First(p => p.UserId == userId).IsMarkedUnread,
             context.ChatMessages
                 .Where(m => m.ConversationId == c.Id)
                 .OrderByDescending(m => m.CreatedAt)
@@ -222,7 +232,7 @@ public sealed class ChatReadService(AppDbContext context) : IChatReadService
                 attachmentsOnly,
                 r.Last?.AuthorName.Split(' ')[0],
                 r.Last is not null && r.Last.AuthorUserId == userId,
-                r.UnreadCount,
+                r.UnreadCount > 0 ? r.UnreadCount : r.IsMarkedUnread ? 1 : 0,
                 participants);
         }).ToList();
     }

@@ -72,6 +72,12 @@ export const sendMessage = (conversationId: string, data: { body: string | null;
 export const markConversationRead = (conversationId: string, lastReadMessageId: string | null) =>
   api.put(`/chat/conversations/${conversationId}/read`, { lastReadMessageId })
 
+export const markConversationUnread = (conversationId: string) =>
+  api.put(`/chat/conversations/${conversationId}/unread`)
+
+export const deleteConversation = (conversationId: string) =>
+  api.delete(`/chat/conversations/${conversationId}`)
+
 export const getUnreadTotal = () =>
   api.get<{ totalUnread: number }>('/chat/unread').then(r => r.data.totalUnread)
 

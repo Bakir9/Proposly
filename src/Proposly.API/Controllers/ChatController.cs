@@ -2,7 +2,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Proposly.Application.Abstractions;
 using Proposly.Application.Chat.Commands.CreateConversation;
+using Proposly.Application.Chat.Commands.DeleteConversation;
 using Proposly.Application.Chat.Commands.MarkConversationRead;
+using Proposly.Application.Chat.Commands.MarkConversationUnread;
 using Proposly.Application.Chat.Commands.OpenProjectConversation;
 using Proposly.Application.Chat.Commands.SendMessage;
 using Proposly.Application.Chat.Commands.UploadChatAttachment;
@@ -16,8 +18,6 @@ using Proposly.Application.Chat.Responses;
 
 namespace Proposly.API.Controllers;
 
-// Plain [Authorize] like NotificationsController: chat is for every signed-in employee,
-// and per-conversation access is enforced by participant checks in the handlers.
 [Authorize]
 [ApiController]
 [Route("api/[controller]")]
@@ -78,6 +78,26 @@ public sealed class ChatController : ControllerBase
         CancellationToken ct)
     {
         await handler.HandleAsync(new MarkConversationReadCommand(id, request.LastReadMessageId), ct);
+        return NoContent();
+    }
+
+    [HttpPut("conversations/{id:guid}/unread")]
+    public async Task<IActionResult> MarkUnread(
+        Guid id,
+        [FromServices] ICommandHandler<MarkConversationUnreadCommand> handler,
+        CancellationToken ct)
+    {
+        await handler.HandleAsync(new MarkConversationUnreadCommand(id), ct);
+        return NoContent();
+    }
+
+    [HttpDelete("conversations/{id:guid}")]
+    public async Task<IActionResult> DeleteConversation(
+        Guid id,
+        [FromServices] ICommandHandler<DeleteConversationCommand> handler,
+        CancellationToken ct)
+    {
+        await handler.HandleAsync(new DeleteConversationCommand(id), ct);
         return NoContent();
     }
 

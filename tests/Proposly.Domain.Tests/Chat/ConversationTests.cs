@@ -141,4 +141,59 @@ public class ConversationTests
         var conversation = Conversation.CreateDirect(CompanyId, UserA, UserB);
         Assert.Throws<InvalidOperationException>(() => conversation.MarkRead(UserC, null));
     }
+
+    // --- MarkUnread ---
+
+    [Fact]
+    public void MarkUnread_AsParticipant_SetsFlag()
+    {
+        var conversation = Conversation.CreateDirect(CompanyId, UserA, UserB);
+
+        conversation.MarkUnread(UserA);
+
+        Assert.True(conversation.Participants.Single(p => p.UserId == UserA).IsMarkedUnread);
+        Assert.False(conversation.Participants.Single(p => p.UserId == UserB).IsMarkedUnread);
+    }
+
+    [Fact]
+    public void MarkRead_ClearsTheManualUnreadFlag()
+    {
+        var conversation = Conversation.CreateDirect(CompanyId, UserA, UserB);
+        conversation.MarkUnread(UserA);
+
+        conversation.MarkRead(UserA, null);
+
+        Assert.False(conversation.Participants.Single(p => p.UserId == UserA).IsMarkedUnread);
+    }
+
+    [Fact]
+    public void MarkUnread_AsNonParticipant_Throws()
+    {
+        var conversation = Conversation.CreateDirect(CompanyId, UserA, UserB);
+        Assert.Throws<InvalidOperationException>(() => conversation.MarkUnread(UserC));
+    }
+
+    // --- EnsureDeletableBy ---
+
+    [Fact]
+    public void EnsureDeletableBy_ParticipantOnDirect_Passes()
+    {
+        var conversation = Conversation.CreateDirect(CompanyId, UserA, UserB);
+        conversation.EnsureDeletableBy(UserA); // no throw
+    }
+
+    [Fact]
+    public void EnsureDeletableBy_ProjectChannel_Throws()
+    {
+        var conversation = Conversation.CreateProjectChannel(CompanyId, Guid.NewGuid(), "P");
+        conversation.EnsureParticipants([UserA]);
+        Assert.Throws<InvalidOperationException>(() => conversation.EnsureDeletableBy(UserA));
+    }
+
+    [Fact]
+    public void EnsureDeletableBy_NonParticipant_Throws()
+    {
+        var conversation = Conversation.CreateDirect(CompanyId, UserA, UserB);
+        Assert.Throws<InvalidOperationException>(() => conversation.EnsureDeletableBy(UserC));
+    }
 }

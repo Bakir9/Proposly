@@ -28,6 +28,12 @@ public sealed class ConversationRepository(AppDbContext context) : IConversation
     public async Task AddAsync(Conversation conversation, CancellationToken ct = default)
         => await context.Conversations.AddAsync(conversation, ct);
 
+    public Task RemoveAsync(Conversation conversation, CancellationToken ct = default)
+    {
+        context.Conversations.Remove(conversation);
+        return Task.CompletedTask;
+    }
+
     public Task SaveChangesAsync(CancellationToken ct = default)
         => context.SaveChangesAsync(ct);
 }

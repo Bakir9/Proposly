@@ -15,5 +15,11 @@ public interface IChatMessageRepository
     /// <summary>Attachments of one message, for building the send response.</summary>
     Task<IReadOnlyList<ChatAttachment>> GetAttachmentsForMessageAsync(Guid messageId, CancellationToken ct = default);
 
+    /// <summary>Storage keys of every attachment in a conversation (sent and pending) — for blob cleanup on delete.</summary>
+    Task<IReadOnlyList<string>> GetAttachmentStorageKeysAsync(Guid conversationId, CancellationToken ct = default);
+
+    /// <summary>Removes every attachment row of a conversation, including pending ones the cascade cannot reach.</summary>
+    Task RemoveAttachmentsForConversationAsync(Guid conversationId, CancellationToken ct = default);
+
     Task SaveChangesAsync(CancellationToken ct = default);
 }

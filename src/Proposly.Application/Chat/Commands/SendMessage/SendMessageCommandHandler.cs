@@ -43,7 +43,6 @@ public sealed class SendMessageCommandHandler(
         await messages.AddAsync(message, ct);
 
         conversation.RegisterMessageSent(message.CreatedAt);
-        // Sending implies having read the conversation up to your own message.
         conversation.MarkRead(currentUser.UserId, message.Id);
 
         await messages.SaveChangesAsync(ct);

@@ -32,6 +32,20 @@ public sealed class ChatMessageRepository(AppDbContext context) : IChatMessageRe
             .OrderBy(a => a.CreatedAt)
             .ToListAsync(ct);
 
+    public async Task<IReadOnlyList<string>> GetAttachmentStorageKeysAsync(Guid conversationId, CancellationToken ct = default)
+        => await context.ChatAttachments
+            .Where(a => a.ConversationId == conversationId)
+            .Select(a => a.StorageKey)
+            .ToListAsync(ct);
+
+    public async Task RemoveAttachmentsForConversationAsync(Guid conversationId, CancellationToken ct = default)
+    {
+        var attachments = await context.ChatAttachments
+            .Where(a => a.ConversationId == conversationId)
+            .ToListAsync(ct);
+        context.ChatAttachments.RemoveRange(attachments);
+    }
+
     public Task SaveChangesAsync(CancellationToken ct = default)
         => context.SaveChangesAsync(ct);
 }

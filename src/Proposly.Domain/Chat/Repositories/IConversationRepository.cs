@@ -13,5 +13,9 @@ public interface IConversationRepository
     Task<Conversation?> GetDirectBetweenAsync(Guid userA, Guid userB, CancellationToken ct = default);
 
     Task AddAsync(Conversation conversation, CancellationToken ct = default);
+
+    /// <summary>Removes the conversation; messages, participants and bound attachments cascade.</summary>
+    Task RemoveAsync(Conversation conversation, CancellationToken ct = default);
+
     Task SaveChangesAsync(CancellationToken ct = default);
 }

@@ -27,9 +27,15 @@ public sealed class ConversationParticipant : Entity<Guid>
     public DateTime? LastReadAt { get; private set; }
     public Guid? LastReadMessageId { get; private set; }
 
+    /// <summary>Manual "mark as unread": shows the conversation as unread even with no new messages.</summary>
+    public bool IsMarkedUnread { get; private set; }
+
     internal void MarkRead(Guid? lastReadMessageId)
     {
         LastReadAt = DateTime.UtcNow;
         LastReadMessageId = lastReadMessageId;
+        IsMarkedUnread = false;
     }
+
+    internal void MarkUnread() => IsMarkedUnread = true;
 }
