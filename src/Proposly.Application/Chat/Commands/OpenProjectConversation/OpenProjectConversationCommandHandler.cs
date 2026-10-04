@@ -16,9 +16,7 @@ public sealed class OpenProjectConversationCommandHandler(
             ?? throw new InvalidOperationException($"Project {command.ProjectId} not found.");
 
         var memberUserIds = project.Members.Select(m => m.UserId).Distinct().ToList();
-
-        // Assigned members join automatically; Owner/Admin may oversee any project channel.
-        // Everyone else has no business in the discussion.
+        
         if (!memberUserIds.Contains(currentUser.UserId) && !currentUser.CanViewAllEmployees)
             throw new InvalidOperationException("Only project members can open this discussion.");
 
