@@ -27,6 +27,12 @@ const ALL_NAV_ITEMS = [
   { to: '/admin/companies',  label: 'Companies', icon: ShieldCheck,    adminOnly: false, superAdminOnly: true  },
 ]
 
+// HR section — the working-time redesign pages (frontend preview, backend wiring follows).
+const HR_NAV_ITEMS = [
+  { to: '/redesign/working-time', label: 'My working time', icon: Clock, adminOnly: false, superAdminOnly: false },
+  { to: '/redesign/team',         label: 'Team settings',   icon: Users, adminOnly: true,  superAdminOnly: false },
+]
+
 function getInitials(fullName: string) {
   const parts = fullName.trim().split(' ')
   return parts.length >= 2
@@ -43,11 +49,13 @@ export function AppShell() {
 
   const isSuperAdmin = user?.role === 'SuperAdmin'
   const isAdminOrOwner = user?.role === 'Owner' || user?.role === 'Admin'
-  const navItems = ALL_NAV_ITEMS.filter(item => {
+  const byRole = (item: { adminOnly: boolean; superAdminOnly: boolean }) => {
     if (item.superAdminOnly) return isSuperAdmin
     if (item.adminOnly) return isAdminOrOwner && !isSuperAdmin
     return !isSuperAdmin
-  })
+  }
+  const navItems = ALL_NAV_ITEMS.filter(byRole)
+  const hrItems = HR_NAV_ITEMS.filter(byRole)
 
   const { pathname } = useLocation()
 
@@ -56,12 +64,12 @@ export function AppShell() {
   // the parents `end` instead would leave routes like /worktime/report highlighting nothing, so
   // the most specific matching entry wins and it alone is active.
   const activePath = useMemo(() => {
-    const matches = navItems
+    const matches = [...navItems, ...hrItems]
       .filter(item => pathname === item.to || pathname.startsWith(`${item.to}/`))
       .sort((a, b) => b.to.length - a.to.length)
 
     return matches[0]?.to ?? null
-  }, [navItems, pathname])
+  }, [navItems, hrItems, pathname])
 
   useEffect(() => {
     const handler = () => setAvatarColorState(getAvatarColor())
@@ -120,6 +128,29 @@ export function AppShell() {
               )}
             </NavLink>
           ))}
+
+          {hrItems.length > 0 && (
+            <>
+              <p className="px-3 pt-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                HR
+              </p>
+              {hrItems.map(({ to, label, icon: Icon }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  className={cn(
+                    'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                    activePath === to
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                  )}
+                >
+                  <Icon className="h-4 w-4" />
+                  {label}
+                </NavLink>
+              ))}
+            </>
+          )}
         </nav>
 
         <div className="p-3 border-t space-y-1">
