@@ -1,0 +1,98 @@
+/* Working-time redesign — self-contained visual language from the design handoff.
+   Scoped under .wtr so it never leaks into the rest of the app. */
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+.wtr {
+  font-family: 'Outfit', system-ui, sans-serif;
+  background: #070b14;
+  color: #e6ecf6;
+  -webkit-font-smoothing: antialiased;
+}
+
+.wtr-mono {
+  font-family: 'IBM Plex Mono', monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.wtr input::placeholder,
+.wtr textarea::placeholder {
+  color: #6b7893;
+}
+
+.wtr input[type='time']::-webkit-calendar-picker-indicator,
+.wtr input[type='date']::-webkit-calendar-picker-indicator,
+.wtr input[type='month']::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  opacity: 0.35;
+  cursor: pointer;
+}
+
+.wtr input[type='time']:hover::-webkit-calendar-picker-indicator,
+.wtr input[type='date']:hover::-webkit-calendar-picker-indicator,
+.wtr input[type='month']:hover::-webkit-calendar-picker-indicator {
+  opacity: 0.7;
+}
+
+.wtr select option {
+  background: #0e1727;
+  color: #e6ecf6;
+}
+
+/* Shared input look (start/end/break, text fields, selects) */
+.wtr-input {
+  background: #0e1727;
+  border: 1px solid #1c2740;
+  border-radius: 8px;
+  color: #e6ecf6;
+  outline: none;
+}
+.wtr-input:focus {
+  border-color: #5ec8f2;
+  background: #111c30;
+}
+
+/* Secondary button */
+.wtr-btn {
+  background: #162035;
+  border: 1px solid #253352;
+  border-radius: 8px;
+  color: #b9c6dc;
+  cursor: pointer;
+  font-family: 'Outfit', system-ui, sans-serif;
+}
+.wtr-btn:hover {
+  background: #1e2b47;
+  color: #fff;
+}
+
+/* Ghost button */
+.wtr-ghost {
+  background: transparent;
+  border: 1px solid #1c2740;
+  border-radius: 8px;
+  color: #8c9ab4;
+  cursor: pointer;
+  font-family: 'Outfit', system-ui, sans-serif;
+}
+.wtr-ghost:hover {
+  color: #e6ecf6;
+  border-color: #2b3a5c;
+}
+
+/* Primary (cyan) button */
+.wtr-primary {
+  background: #5ec8f2;
+  color: #061019;
+  border: 0;
+  border-radius: 10px;
+  cursor: pointer;
+  font-family: 'Outfit', system-ui, sans-serif;
+  font-weight: 600;
+}
+.wtr-primary:hover {
+  background: #8adaf7;
+}
+
+.wtr-row-hover:hover {
+  background: #101a2c;
+}

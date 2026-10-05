@@ -25,6 +25,8 @@ import { SettingsPage } from './features/settings/SettingsPage'
 import { ProfilePage } from './features/profile/ProfilePage'
 import { NotificationsPage } from './features/notifications/NotificationsPage'
 import { ChatPage } from './features/chat/ChatPage'
+import { WorkingTimePage } from './features/worktime-redesign/WorkingTimePage'
+import { TeamSettingsPage } from './features/worktime-redesign/TeamSettingsPage'
 import { QuarterlyFinancialReportPage } from './features/reports/QuarterlyFinancialReportPage'
 import { CalendarPage } from './features/calendar/CalendarPage'
 import { TimesheetPage } from './features/worktime/TimesheetPage'
@@ -74,6 +76,8 @@ export default function App() {
         <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/chat" element={<ChatPage />} />
         <Route path="/chat/:conversationId" element={<ChatPage />} />
+        <Route path="/redesign/working-time" element={<WorkingTimePage />} />
+        <Route path="/redesign/team" element={<TeamSettingsPage />} />
         <Route path="/reports" element={<QuarterlyFinancialReportPage />} />
         <Route path="/calendar" element={<CalendarPage />} />
         <Route path="/worktime" element={<TimesheetPage />} />
