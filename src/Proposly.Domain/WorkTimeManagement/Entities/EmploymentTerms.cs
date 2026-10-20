@@ -1,8 +1,39 @@
 using Proposly.Domain.WorkTimeManagement.Enums;
 using Proposly.Shared.Interfaces;
 using Proposly.Shared.Primitives;
+using Proposly.Shared.ValueObjects;
 
 namespace Proposly.Domain.WorkTimeManagement.Entities;
+
+/// <summary>
+/// The HR facet of a terms version: schedule shape, per-day hours, compensation rules and
+/// per-person time rules. Optional — versions created before the HR module carry defaults.
+/// </summary>
+public sealed record HrTerms(
+    WorkModel WorkModel = WorkModel.FullTime,
+    decimal? MondayHours = null,
+    decimal? TuesdayHours = null,
+    decimal? WednesdayHours = null,
+    decimal? ThursdayHours = null,
+    decimal? FridayHours = null,
+    decimal? SaturdayHours = null,
+    decimal? SundayHours = null,
+    OvertimeMode OvertimeMode = OvertimeMode.TimeOff,
+    decimal? OvertimeSurchargePct = null,
+    decimal? NightSurchargePct = null,
+    decimal? SundaySurchargePct = null,
+    decimal? HolidaySurchargePct = null,
+    Money? HourlyRate = null,
+    decimal? MaxHoursPerMonth = null,
+    decimal? ExpectedWeeklyHours = null,
+    bool TrackingRequired = true,
+    bool AutoDeductBreak = true,
+    bool Flexitime = false,
+    bool OnCallDuty = false,
+    TimeOnly? CoreFrom = null,
+    TimeOnly? CoreTo = null,
+    decimal? HomeOfficeDaysPerWeek = null,
+    decimal? MaxHoursPerDay = null);
 
 /// <summary>
 /// A dated version of one employee's working arrangement.
@@ -51,7 +82,8 @@ public sealed class EmploymentTerms : AggregateRoot<Guid>, ITenantEntity, IAudit
         decimal annualVacationDays,
         EmploymentType employmentType = EmploymentType.FullTime,
         bool isAllIn = false,
-        decimal? overtimeLumpSumHours = null)
+        decimal? overtimeLumpSumHours = null,
+        HrTerms? hr = null)
     {
         if (weeklyHours is <= 0 or > 60)
             throw new ArgumentException(
@@ -81,10 +113,53 @@ public sealed class EmploymentTerms : AggregateRoot<Guid>, ITenantEntity, IAudit
                 "An all-in contract already covers overtime, so it cannot also carry an " +
                 "overtime lump sum. Use one or the other.");
 
-        return new EmploymentTerms(
+        var terms = new EmploymentTerms(
             Guid.NewGuid(), companyId, userId, validFrom, employmentType,
             weeklyHours, workingDays, annualVacationDays, isAllIn, overtimeLumpSumHours);
+        terms.ApplyHr(hr ?? new HrTerms());
+        return terms;
     }
+
+    /// <summary>Copies the HR facet onto this version. Called once from Create — versions stay immutable.</summary>
+    private void ApplyHr(HrTerms hr)
+    {
+        if (hr.OvertimeMode == OvertimeMode.AllIn && !IsAllIn)
+            throw new InvalidOperationException(
+                "All-in overtime mode requires the all-in contract flag — pass isAllIn: true.");
+
+        WorkModel = hr.WorkModel;
+        MondayHours = hr.MondayHours;
+        TuesdayHours = hr.TuesdayHours;
+        WednesdayHours = hr.WednesdayHours;
+        ThursdayHours = hr.ThursdayHours;
+        FridayHours = hr.FridayHours;
+        SaturdayHours = hr.SaturdayHours;
+        SundayHours = hr.SundayHours;
+        OvertimeMode = hr.OvertimeMode;
+        OvertimeSurchargePct = hr.OvertimeSurchargePct;
+        NightSurchargePct = hr.NightSurchargePct;
+        SundaySurchargePct = hr.SundaySurchargePct;
+        HolidaySurchargePct = hr.HolidaySurchargePct;
+        HourlyRate = hr.HourlyRate;
+        MaxHoursPerMonth = hr.MaxHoursPerMonth;
+        ExpectedWeeklyHours = hr.ExpectedWeeklyHours;
+        TrackingRequired = hr.TrackingRequired;
+        AutoDeductBreak = hr.AutoDeductBreak;
+        Flexitime = hr.Flexitime;
+        OnCallDuty = hr.OnCallDuty;
+        CoreFrom = hr.CoreFrom;
+        CoreTo = hr.CoreTo;
+        HomeOfficeDaysPerWeek = hr.HomeOfficeDaysPerWeek;
+        MaxHoursPerDay = hr.MaxHoursPerDay;
+    }
+
+    /// <summary>The HR facet as a value, for comparing a proposed change against this version.</summary>
+    public HrTerms ToHrTerms() => new(
+        WorkModel, MondayHours, TuesdayHours, WednesdayHours, ThursdayHours, FridayHours,
+        SaturdayHours, SundayHours, OvertimeMode, OvertimeSurchargePct, NightSurchargePct,
+        SundaySurchargePct, HolidaySurchargePct, HourlyRate, MaxHoursPerMonth,
+        ExpectedWeeklyHours, TrackingRequired, AutoDeductBreak, Flexitime, OnCallDuty,
+        CoreFrom, CoreTo, HomeOfficeDaysPerWeek, MaxHoursPerDay);
 
     public Guid CompanyId { get; private set; }
     public Guid UserId { get; private set; }
@@ -113,6 +188,36 @@ public sealed class EmploymentTerms : AggregateRoot<Guid>, ITenantEntity, IAudit
     /// Null means no lump sum.
     /// </summary>
     public decimal? OvertimeLumpSumHours { get; private set; }
+
+    // --- HR facet (added by the Team/HR module; defaults applied for pre-existing versions) ---
+
+    public WorkModel WorkModel { get; private set; } = WorkModel.FullTime;
+    public decimal? MondayHours { get; private set; }
+    public decimal? TuesdayHours { get; private set; }
+    public decimal? WednesdayHours { get; private set; }
+    public decimal? ThursdayHours { get; private set; }
+    public decimal? FridayHours { get; private set; }
+    public decimal? SaturdayHours { get; private set; }
+    public decimal? SundayHours { get; private set; }
+    public OvertimeMode OvertimeMode { get; private set; } = OvertimeMode.TimeOff;
+    public decimal? OvertimeSurchargePct { get; private set; }
+    public decimal? NightSurchargePct { get; private set; }
+    public decimal? SundaySurchargePct { get; private set; }
+    public decimal? HolidaySurchargePct { get; private set; }
+
+    /// <summary>Person-level default rate (freelancers) — project rates stay per-member snapshots.</summary>
+    public Money? HourlyRate { get; private set; }
+
+    public decimal? MaxHoursPerMonth { get; private set; }
+    public decimal? ExpectedWeeklyHours { get; private set; }
+    public bool TrackingRequired { get; private set; } = true;
+    public bool AutoDeductBreak { get; private set; } = true;
+    public bool Flexitime { get; private set; }
+    public bool OnCallDuty { get; private set; }
+    public TimeOnly? CoreFrom { get; private set; }
+    public TimeOnly? CoreTo { get; private set; }
+    public decimal? HomeOfficeDaysPerWeek { get; private set; }
+    public decimal? MaxHoursPerDay { get; private set; }
 
     public DateTime CreatedAt { get; private set; }
     public DateTime UpdatedAt { get; private set; }

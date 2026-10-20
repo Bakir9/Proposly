@@ -32,6 +32,20 @@ public sealed class User : Entity<Guid>, ITenantEntity, IAuditableEntity
         return user;
     }
 
+    /// <summary>
+    /// A worker who exists for planning (projects, HR, time) but cannot log in: no usable
+    /// password, a generated placeholder email, and <see cref="IsProfileOnly"/> set. Login access
+    /// is granted later via <see cref="GrantLoginAccess"/>.
+    /// </summary>
+    public static User CreateProfileOnly(Guid companyId, string firstName, string lastName)
+    {
+        var placeholderEmail = $"worker-{Guid.NewGuid():N}@profile.invalid";
+        var placeholderHash = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
+        var user = new User(Guid.NewGuid(), companyId, placeholderEmail, placeholderHash, firstName, lastName, UserRole.Member);
+        user.IsProfileOnly = true;
+        return user;
+    }
+
     public static User CreateInvited(Guid companyId, string email, string firstName, string lastName, UserRole role, string inviteToken, DateTime inviteTokenExpiry)
     {
         // Placeholder hash — cannot be used to log in; replaced when invite is accepted
@@ -56,6 +70,9 @@ public sealed class User : Entity<Guid>, ITenantEntity, IAuditableEntity
     public string? InviteToken { get; private set; }
     public DateTime? InviteTokenExpiry { get; private set; }
     public bool IsPendingInvite => InviteToken is not null;
+
+    /// <summary>True for workers created without login access — see <see cref="CreateProfileOnly"/>.</summary>
+    public bool IsProfileOnly { get; private set; }
     public string? PasswordResetToken { get; private set; }
     public DateTime? PasswordResetTokenExpiry { get; private set; }
     public DateTime CreatedAt { get; private set; }
@@ -79,6 +96,26 @@ public sealed class User : Entity<Guid>, ITenantEntity, IAuditableEntity
     public void ChangePassword(string newPasswordHash)
     {
         PasswordHash = newPasswordHash;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Upgrades a profile-only worker to an invitable account: real email, chosen role, and an
+    /// invite token that feeds the normal accept-invite flow.
+    /// </summary>
+    public void GrantLoginAccess(string email, UserRole role, string inviteToken, DateTime inviteTokenExpiry)
+    {
+        if (!IsProfileOnly)
+            throw new InvalidOperationException("This worker already has login access.");
+        if (role == UserRole.Owner || role == UserRole.SuperAdmin)
+            throw new InvalidOperationException("A worker can only be invited as Admin or Member.");
+
+        Email = email;
+        Role = role;
+        InviteToken = inviteToken;
+        InviteTokenExpiry = inviteTokenExpiry;
+        IsEmailVerified = true; // admin-provided address; ownership is assumed, as with CreateInvited
+        IsProfileOnly = false;
         UpdatedAt = DateTime.UtcNow;
     }
 

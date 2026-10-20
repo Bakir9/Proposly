@@ -422,6 +422,9 @@ namespace Proposly.Infrastructure.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(false);
 
+                    b.Property<bool>("IsProfileOnly")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("LastName")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -455,6 +458,202 @@ namespace Proposly.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("Users", (string)null);
+                });
+
+            modelBuilder.Entity("Proposly.Domain.HrManagement.Entities.EmployeeAllowance", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("EmployeeProfileId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<string>("Unit")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmployeeProfileId");
+
+                    b.ToTable("EmployeeAllowances", (string)null);
+                });
+
+            modelBuilder.Entity("Proposly.Domain.HrManagement.Entities.EmployeeDocument", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("EmployeeProfileId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<long>("SizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("StorageKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmployeeProfileId");
+
+                    b.ToTable("EmployeeDocuments", (string)null);
+                });
+
+            modelBuilder.Entity("Proposly.Domain.HrManagement.Entities.EmployeeNote", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("EmployeeProfileId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("Pinned")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Tag")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmployeeProfileId");
+
+                    b.ToTable("EmployeeNotes", (string)null);
+                });
+
+            modelBuilder.Entity("Proposly.Domain.HrManagement.Entities.EmployeeProfile", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Address")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<DateOnly?>("Birthday")
+                        .HasColumnType("date");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CvFileName")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<long?>("CvFileSize")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateOnly?>("CvFileUploadedAt")
+                        .HasColumnType("date");
+
+                    b.Property<string>("CvJson")
+                        .HasColumnType("text");
+
+                    b.Property<string>("CvStorageKey")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Department")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("EmergencyName")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<string>("EmergencyPhone")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("EmergencyRelation")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateOnly?>("EmploymentEnd")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly?>("EmploymentStart")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Gender")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<string>("JobTitle")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<string>("Location")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<string>("Nationality")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("PhotoStorageKey")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Svnr")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("EmployeeProfiles", (string)null);
                 });
 
             modelBuilder.Entity("Proposly.Domain.Notifications.Notification", b =>
@@ -1106,8 +1305,19 @@ namespace Proposly.Infrastructure.Migrations
                     b.Property<decimal>("AnnualVacationDays")
                         .HasColumnType("numeric(5,1)");
 
+                    b.Property<bool>("AutoDeductBreak")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
                     b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid");
+
+                    b.Property<TimeOnly?>("CoreFrom")
+                        .HasColumnType("time without time zone");
+
+                    b.Property<TimeOnly?>("CoreTo")
+                        .HasColumnType("time without time zone");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -1119,11 +1329,75 @@ namespace Proposly.Infrastructure.Migrations
                         .HasColumnType("character varying(30)")
                         .HasDefaultValue("FullTime");
 
+                    b.Property<decimal?>("ExpectedWeeklyHours")
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<bool>("Flexitime")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
+                    b.Property<decimal?>("FridayHours")
+                        .HasColumnType("numeric(4,2)");
+
+                    b.Property<decimal?>("HolidaySurchargePct")
+                        .HasColumnType("numeric(5,1)");
+
+                    b.Property<decimal?>("HomeOfficeDaysPerWeek")
+                        .HasColumnType("numeric(3,1)");
+
                     b.Property<bool>("IsAllIn")
                         .HasColumnType("boolean");
 
+                    b.Property<decimal?>("MaxHoursPerDay")
+                        .HasColumnType("numeric(4,2)");
+
+                    b.Property<decimal?>("MaxHoursPerMonth")
+                        .HasColumnType("numeric(5,1)");
+
+                    b.Property<decimal?>("MondayHours")
+                        .HasColumnType("numeric(4,2)");
+
+                    b.Property<decimal?>("NightSurchargePct")
+                        .HasColumnType("numeric(5,1)");
+
+                    b.Property<bool>("OnCallDuty")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
                     b.Property<decimal?>("OvertimeLumpSumHours")
                         .HasColumnType("numeric(6,2)");
+
+                    b.Property<string>("OvertimeMode")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("TimeOff");
+
+                    b.Property<decimal?>("OvertimeSurchargePct")
+                        .HasColumnType("numeric(5,1)");
+
+                    b.Property<decimal?>("SaturdayHours")
+                        .HasColumnType("numeric(4,2)");
+
+                    b.Property<decimal?>("SundayHours")
+                        .HasColumnType("numeric(4,2)");
+
+                    b.Property<decimal?>("SundaySurchargePct")
+                        .HasColumnType("numeric(5,1)");
+
+                    b.Property<decimal?>("ThursdayHours")
+                        .HasColumnType("numeric(4,2)");
+
+                    b.Property<bool>("TrackingRequired")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<decimal?>("TuesdayHours")
+                        .HasColumnType("numeric(4,2)");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -1137,8 +1411,18 @@ namespace Proposly.Infrastructure.Migrations
                     b.Property<DateOnly?>("ValidTo")
                         .HasColumnType("date");
 
+                    b.Property<decimal?>("WednesdayHours")
+                        .HasColumnType("numeric(4,2)");
+
                     b.Property<decimal>("WeeklyHours")
                         .HasColumnType("numeric(5,2)");
+
+                    b.Property<string>("WorkModel")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("FullTime");
 
                     b.Property<int>("WorkingDays")
                         .HasColumnType("integer");
@@ -1496,6 +1780,59 @@ namespace Proposly.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Proposly.Domain.HrManagement.Entities.EmployeeAllowance", b =>
+                {
+                    b.HasOne("Proposly.Domain.HrManagement.Entities.EmployeeProfile", null)
+                        .WithMany("Allowances")
+                        .HasForeignKey("EmployeeProfileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.OwnsOne("Proposly.Shared.ValueObjects.Money", "Amount", b1 =>
+                        {
+                            b1.Property<Guid>("EmployeeAllowanceId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<decimal>("Amount")
+                                .HasColumnType("numeric(18,2)")
+                                .HasColumnName("Amount");
+
+                            b1.Property<string>("Currency")
+                                .IsRequired()
+                                .HasMaxLength(3)
+                                .HasColumnType("character varying(3)")
+                                .HasColumnName("Currency");
+
+                            b1.HasKey("EmployeeAllowanceId");
+
+                            b1.ToTable("EmployeeAllowances");
+
+                            b1.WithOwner()
+                                .HasForeignKey("EmployeeAllowanceId");
+                        });
+
+                    b.Navigation("Amount")
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Proposly.Domain.HrManagement.Entities.EmployeeDocument", b =>
+                {
+                    b.HasOne("Proposly.Domain.HrManagement.Entities.EmployeeProfile", null)
+                        .WithMany("Documents")
+                        .HasForeignKey("EmployeeProfileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Proposly.Domain.HrManagement.Entities.EmployeeNote", b =>
+                {
+                    b.HasOne("Proposly.Domain.HrManagement.Entities.EmployeeProfile", null)
+                        .WithMany("Notes")
+                        .HasForeignKey("EmployeeProfileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Proposly.Domain.OfferManagement.Entities.Client", b =>
                 {
                     b.OwnsOne("Proposly.Shared.ValueObjects.Address", "Address", b1 =>
@@ -1782,6 +2119,34 @@ namespace Proposly.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Proposly.Domain.WorkTimeManagement.Entities.EmploymentTerms", b =>
+                {
+                    b.OwnsOne("Proposly.Shared.ValueObjects.Money", "HourlyRate", b1 =>
+                        {
+                            b1.Property<Guid>("EmploymentTermsId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<decimal>("Amount")
+                                .HasColumnType("numeric(18,2)")
+                                .HasColumnName("HourlyRateAmount");
+
+                            b1.Property<string>("Currency")
+                                .IsRequired()
+                                .HasMaxLength(3)
+                                .HasColumnType("character varying(3)")
+                                .HasColumnName("HourlyRateCurrency");
+
+                            b1.HasKey("EmploymentTermsId");
+
+                            b1.ToTable("EmploymentTerms");
+
+                            b1.WithOwner()
+                                .HasForeignKey("EmploymentTermsId");
+                        });
+
+                    b.Navigation("HourlyRate");
+                });
+
             modelBuilder.Entity("Proposly.Domain.WorkTimeManagement.Entities.TimesheetBreach", b =>
                 {
                     b.HasOne("Proposly.Domain.WorkTimeManagement.Entities.Timesheet", null)
@@ -1808,6 +2173,15 @@ namespace Proposly.Infrastructure.Migrations
             modelBuilder.Entity("Proposly.Domain.Chat.Entities.Conversation", b =>
                 {
                     b.Navigation("Participants");
+                });
+
+            modelBuilder.Entity("Proposly.Domain.HrManagement.Entities.EmployeeProfile", b =>
+                {
+                    b.Navigation("Allowances");
+
+                    b.Navigation("Documents");
+
+                    b.Navigation("Notes");
                 });
 
             modelBuilder.Entity("Proposly.Domain.OfferManagement.Entities.Client", b =>

@@ -93,14 +93,21 @@ public class EmploymentTermsTests
     public void History_is_immutable_beyond_being_closed()
     {
         // The only mutator is CloseAt. Nothing exposes weekly hours, the pattern, or the
-        // entitlement for change — a correction means a new dated version.
+        // entitlement for change — a correction means a new dated version. AppliesOn and
+        // ToHrTerms are pure reads.
         var mutators = typeof(EmploymentTerms)
             .GetMethods()
             .Where(m => m.DeclaringType == typeof(EmploymentTerms) && !m.IsSpecialName && !m.IsStatic)
             .Select(m => m.Name)
             .ToList();
 
-        Assert.Equal(new[] { nameof(EmploymentTerms.AppliesOn), nameof(EmploymentTerms.CloseAt) },
+        Assert.Equal(
+            new[]
+            {
+                nameof(EmploymentTerms.AppliesOn),
+                nameof(EmploymentTerms.CloseAt),
+                nameof(EmploymentTerms.ToHrTerms),
+            },
             mutators.OrderBy(n => n).ToArray());
     }
 
