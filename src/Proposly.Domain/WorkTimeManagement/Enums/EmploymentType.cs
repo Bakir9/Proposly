@@ -19,5 +19,11 @@ public enum EmploymentType
     /// <summary>Lehrling / Auszubildende.</summary>
     Apprentice,
 
+    /// <summary>Werkvertrag / freier Dienstnehmer — no vacation entitlement, no surcharges.</summary>
+    Freelancer,
+
+    /// <summary>Praktikant:in — fixed-term training engagement.</summary>
+    Intern,
+
     Other
 }

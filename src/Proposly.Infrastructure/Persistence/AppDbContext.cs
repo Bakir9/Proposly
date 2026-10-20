@@ -3,6 +3,7 @@ using Proposly.Application.Abstractions;
 using Proposly.Domain.CalendarManagement.Entities;
 using Proposly.Domain.Chat.Entities;
 using Proposly.Domain.CompanyManagement.Entities;
+using Proposly.Domain.HrManagement.Entities;
 using Proposly.Domain.Notifications;
 using Proposly.Domain.OfferManagement.Entities;
 using Proposly.Domain.ProjectManagement.Entities;
@@ -33,6 +34,7 @@ public sealed class AppDbContext : DbContext
     public DbSet<EmploymentTerms> EmploymentTerms => Set<EmploymentTerms>();
     public DbSet<NonWorkingDay> NonWorkingDays => Set<NonWorkingDay>();
     public DbSet<Conversation> Conversations => Set<Conversation>();
+    public DbSet<EmployeeProfile> EmployeeProfiles => Set<EmployeeProfile>();
     public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
     public DbSet<ChatAttachment> ChatAttachments => Set<ChatAttachment>();
     public DbSet<Services.Storage.StoredFile> StoredFiles => Set<Services.Storage.StoredFile>();

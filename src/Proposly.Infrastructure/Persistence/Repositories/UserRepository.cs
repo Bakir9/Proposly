@@ -64,8 +64,9 @@ public sealed class UserRepository : IUserRepository
         await _context.SaveChangesAsync(ct);
     }
 
+    // Profile-only workers don't count toward the plan — only accounts with login access do.
     public async Task<int> CountInvitedByCompanyIdAsync(Guid companyId, CancellationToken ct = default)
         => await _context.Users
-            .Where(u => u.CompanyId == companyId && !u.IsDisabled && u.Role != UserRole.Owner)
+            .Where(u => u.CompanyId == companyId && !u.IsDisabled && u.Role != UserRole.Owner && !u.IsProfileOnly)
             .CountAsync(ct);
 }

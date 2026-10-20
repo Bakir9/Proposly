@@ -36,10 +36,22 @@ public sealed class EmploymentTermsRepository : IEmploymentTermsRepository
             .OrderByDescending(t => t.ValidFrom)
             .FirstOrDefaultAsync(ct);
 
+    public async Task<IReadOnlyList<EmploymentTerms>> GetLatestForCompanyAsync(CancellationToken ct = default)
+        => await _context.EmploymentTerms
+            .GroupBy(t => t.UserId)
+            .Select(g => g.OrderByDescending(t => t.ValidFrom).First())
+            .ToListAsync(ct);
+
     public async Task AddAsync(EmploymentTerms terms, CancellationToken ct = default)
     {
         await _context.EmploymentTerms.AddAsync(terms, ct);
         await _context.SaveChangesAsync(ct);
+    }
+
+    public Task RemoveAsync(EmploymentTerms terms, CancellationToken ct = default)
+    {
+        _context.EmploymentTerms.Remove(terms);
+        return Task.CompletedTask;
     }
 
     public async Task SaveChangesAsync(CancellationToken ct = default)
