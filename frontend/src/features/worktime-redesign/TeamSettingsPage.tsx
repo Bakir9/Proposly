@@ -1,92 +1,234 @@
-import { useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { Plus, Users } from 'lucide-react'
 import './redesign.css'
-import type { Worker, WorkerType } from './team/types'
 import {
-  DEFAULT_VACATION_DAYS,
-  FULL_TIME_HOURS,
-  SEED_WORKERS,
-  baseWorker,
-  fmtNum,
-  initialsOf,
-  scheduleDays,
-  typeChip,
-  weeklyHours,
-  workdaysBetween,
-} from './team/types'
-import type { UpdateWorker } from './team/TeamSettingsShared'
+  addWorker,
+  addWorkerAbsence,
+  addWorkerNote,
+  approveAbsence,
+  cancelAbsence,
+  deleteWorkerFile,
+  deleteWorkerNote,
+  fetchWorkerFileBlob,
+  getWorker,
+  getWorkers,
+  inviteWorker,
+  pinWorkerNote,
+  setWorkerDocumentCategory,
+  updateWorker,
+  uploadWorkerFile,
+  type WorkerListItem,
+} from '@/api/hr'
+import { getApiErrorMessage } from '@/lib/api-errors'
+import type { Worker, WorkerDraft, WorkerType } from './team/types'
+import { FULL_TIME_HOURS, fmtNum, initialsOf, statusChip, statusLabel, typeChip, weeklyHours } from './team/types'
+import { absenceKindToApi, draftFromApi, mergeWorkerView, payloadFromDraft } from './team/hr-mapping'
+import type { UpdateWorker, WorkerActions } from './team/TeamSettingsShared'
 import { ProfileTab } from './team/ProfileTab'
 import { CvTab } from './team/CvTab'
 import { ContractTab } from './team/ContractTab'
 import { VacationTab } from './team/VacationTab'
 import { AdditionalsTab } from './team/AdditionalsTab'
 import { NotesTab } from './team/NotesTab'
+import { AddWorkerDialog, InviteWorkerDialog } from './team/WorkerDialogs'
 
 const TABS = ['Profile', 'CV', 'Contract', 'Vacation & absences', 'Additionals', 'Notes'] as const
 type Tab = (typeof TABS)[number]
 
 const FILTERS: readonly (WorkerType | 'All')[] = ['All', 'Employee', 'Freelancer', 'Intern', 'Apprentice', 'Marginal']
 
+const uiType = (t: WorkerListItem['employmentType']): WorkerType =>
+  t === 'Freelancer' ? 'Freelancer'
+  : t === 'Intern' ? 'Intern'
+  : t === 'Apprentice' ? 'Apprentice'
+  : t === 'MarginalEmployment' ? 'Marginal'
+  : 'Employee'
+
 export function TeamSettingsPage() {
-  const [workers, setWorkers] = useState<Worker[]>(SEED_WORKERS)
-  const [selId, setSelId] = useState(1)
+  const queryClient = useQueryClient()
+  const [selId, setSelId] = useState<string | null>(null)
   const [tab, setTab] = useState<Tab>('Profile')
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>('All')
+  const [addOpen, setAddOpen] = useState(false)
+  const [inviteOpen, setInviteOpen] = useState(false)
   const headerPhotoRef = useRef<HTMLInputElement>(null)
 
-  const sel = workers.find(w => w.id === selId) ?? workers[0]
+  // Draft of the editable fields; null means "not loaded yet for this worker".
+  const [draft, setDraft] = useState<WorkerDraft | null>(null)
+  const [draftFor, setDraftFor] = useState<string | null>(null)
 
-  const upd: UpdateWorker = patch => {
-    setWorkers(prev =>
-      prev.map(w => (w.id === sel.id ? { ...w, ...(typeof patch === 'function' ? patch(w) : patch) } : w)),
-    )
+  const { data: workers = [], isLoading: listLoading } = useQuery({
+    queryKey: ['hr', 'workers'],
+    queryFn: getWorkers,
+  })
+
+  const activeId = selId ?? workers[0]?.userId ?? null
+
+  const { data: detail } = useQuery({
+    queryKey: ['hr', 'worker', activeId],
+    queryFn: () => getWorker(activeId!),
+    enabled: !!activeId,
+    // Keep the previous worker on screen while the next one loads — switching
+    // stays fluent instead of unmounting the whole right section.
+    placeholderData: previous => previous,
+  })
+
+  const { data: photoUrl = '' } = useQuery({
+    queryKey: ['hr', 'photo', activeId, detail?.hasPhoto],
+    queryFn: async () => {
+      if (!detail?.hasPhoto) return ''
+      const blob = await fetchWorkerFileBlob(activeId!, 'Photo')
+      return URL.createObjectURL(blob)
+    },
+    enabled: !!activeId && !!detail,
+    staleTime: Infinity,
+  })
+
+  // Adopt the server copy as the draft whenever a different worker is loaded (render-adjust pattern).
+  if (detail && draftFor !== detail.userId) {
+    setDraft(draftFromApi(detail))
+    setDraftFor(detail.userId)
   }
 
-  function addWorker() {
-    const id = Math.max(...workers.map(w => w.id)) + 1
-    const fresh = baseWorker({
-      id,
-      days: scheduleDays(FULL_TIME_HOURS / 5, 5),
-      vacEnt: DEFAULT_VACATION_DAYS,
-      start: new Date().toISOString().slice(0, 10),
+  const serverDraft = useMemo(() => (detail ? draftFromApi(detail) : null), [detail])
+  const dirty = !!draft && !!serverDraft && JSON.stringify(draft) !== JSON.stringify(serverDraft)
+
+  const view: Worker | null =
+    detail && draft && draftFor === detail.userId ? mergeWorkerView(detail, draft, photoUrl) : null
+
+  const upd: UpdateWorker = patch => {
+    setDraft(prev => {
+      if (!prev || !view) return prev
+      return { ...prev, ...(typeof patch === 'function' ? patch(view) : patch) }
     })
-    setWorkers(prev => [...prev, fresh])
-    setSelId(id)
-    setTab('Profile')
-    setFilter('All')
-    setQuery('')
+  }
+
+  function invalidateWorker() {
+    queryClient.invalidateQueries({ queryKey: ['hr', 'worker', activeId] })
+    queryClient.invalidateQueries({ queryKey: ['hr', 'workers'] })
+  }
+
+  const onError = (err: unknown) => toast.error(getApiErrorMessage(err))
+
+  const saveMutation = useMutation({
+    mutationFn: () => updateWorker(payloadFromDraft(activeId!, draft!)),
+    onSuccess: async () => {
+      toast.success('Worker saved.')
+      // Refetch first, then re-adopt — adopting before the refetch would restore a stale draft.
+      await queryClient.invalidateQueries({ queryKey: ['hr', 'worker', activeId] })
+      queryClient.invalidateQueries({ queryKey: ['hr', 'workers'] })
+      setDraftFor(null)
+    },
+    onError,
+  })
+
+  const addMutation = useMutation({
+    mutationFn: (data: { firstName: string; lastName: string; jobTitle: string | null }) => addWorker(data),
+    onSuccess: userId => {
+      toast.success('Worker added — no login access until you invite them.')
+      setAddOpen(false)
+      setSelId(userId)
+      setTab('Profile')
+      invalidateWorker()
+      queryClient.invalidateQueries({ queryKey: ['users'] })
+    },
+    onError,
+  })
+
+  const inviteMutation = useMutation({
+    mutationFn: (data: { email: string; role: string }) => inviteWorker(activeId!, data.email, data.role),
+    onSuccess: () => {
+      toast.success('Invite sent.')
+      setInviteOpen(false)
+      invalidateWorker()
+      queryClient.invalidateQueries({ queryKey: ['users'] })
+    },
+    onError,
+  })
+
+  const act = useCallback(
+    (fn: () => Promise<unknown>, success?: string) => {
+      fn()
+        .then(() => {
+          if (success) toast.success(success)
+          invalidateWorker()
+        })
+        .catch(onError)
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [activeId],
+  )
+
+  function download(kind: 'Cv' | 'Document', fileName: string, documentId?: string) {
+    fetchWorkerFileBlob(activeId!, kind, documentId)
+      .then(blob => {
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = fileName
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+        URL.revokeObjectURL(url)
+      })
+      .catch(onError)
+  }
+
+  const actions: WorkerActions = {
+    uploadPhoto: file => act(() => uploadWorkerFile(activeId!, 'Photo', file)),
+    removePhoto: () => act(() => deleteWorkerFile(activeId!, 'Photo')),
+    uploadCv: file => act(() => uploadWorkerFile(activeId!, 'Cv', file)),
+    removeCv: () => act(() => deleteWorkerFile(activeId!, 'Cv')),
+    downloadCv: fileName => download('Cv', fileName),
+    uploadDocuments: (files, category) =>
+      act(async () => {
+        for (const file of files) await uploadWorkerFile(activeId!, 'Document', file, category)
+      }),
+    deleteDocument: documentId => act(() => deleteWorkerFile(activeId!, 'Document', documentId)),
+    setDocumentCategory: (documentId, category) =>
+      act(() => setWorkerDocumentCategory(activeId!, documentId, category)),
+    downloadDocument: (documentId, fileName) => download('Document', fileName, documentId),
+    addAbsence: (kind, from, to) =>
+      act(() => addWorkerAbsence(activeId!, absenceKindToApi(kind), from, to)),
+    approveAbsence: absenceId => act(() => approveAbsence(absenceId)),
+    removeAbsence: absenceId => act(() => cancelAbsence(absenceId)),
+    addNote: (tag, text) => act(() => addWorkerNote(activeId!, tag, text)),
+    pinNote: (noteId, pinned) => act(() => pinWorkerNote(activeId!, noteId, pinned)),
+    deleteNote: noteId => act(() => deleteWorkerNote(activeId!, noteId)),
   }
 
   const q = query.trim().toLowerCase()
-  const visible = workers.filter(
-    w => (filter === 'All' || w.type === filter) && (!q || `${w.name} ${w.role}`.toLowerCase().includes(q)),
-  )
+  const visible = workers.filter(w => {
+    const t = uiType(w.employmentType)
+    const name = `${w.firstName} ${w.lastName} ${w.jobTitle ?? ''}`.toLowerCase()
+    return (filter === 'All' || t === filter) && (!q || name.includes(q))
+  })
 
-  const wk = weeklyHours(sel)
-  const isHourly = sel.model === 'Hourly'
-  const isFreelancer = sel.type === 'Freelancer'
-
-  const vacation = sel.absences.filter(a => a.kind === 'Vacation')
-  const taken = vacation.filter(a => a.status === 'Approved').reduce((n, a) => n + workdaysBetween(a.from, a.to), 0)
-  const pending = vacation.filter(a => a.status === 'Pending').reduce((n, a) => n + workdaysBetween(a.from, a.to), 0)
-  const vacLeft = (Number(sel.vacEnt) || 0) + (Number(sel.vacCarry) || 0) - taken - pending
+  const wk = view ? weeklyHours(view) : 0
+  const isHourly = view?.model === 'Hourly'
+  const isFreelancer = view?.type === 'Freelancer'
+  const taken = (view?.absences ?? []).filter(a => a.kind === 'Vacation' && a.status === 'Approved').reduce((n, a) => n + a.days, 0)
+  const pending = (view?.absences ?? []).filter(a => a.kind === 'Vacation' && a.status === 'Pending').reduce((n, a) => n + a.days, 0)
+  const vacLeft = view ? (Number(view.vacEnt) || 0) + (Number(view.vacCarry) || 0) - taken - pending : 0
 
   return (
     <div className="wtr min-h-full px-8 pt-7 pb-16">
-      <div className="max-w-[1280px] mx-auto flex flex-col gap-[22px]">
+      <div className="max-w-[1600px] mx-auto flex flex-col gap-[22px]">
         {/* Page header */}
         <div className="flex items-start justify-between gap-6 flex-wrap">
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center gap-[11px]">
-              <Users className="h-[22px] w-[22px] text-[#5EC8F2]" strokeWidth={1.8} />
+              <Users className="h-[22px] w-[22px] text-[color:var(--wtr-accent)]" strokeWidth={1.8} />
               <h1 className="m-0 text-[25px] font-semibold tracking-[-0.4px]">Team</h1>
             </div>
-            <p className="m-0 text-sm text-[#8C9AB4] max-w-[56ch]">
+            <p className="m-0 text-sm text-[color:var(--wtr-text-sec)] max-w-[56ch]">
               Contracts, working hours, vacation and time rules for each person.
             </p>
           </div>
-          <button onClick={addWorker} className="wtr-primary h-10 px-[18px] flex items-center gap-2 whitespace-nowrap flex-none text-sm">
+          <button onClick={() => setAddOpen(true)} className="wtr-primary h-10 px-[18px] flex items-center gap-2 whitespace-nowrap flex-none text-sm">
             <Plus className="h-3.5 w-3.5" strokeWidth={2.4} />
             Add worker
           </button>
@@ -94,14 +236,14 @@ export function TeamSettingsPage() {
 
         <div className="flex gap-[18px] items-start flex-wrap">
           {/* Worker list */}
-          <div className="flex-[1_1_260px] max-w-[320px] border border-[#162035] rounded-[14px] bg-[#0A101C] overflow-hidden">
-            <div className="p-3 border-b border-[#162035] flex flex-col gap-2.5 bg-[#0E1524]">
+          <div className="flex-[1_1_260px] max-w-[320px] border border-[color:var(--wtr-border)] rounded-[14px] bg-[color:var(--wtr-card)] overflow-hidden">
+            <div className="p-3 border-b border-[color:var(--wtr-border)] flex flex-col gap-2.5 bg-[color:var(--wtr-head)]">
               <input
                 type="text"
                 value={query}
                 onChange={e => setQuery(e.target.value)}
                 placeholder="Search name or role"
-                className="wtr-input h-9 w-full px-3 text-sm !bg-[#0A101C]"
+                className="wtr-input h-9 w-full px-3 text-sm !bg-[color:var(--wtr-card)]"
               />
               <div className="flex gap-1.5 flex-wrap">
                 {FILTERS.map(f => (
@@ -110,9 +252,9 @@ export function TeamSettingsPage() {
                     onClick={() => setFilter(f)}
                     className="h-7 px-2.5 rounded-full text-[12.5px] font-medium cursor-pointer"
                     style={{
-                      border: `1px solid ${filter === f ? '#2B3A5C' : '#1C2740'}`,
-                      background: filter === f ? '#1E2B47' : 'transparent',
-                      color: filter === f ? '#E6ECF6' : '#8C9AB4',
+                      border: `1px solid ${filter === f ? 'var(--wtr-active-bg)' : 'var(--wtr-border2)'}`,
+                      background: filter === f ? 'var(--wtr-active-bg)' : 'transparent',
+                      color: filter === f ? 'var(--wtr-active-fg)' : 'var(--wtr-text-sec)',
                     }}
                   >
                     {f}
@@ -120,146 +262,186 @@ export function TeamSettingsPage() {
                 ))}
               </div>
             </div>
+            {listLoading && <div className="px-4 py-7 text-center text-[13px] text-[color:var(--wtr-text-sec)]">Loading…</div>}
             {visible.map(w => {
-              const [chipColor, chipBg] = typeChip(w.type)
-              const isSel = w.id === sel.id
+              const t = uiType(w.employmentType)
+              const [chipColor, chipBg] = typeChip(t)
+              const isSel = w.userId === activeId
               return (
                 <button
-                  key={w.id}
-                  onClick={() => setSelId(w.id)}
-                  className="w-full flex items-center gap-3 px-3.5 py-3 border-0 border-b border-solid border-b-[#0F1727] text-[#E6ECF6] text-left cursor-pointer wtr-row-hover"
+                  key={w.userId}
+                  onClick={() => {
+                    if (dirty && !confirm('Discard unsaved changes?')) return
+                    // The draft re-adopts automatically once the new worker's data arrives;
+                    // resetting draftFor here would blank the panel while it loads.
+                    setSelId(w.userId)
+                  }}
+                  className="w-full flex items-center gap-3 px-3.5 py-3 border-0 border-b border-solid border-b-[color:var(--wtr-row-border)] text-[color:var(--wtr-text)] text-left cursor-pointer wtr-row-hover"
                   style={{
-                    background: isSel ? '#101A2C' : 'transparent',
-                    borderLeft: `3px solid ${isSel ? '#5EC8F2' : 'transparent'}`,
+                    background: isSel ? 'var(--wtr-selected-bg)' : 'transparent',
+                    borderLeft: `3px solid ${isSel ? 'var(--wtr-accent)' : 'transparent'}`,
                   }}
                 >
-                  <WorkerAvatar worker={w} size={36} fontSize={13} />
+                  <span className="w-9 h-9 flex-none rounded-full grid place-items-center bg-[color:var(--wtr-tint-cyan-bg)] text-[color:var(--wtr-tint-cyan-fg)] text-[13px] font-semibold">
+                    {initialsOf(`${w.firstName} ${w.lastName}`)}
+                  </span>
                   <span className="flex-1 min-w-0 flex flex-col gap-0.5">
-                    <span className="text-sm font-medium truncate">{w.name || 'New worker'}</span>
-                    <span className="text-[12.5px] text-[#8C9AB4] truncate">{w.role || 'No role'}</span>
+                    <span className="text-sm font-medium truncate">
+                      {`${w.firstName} ${w.lastName}`.trim() || 'New worker'}
+                    </span>
+                    <span className="text-[12.5px] text-[color:var(--wtr-text-sec)] truncate">{w.jobTitle || 'No role'}</span>
                   </span>
                   <span className="flex flex-col items-end gap-1 flex-none">
                     <span
                       className="text-[11px] font-semibold tracking-[0.4px] px-[7px] py-0.5 whitespace-nowrap rounded-full"
                       style={{ color: chipColor, background: chipBg }}
                     >
-                      {w.type}
+                      {t}
                     </span>
-                    <span className="wtr-mono text-xs text-[#8C9AB4] whitespace-nowrap">
-                      {w.model === 'Hourly' ? 'hourly' : `${fmtNum(weeklyHours(w))} h`}
+                    <span className="wtr-mono text-xs text-[color:var(--wtr-text-sec)] whitespace-nowrap">
+                      {w.workModel === 'Hourly' ? 'hourly' : `${fmtNum(w.weeklyHours)} h`}
                     </span>
                   </span>
                 </button>
               )
             })}
-            {visible.length === 0 && (
-              <div className="px-4 py-7 text-center text-[13px] text-[#8C9AB4]">No one matches.</div>
+            {!listLoading && visible.length === 0 && (
+              <div className="px-4 py-7 text-center text-[13px] text-[color:var(--wtr-text-sec)]">No one matches.</div>
             )}
           </div>
 
           {/* Detail */}
-          <div className="flex-[999_1_460px] min-w-0 flex flex-col gap-4">
-            {/* Worker header */}
-            <div className="border border-[#162035] rounded-[14px] bg-[#0C1322] px-5 py-[18px] flex flex-col gap-4">
-              <div className="flex items-center gap-3.5 flex-wrap">
-                <input
-                  ref={headerPhotoRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={e => {
-                    const f = e.target.files?.[0]
-                    if (f && f.type.startsWith('image/')) upd({ photo: URL.createObjectURL(f) })
-                    e.target.value = ''
-                  }}
-                />
-                <button
-                  onClick={() => headerPhotoRef.current?.click()}
-                  title="Change photo"
-                  className="w-12 h-12 flex-none rounded-full border border-[#253352] p-0 grid place-items-center bg-[#12253A] text-[#9BE0FA] text-[17px] font-semibold cursor-pointer overflow-hidden hover:border-[#5EC8F2]"
-                >
-                  {sel.photo ? (
-                    <span className="w-full h-full block bg-cover bg-center" style={{ backgroundImage: `url(${sel.photo})` }} />
-                  ) : (
-                    initialsOf(sel.name)
-                  )}
-                </button>
-                <div className="flex-1 min-w-[220px] flex flex-col gap-1">
+          {view ? (
+            <div className="flex-[999_1_460px] min-w-0 flex flex-col gap-4">
+              {/* Worker header */}
+              <div className="border border-[color:var(--wtr-border)] rounded-[14px] bg-[color:var(--wtr-panel)] px-5 py-[18px] flex flex-col gap-4">
+                <div className="flex items-center gap-3.5 flex-wrap">
                   <input
-                    type="text"
-                    value={sel.name}
-                    placeholder="Full name"
-                    onChange={e => upd({ name: e.target.value })}
-                    className="bg-transparent border-0 border-b border-transparent focus:border-b-[#5EC8F2] text-[#E6ECF6] text-xl font-semibold tracking-[-0.3px] p-0 outline-none w-full"
-                  />
-                  <input
-                    type="text"
-                    value={sel.role}
-                    placeholder="Role"
-                    onChange={e => upd({ role: e.target.value })}
-                    className="bg-transparent border-0 text-[#8C9AB4] text-sm p-0 outline-none w-full"
-                  />
-                </div>
-                <div className="flex flex-wrap gap-px bg-[#162035] border border-[#162035] rounded-[10px] overflow-hidden">
-                  <HeaderStat label="Week" value={isHourly ? (sel.expectedWeek ? `~${sel.expectedWeek} h` : 'varies') : `${fmtNum(wk)} h`} />
-                  <HeaderStat label="FTE" value={isHourly ? '—' : (wk / FULL_TIME_HOURS).toFixed(2)} />
-                  <HeaderStat
-                    label="Vacation left"
-                    value={isFreelancer ? 'n/a' : `${vacLeft} d`}
-                    color={isFreelancer ? '#8391AB' : vacLeft < 0 ? '#F2A25E' : '#E6ECF6'}
-                  />
-                </div>
-              </div>
-              <div className="flex gap-0.5 border-t border-[#162035] pt-3 flex-wrap">
-                {TABS.map(t => (
-                  <button
-                    key={t}
-                    onClick={() => setTab(t)}
-                    className="h-[34px] px-[11px] whitespace-nowrap rounded-lg border-0 text-[13.5px] font-medium cursor-pointer hover:!text-[#E6ECF6]"
-                    style={{
-                      background: tab === t ? '#1E2B47' : 'transparent',
-                      color: tab === t ? '#E6ECF6' : '#8C9AB4',
+                    ref={headerPhotoRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={e => {
+                      const f = e.target.files?.[0]
+                      if (f) actions.uploadPhoto(f)
+                      e.target.value = ''
                     }}
+                  />
+                  <button
+                    onClick={() => headerPhotoRef.current?.click()}
+                    title="Change photo"
+                    className="w-12 h-12 flex-none rounded-full border border-[color:var(--wtr-border3)] p-0 grid place-items-center bg-[color:var(--wtr-tint-cyan-bg)] text-[color:var(--wtr-tint-cyan-fg)] text-[17px] font-semibold cursor-pointer overflow-hidden hover:border-[color:var(--wtr-accent)]"
                   >
-                    {t}
+                    {view.photo ? (
+                      <span className="w-full h-full block bg-cover bg-center" style={{ backgroundImage: `url(${view.photo})` }} />
+                    ) : (
+                      initialsOf(view.name)
+                    )}
                   </button>
-                ))}
+                  <div className="flex-1 min-w-[220px] flex flex-col gap-1">
+                    <input
+                      type="text"
+                      value={view.name}
+                      placeholder="Full name"
+                      onChange={e => upd({ name: e.target.value })}
+                      className="bg-transparent border-0 border-b border-transparent focus:border-b-[color:var(--wtr-accent)] text-[color:var(--wtr-text)] text-xl font-semibold tracking-[-0.3px] p-0 outline-none w-full"
+                    />
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <input
+                        type="text"
+                        value={view.role}
+                        placeholder="Role"
+                        onChange={e => upd({ role: e.target.value })}
+                        className="bg-transparent border-0 text-[color:var(--wtr-text-sec)] text-sm p-0 outline-none w-44"
+                      />
+                      <span
+                        className="text-[11px] font-semibold tracking-[0.4px] px-[7px] py-0.5 rounded-full whitespace-nowrap"
+                        style={{ color: statusChip(view.accountStatus)[0], background: statusChip(view.accountStatus)[1] }}
+                        title={view.email ?? 'No login access'}
+                      >
+                        {statusLabel(view.accountStatus)}
+                      </span>
+                      {view.accountStatus === 'ProfileOnly' && (
+                        <button onClick={() => setInviteOpen(true)} className="wtr-btn h-6 px-2 !rounded-md text-[11.5px] font-medium">
+                          Invite to Proposly
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex flex-wrap gap-px bg-[color:var(--wtr-border)] border border-[color:var(--wtr-border)] rounded-[10px] overflow-hidden">
+                      <HeaderStat label="Week" value={isHourly ? (view.expectedWeek ? `~${view.expectedWeek} h` : 'varies') : `${fmtNum(wk)} h`} />
+                      <HeaderStat label="FTE" value={isHourly ? '—' : (wk / FULL_TIME_HOURS).toFixed(2)} />
+                      <HeaderStat
+                        label="Vacation left"
+                        value={isFreelancer ? 'n/a' : `${vacLeft} d`}
+                        color={isFreelancer ? 'var(--wtr-label)' : vacLeft < 0 ? 'var(--wtr-tint-orange-fg)' : 'var(--wtr-text)'}
+                      />
+                    </div>
+                    <button
+                      onClick={() => saveMutation.mutate()}
+                      disabled={!dirty || saveMutation.isPending}
+                      className="wtr-primary h-10 px-[18px] text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      {saveMutation.isPending ? 'Saving…' : dirty ? 'Save changes' : 'Saved'}
+                    </button>
+                  </div>
+                </div>
+                <div className="flex gap-0.5 border-t border-[color:var(--wtr-border)] pt-3 flex-wrap">
+                  {TABS.map(t => (
+                    <button
+                      key={t}
+                      onClick={() => setTab(t)}
+                      className="h-[34px] px-[11px] whitespace-nowrap rounded-lg border-0 text-[13.5px] font-medium cursor-pointer"
+                      style={{
+                        background: tab === t ? 'var(--wtr-active-bg)' : 'transparent',
+                        color: tab === t ? 'var(--wtr-active-fg)' : 'var(--wtr-text-sec)',
+                      }}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
 
-            {/* Active tab — key resets per-tab local state when switching workers */}
-            {tab === 'Profile' && <ProfileTab key={sel.id} worker={sel} upd={upd} />}
-            {tab === 'CV' && <CvTab key={sel.id} worker={sel} upd={upd} />}
-            {tab === 'Contract' && <ContractTab key={sel.id} worker={sel} upd={upd} />}
-            {tab === 'Vacation & absences' && <VacationTab key={sel.id} worker={sel} upd={upd} />}
-            {tab === 'Additionals' && <AdditionalsTab key={sel.id} worker={sel} upd={upd} />}
-            {tab === 'Notes' && <NotesTab key={sel.id} worker={sel} upd={upd} />}
-          </div>
+              {tab === 'Profile' && <ProfileTab key={view.userId} worker={view} upd={upd} actions={actions} />}
+              {tab === 'CV' && <CvTab key={view.userId} worker={view} upd={upd} actions={actions} />}
+              {tab === 'Contract' && <ContractTab key={view.userId} worker={view} upd={upd} actions={actions} />}
+              {tab === 'Vacation & absences' && <VacationTab key={view.userId} worker={view} upd={upd} actions={actions} />}
+              {tab === 'Additionals' && <AdditionalsTab key={view.userId} worker={view} upd={upd} />}
+              {tab === 'Notes' && <NotesTab key={view.userId} worker={view} actions={actions} />}
+            </div>
+          ) : (
+            <div className="flex-[999_1_460px] min-w-0 py-16 text-center text-[13px] text-[color:var(--wtr-text-sec)]">
+              {workers.length === 0 && !listLoading ? 'No workers yet — add your first one.' : 'Loading…'}
+            </div>
+          )}
         </div>
       </div>
-    </div>
-  )
-}
 
-function WorkerAvatar({ worker: w, size, fontSize }: { worker: Worker; size: number; fontSize: number }) {
-  return (
-    <span
-      className="flex-none rounded-full grid place-items-center bg-[#12253A] text-[#9BE0FA] font-semibold overflow-hidden"
-      style={{ width: size, height: size, fontSize }}
-    >
-      {w.photo ? (
-        <span className="w-full h-full block bg-cover bg-center" style={{ backgroundImage: `url(${w.photo})` }} />
-      ) : (
-        initialsOf(w.name)
+      <AddWorkerDialog
+        open={addOpen}
+        pending={addMutation.isPending}
+        onClose={() => setAddOpen(false)}
+        onAdd={(firstName, lastName, jobTitle) => addMutation.mutate({ firstName, lastName, jobTitle })}
+      />
+      {view && (
+        <InviteWorkerDialog
+          open={inviteOpen}
+          pending={inviteMutation.isPending}
+          workerName={view.name}
+          onClose={() => setInviteOpen(false)}
+          onInvite={(email, role) => inviteMutation.mutate({ email, role })}
+        />
       )}
-    </span>
+    </div>
   )
 }
 
 function HeaderStat({ label, value, color }: { label: string; value: string; color?: string }) {
   return (
-    <div className="bg-[#0A101C] px-3.5 py-2 flex flex-col gap-0.5">
-      <span className="text-[11px] font-semibold tracking-[0.9px] uppercase text-[#8391AB] whitespace-nowrap">{label}</span>
+    <div className="bg-[color:var(--wtr-card)] px-3.5 py-2 flex flex-col gap-0.5">
+      <span className="text-[11px] font-semibold tracking-[0.9px] uppercase text-[color:var(--wtr-label)] whitespace-nowrap">{label}</span>
       <span className="wtr-mono text-[15px] font-medium" style={color ? { color } : undefined}>
         {value}
       </span>

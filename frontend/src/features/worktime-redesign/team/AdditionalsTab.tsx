@@ -1,4 +1,4 @@
-import type { OvertimeMode, Worker } from './types'
+import type { OvertimeMode, Worker, WorkerDraft } from './types'
 import { AddButton, Card, CardHeader, EmptyRow, Field, INPUT_MONO, RemoveButton, Segmented, Toggle } from './primitives'
 import type { UpdateWorker } from './TeamSettingsShared'
 
@@ -29,7 +29,7 @@ export function AdditionalsTab({ worker: w, upd }: { worker: Worker; upd: Update
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="flex flex-col gap-1">
             <h2 className="m-0 text-[15px] font-semibold">Overtime</h2>
-            <p className="m-0 text-[13px] text-[#8C9AB4]">How hours beyond the schedule are compensated.</p>
+            <p className="m-0 text-[13px] text-[color:var(--wtr-text-sec)]">How hours beyond the schedule are compensated.</p>
           </div>
           <Segmented options={OT_MODES} value={w.ot} onChange={ot => upd({ ot })} />
         </div>
@@ -43,11 +43,11 @@ export function AdditionalsTab({ worker: w, upd }: { worker: Worker; upd: Update
                   step={5}
                   value={w[s.key]}
                   disabled={isFreelancer}
-                  onChange={e => upd({ [s.key]: e.target.value } as Partial<Worker>)}
+                  onChange={e => upd({ [s.key]: e.target.value } as Partial<WorkerDraft>)}
                   className={`${INPUT_MONO} !pr-8`}
                   style={{ opacity: isFreelancer ? 0.4 : 1 }}
                 />
-                <span className="absolute right-3 top-[11px] text-[12.5px] text-[#8C9AB4] pointer-events-none">%</span>
+                <span className="absolute right-3 top-[11px] text-[12.5px] text-[color:var(--wtr-text-sec)] pointer-events-none">%</span>
               </div>
             </Field>
           ))}
@@ -58,24 +58,24 @@ export function AdditionalsTab({ worker: w, upd }: { worker: Worker; upd: Update
       <Card>
         <CardHeader title="Time rules" />
         {toggles.map(t => (
-          <div key={t.key} className="flex items-center justify-between gap-4 px-5 py-3.5 border-b border-[#0F1727] flex-wrap">
+          <div key={t.key} className="flex items-center justify-between gap-4 px-5 py-3.5 border-b border-[color:var(--wtr-row-border)] flex-wrap">
             <div className="flex flex-col gap-[3px] flex-1 min-w-[220px]">
               <span className="text-sm font-medium">{t.label}</span>
-              <span className="text-[13px] text-[#8C9AB4]">{t.desc}</span>
+              <span className="text-[13px] text-[color:var(--wtr-text-sec)]">{t.desc}</span>
             </div>
-            <Toggle on={!!w[t.key]} onClick={() => upd({ [t.key]: !w[t.key] } as Partial<Worker>)} />
+            <Toggle on={!!w[t.key]} onClick={() => upd({ [t.key]: !w[t.key] } as Partial<WorkerDraft>)} />
           </div>
         ))}
         {w.flex && (
-          <div className="flex items-center gap-2.5 px-5 py-3.5 bg-[#0C1322] border-b border-[#0F1727] flex-wrap">
-            <span className="text-[13px] text-[#8C9AB4]">Core hours</span>
+          <div className="flex items-center gap-2.5 px-5 py-3.5 bg-[color:var(--wtr-panel)] border-b border-[color:var(--wtr-row-border)] flex-wrap">
+            <span className="text-[13px] text-[color:var(--wtr-text-sec)]">Core hours</span>
             <input
               type="time"
               value={w.coreFrom}
               onChange={e => upd({ coreFrom: e.target.value })}
               className="wtr-input wtr-mono h-[34px] px-2 !rounded-[7px] text-[13.5px]"
             />
-            <span className="text-[13px] text-[#8C9AB4]">to</span>
+            <span className="text-[13px] text-[color:var(--wtr-text-sec)]">to</span>
             <input
               type="time"
               value={w.coreTo}
@@ -124,7 +124,7 @@ export function AdditionalsTab({ worker: w, upd }: { worker: Worker; upd: Update
           return (
             <div
               key={i}
-              className="grid grid-cols-[minmax(0,1fr)_120px_140px_84px] gap-3 items-center px-5 py-2.5 border-b border-[#0F1727] max-[760px]:grid-cols-2"
+              className="grid grid-cols-[minmax(0,1fr)_120px_140px_84px] gap-3 items-center px-5 py-2.5 border-b border-[color:var(--wtr-row-border)] max-[760px]:grid-cols-2"
             >
               <input
                 type="text"
@@ -143,7 +143,7 @@ export function AdditionalsTab({ worker: w, upd }: { worker: Worker; upd: Update
                   onChange={e => set({ amount: e.target.value })}
                   className="wtr-input wtr-mono h-9 w-full pl-3 pr-7 text-sm"
                 />
-                <span className="absolute right-3 top-2.5 text-[12.5px] text-[#8C9AB4] pointer-events-none">€</span>
+                <span className="absolute right-3 top-2.5 text-[12.5px] text-[color:var(--wtr-text-sec)] pointer-events-none">€</span>
               </div>
               <select
                 value={al.unit}

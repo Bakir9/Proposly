@@ -1,12 +1,117 @@
-/* Working-time redesign — self-contained visual language from the design handoff.
-   Scoped under .wtr so it never leaks into the rest of the app. */
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
-
+/* Working-time redesign — visual language from the design handoff, themed via CSS variables.
+   The handoff is dark-first; the light palette mirrors it and follows the app's theme toggle
+   (ThemeContext puts .dark on <html>). Everything is scoped under .wtr. */
 .wtr {
-  font-family: 'Outfit', system-ui, sans-serif;
-  background: #070b14;
-  color: #e6ecf6;
+  /* light palette (default) — user spec: soft grey, blue accent #3466F6 */
+  --wtr-bg: #e4e8ef;
+  --wtr-card: #f2f4f8;
+  --wtr-panel: #f2f4f8;
+  --wtr-head: #e9edf4;
+  --wtr-input: #fbfcfd;
+  --wtr-input-focus: #ffffff;
+  --wtr-input-weekend: #f0f2f7;
+  --wtr-weekend: #e9edf4;
+  --wtr-row-border: #e2e7ef;
+  --wtr-hover: #eaeef5;
+  --wtr-pinned: #e4ebf8;
+  --wtr-border: #dde2ea;
+  --wtr-border2: #d6dbe4;
+  --wtr-border3: #c2cbda;
+  --wtr-border4: #a9b5c8;
+  --wtr-border-active: #afc2f3;
+  --wtr-muted: #e2e7ef;
+  --wtr-seg-active: #fbfcfd;
+  /* active tab/segment/chip — clearly visible: accent pill in light */
+  --wtr-active-bg: #3466f6;
+  --wtr-active-fg: #ffffff;
+  --wtr-selected-bg: #dde6fc;
+  --wtr-dot-weekend: #cbd3df;
+  --wtr-dot-empty: #b8c2d2;
+  --wtr-text: #14171f;
+  --wtr-text2: #333b49;
+  --wtr-btn-text: #434c5e;
+  --wtr-text-sec: #6b7280;
+  --wtr-label: #707a89;
+  --wtr-dim2: #7a8494;
+  --wtr-dim: #8a919e;
+  --wtr-accent: #3466f6;
+  --wtr-on-accent: #ffffff;
+  --wtr-primary: #3466f6;
+  --wtr-primary-hover: #1f4fd8;
+  --wtr-primary-fg: #ffffff;
+  --wtr-tint-cyan-bg: #dde6fc;
+  --wtr-tint-cyan-fg: #2449c0;
+  --wtr-tint-cyan-hover: #cbdafb;
+  --wtr-tint-green-bg: #d5ebdd;
+  --wtr-tint-green-fg: #128045;
+  --wtr-tint-green-border: #a4d6b9;
+  --wtr-tint-orange-bg: #f3e4c4;
+  --wtr-tint-orange-fg: #a86400;
+  --wtr-tint-orange-border: #e2c890;
+  --wtr-tint-red-bg: #f4d5d2;
+  --wtr-tint-red-fg: #b23529;
+  --wtr-tint-red-border: #e5aba4;
+  --wtr-bar-pending: #8fa7e8;
+  --wtr-overlay: rgba(15, 23, 42, 0.35);
+
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  background: var(--wtr-bg);
+  color: var(--wtr-text);
   -webkit-font-smoothing: antialiased;
+}
+
+.dark .wtr {
+  /* dark palette — the handoff's original colors */
+  --wtr-bg: #070b14;
+  --wtr-card: #0a101c;
+  --wtr-panel: #0c1322;
+  --wtr-head: #0e1524;
+  --wtr-input: #0e1727;
+  --wtr-input-focus: #111c30;
+  --wtr-input-weekend: #0b1120;
+  --wtr-weekend: #080d17;
+  --wtr-row-border: #0f1727;
+  --wtr-hover: #101a2c;
+  --wtr-pinned: #0c1626;
+  --wtr-border: #162035;
+  --wtr-border2: #1c2740;
+  --wtr-border3: #253352;
+  --wtr-border4: #2b3a5c;
+  --wtr-border-active: #28405c;
+  --wtr-muted: #18223a;
+  --wtr-seg-active: #1e2b47;
+  /* active tab/segment/chip — the handoff's slate pill */
+  --wtr-active-bg: #1e2b47;
+  --wtr-active-fg: #e6ecf6;
+  --wtr-selected-bg: #101a2c;
+  --wtr-dot-weekend: #1b2439;
+  --wtr-dot-empty: #2e3a54;
+  --wtr-text: #e6ecf6;
+  --wtr-text2: #c3cddf;
+  --wtr-btn-text: #b9c6dc;
+  --wtr-text-sec: #8c9ab4;
+  --wtr-label: #8391ab;
+  --wtr-dim2: #7b89a3;
+  --wtr-dim: #6b7893;
+  --wtr-accent: #5ec8f2;
+  --wtr-on-accent: #061019;
+  --wtr-primary: #5ec8f2;
+  --wtr-primary-hover: #8adaf7;
+  --wtr-primary-fg: #061019;
+  --wtr-tint-cyan-bg: #12253a;
+  --wtr-tint-cyan-fg: #9be0fa;
+  --wtr-tint-cyan-hover: #1e3a55;
+  --wtr-tint-green-bg: #11281f;
+  --wtr-tint-green-fg: #63d9a4;
+  --wtr-tint-green-border: #1e4a38;
+  --wtr-tint-orange-bg: #2a1d12;
+  --wtr-tint-orange-fg: #f2a25e;
+  --wtr-tint-orange-border: #4a3420;
+  --wtr-tint-red-bg: #2a1212;
+  --wtr-tint-red-fg: #f28b82;
+  --wtr-tint-red-border: #4a2020;
+  --wtr-bar-pending: #3c6e8f;
+  --wtr-overlay: rgba(4, 7, 13, 0.7);
 }
 
 .wtr-mono {
@@ -16,13 +121,18 @@
 
 .wtr input::placeholder,
 .wtr textarea::placeholder {
-  color: #6b7893;
+  color: var(--wtr-dim);
+}
+
+.dark .wtr input[type='time']::-webkit-calendar-picker-indicator,
+.dark .wtr input[type='date']::-webkit-calendar-picker-indicator,
+.dark .wtr input[type='month']::-webkit-calendar-picker-indicator {
+  filter: invert(1);
 }
 
 .wtr input[type='time']::-webkit-calendar-picker-indicator,
 .wtr input[type='date']::-webkit-calendar-picker-indicator,
 .wtr input[type='month']::-webkit-calendar-picker-indicator {
-  filter: invert(1);
   opacity: 0.35;
   cursor: pointer;
 }
@@ -34,65 +144,68 @@
 }
 
 .wtr select option {
-  background: #0e1727;
-  color: #e6ecf6;
+  background: var(--wtr-input);
+  color: var(--wtr-text);
 }
 
-/* Shared input look (start/end/break, text fields, selects) */
+/* Shared input look */
 .wtr-input {
-  background: #0e1727;
-  border: 1px solid #1c2740;
+  background: var(--wtr-input);
+  border: 1px solid var(--wtr-border2);
   border-radius: 8px;
-  color: #e6ecf6;
+  color: var(--wtr-text);
   outline: none;
 }
 .wtr-input:focus {
-  border-color: #5ec8f2;
-  background: #111c30;
+  border-color: var(--wtr-accent);
+  background: var(--wtr-input-focus);
+}
+.wtr-input:disabled {
+  cursor: not-allowed;
 }
 
 /* Secondary button */
 .wtr-btn {
-  background: #162035;
-  border: 1px solid #253352;
+  background: var(--wtr-muted);
+  border: 1px solid var(--wtr-border3);
   border-radius: 8px;
-  color: #b9c6dc;
+  color: var(--wtr-btn-text);
   cursor: pointer;
-  font-family: 'Outfit', system-ui, sans-serif;
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
 }
 .wtr-btn:hover {
-  background: #1e2b47;
-  color: #fff;
+  background: var(--wtr-seg-active);
+  color: var(--wtr-text);
 }
 
 /* Ghost button */
 .wtr-ghost {
   background: transparent;
-  border: 1px solid #1c2740;
+  border: 1px solid var(--wtr-border2);
   border-radius: 8px;
-  color: #8c9ab4;
+  color: var(--wtr-text-sec);
   cursor: pointer;
-  font-family: 'Outfit', system-ui, sans-serif;
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
 }
 .wtr-ghost:hover {
-  color: #e6ecf6;
-  border-color: #2b3a5c;
+  color: var(--wtr-text);
+  border-color: var(--wtr-border4);
 }
 
 /* Primary (cyan) button */
 .wtr-primary {
-  background: #5ec8f2;
-  color: #061019;
+  background: var(--wtr-primary);
+  color: var(--wtr-primary-fg);
   border: 0;
   border-radius: 10px;
   cursor: pointer;
-  font-family: 'Outfit', system-ui, sans-serif;
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
   font-weight: 600;
 }
-.wtr-primary:hover {
-  background: #8adaf7;
+.wtr-primary:hover:not(:disabled) {
+  background: var(--wtr-primary-hover);
 }
 
 .wtr-row-hover:hover {
-  background: #101a2c;
+  background: var(--wtr-hover);
 }

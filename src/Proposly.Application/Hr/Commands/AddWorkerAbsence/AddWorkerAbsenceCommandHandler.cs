@@ -42,6 +42,27 @@ public sealed class AddWorkerAbsenceCommandHandler(
             throw new InvalidOperationException(
                 "That range contains no working days, so there is nothing to record.");
 
+        // Vacation consumes entitlement at approval. The HR surface is the admin view, so a
+        // missing entitlement row is created implicitly from the contract's annual figure
+        // instead of refusing like the self-service flow does.
+        if (command.Type == AbsenceType.Vacation)
+        {
+            var entitlement = await absences.GetEntitlementAsync(command.UserId, command.StartDate.Year, ct);
+            if (entitlement is null)
+            {
+                var latestTerms = await terms.GetLatestAsync(command.UserId, ct);
+                entitlement = AbsenceEntitlement.Create(
+                    currentUser.CompanyId, command.UserId, command.StartDate.Year,
+                    latestTerms?.AnnualVacationDays ?? 25, carriedOverDays: 0);
+                await absences.AddEntitlementAsync(entitlement, ct);
+            }
+
+            if (consumedDays > entitlement.RemainingDays)
+                throw new InvalidOperationException(
+                    $"Only {entitlement.RemainingDays} vacation day(s) remain for " +
+                    $"{command.StartDate.Year}; this absence needs {consumedDays}.");
+        }
+
         var request = AbsenceRequest.Create(
             currentUser.CompanyId, command.UserId, command.Type,
             command.StartDate, command.EndDate,

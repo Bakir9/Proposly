@@ -1,12 +1,14 @@
-import { useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { ChevronLeft, ChevronRight, Clock, Plus } from 'lucide-react'
+import { deleteWorkDay, getMyTimesheet, submitTimesheet, upsertWorkDay } from '@/api/timesheets'
+import { getApiErrorMessage } from '@/lib/api-errors'
 import './redesign.css'
 
 /*
- * "My working time" — month editor from the design handoff (Working Time.dc.html).
- * Frontend only: entries live in component state and persist to localStorage per month;
- * the backend wiring (load/save/submit) comes later.
+ * "My working time" — month editor from the design handoff, wired to the timesheets API.
+ * Edits save automatically per day (debounced); Submit month hands the sheet to approval.
  */
 
 interface DayEntry {
@@ -21,24 +23,6 @@ const DOW = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
 const TARGET_PER_DAY = 8
 
 const monthKey = (year: number, month: number) => `${year}-${String(month + 1).padStart(2, '0')}`
-const storageKey = (key: string) => `wtr-draft-${key}`
-
-function loadMonth(key: string): MonthEntries {
-  try {
-    const raw = localStorage.getItem(storageKey(key))
-    return raw ? (JSON.parse(raw) as MonthEntries) : {}
-  } catch {
-    return {}
-  }
-}
-
-function persistMonth(key: string, entries: MonthEntries) {
-  try {
-    localStorage.setItem(storageKey(key), JSON.stringify(entries))
-  } catch {
-    /* storage unavailable — draft stays in memory */
-  }
-}
 
 function hoursFor(e: DayEntry | undefined): number | null {
   if (!e || !e.start || !e.end) return null
@@ -80,44 +64,136 @@ const MONTH_NAMES = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ]
 
+const STATUS_COLOR: Record<string, [string, string]> = {
+  Draft: ['var(--wtr-btn-text)', 'var(--wtr-muted)'],
+  Submitted: ['var(--wtr-tint-cyan-fg)', 'var(--wtr-tint-cyan-bg)'],
+  Approved: ['var(--wtr-tint-green-fg)', 'var(--wtr-tint-green-bg)'],
+  Locked: ['var(--wtr-tint-orange-fg)', 'var(--wtr-tint-orange-bg)'],
+}
+
 export function WorkingTimePage() {
   const now = new Date()
+  const queryClient = useQueryClient()
   const [year, setYear] = useState(now.getFullYear())
-  const [month, setMonth] = useState(now.getMonth())
-  const [byMonth, setByMonth] = useState<Record<string, MonthEntries>>(() => {
-    const key = monthKey(now.getFullYear(), now.getMonth())
-    return { [key]: loadMonth(key) }
-  })
+  const [month, setMonth] = useState(now.getMonth()) // 0-based
+  // User edits overlaid on the server copy; null means "cleared".
+  const [localByKey, setLocalByKey] = useState<Record<string, Record<number, DayEntry | null>>>({})
+  const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
 
   const key = monthKey(year, month)
-  const entries = byMonth[key] ?? {}
 
-  function updateEntries(mutate: (prev: MonthEntries) => MonthEntries) {
-    setByMonth(prev => {
-      const next = mutate(prev[key] ?? {})
-      persistMonth(key, next)
-      return { ...prev, [key]: next }
-    })
+  const { data: sheet } = useQuery({
+    queryKey: ['wtr-timesheet', year, month + 1],
+    queryFn: () => getMyTimesheet(year, month + 1),
+  })
+
+  const serverEntries = useMemo(() => {
+    const entries: MonthEntries = {}
+    for (const d of sheet?.days ?? []) {
+      const day = Number(d.date.slice(8, 10))
+      entries[day] = {
+        start: d.startTime.slice(0, 5),
+        end: d.endTime.slice(0, 5),
+        brk: String(d.breakMinutes || ''),
+      }
+    }
+    return entries
+  }, [sheet])
+
+  const entries: MonthEntries = useMemo(() => {
+    const merged: MonthEntries = { ...serverEntries }
+    for (const [day, entry] of Object.entries(localByKey[key] ?? {})) {
+      if (entry === null) delete merged[Number(day)]
+      else merged[Number(day)] = entry
+    }
+    return merged
+  }, [serverEntries, localByKey, key])
+
+  const editable = !sheet || sheet.status === 'Draft'
+
+  const onError = (err: unknown) => {
+    toast.error(getApiErrorMessage(err))
+    queryClient.invalidateQueries({ queryKey: ['wtr-timesheet', year, month + 1] })
+  }
+
+  const dateOf = (day: number) => `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+
+  function persistDay(y: number, m: number, day: number, entry: DayEntry | null, hadServerEntry: boolean) {
+    if (entry && entry.start && entry.end && hoursFor(entry) != null) {
+      upsertWorkDay(y, m + 1, dateOf(day), {
+        startTime: entry.start,
+        endTime: entry.end,
+        breakMinutes: Number(entry.brk) || 0,
+      }).catch(onError)
+    } else if ((entry === null || !entry.start || !entry.end) && hadServerEntry) {
+      deleteWorkDay(y, m + 1, dateOf(day)).catch(onError)
+    }
   }
 
   function setField(day: number, field: keyof DayEntry, value: string) {
-    updateEntries(prev => {
-      const existing = prev[day] ?? { start: '', end: '', brk: '' }
-      return { ...prev, [day]: { ...existing, [field]: value } }
+    if (!editable) return
+    const current = entries[day] ?? { start: '', end: '', brk: '' }
+    const next = { ...current, [field]: value }
+    setLocalByKey(prev => ({ ...prev, [key]: { ...(prev[key] ?? {}), [day]: next } }))
+
+    const timerKey = `${key}-${day}`
+    clearTimeout(saveTimers.current[timerKey])
+    saveTimers.current[timerKey] = setTimeout(
+      () => persistDay(year, month, day, next, serverEntries[day] !== undefined),
+      700,
+    )
+  }
+
+  function fillWeek(group: DayInfo[]) {
+    if (!editable) return
+    const filled: DayEntry = { start: '08:00', end: '16:30', brk: '30' }
+    const weekdays = group.filter(d => !d.weekend)
+    setLocalByKey(prev => {
+      const monthLocal = { ...(prev[key] ?? {}) }
+      weekdays.forEach(d => (monthLocal[d.day] = filled))
+      return { ...prev, [key]: monthLocal }
     })
+    // Sequential: each upsert loads the same monthly timesheet aggregate, so parallel
+    // requests would race over its creation and drop days.
+    ;(async () => {
+      for (const d of weekdays)
+        await upsertWorkDay(year, month + 1, dateOf(d.day), { startTime: '08:00', endTime: '16:30', breakMinutes: 30 })
+    })()
+      .then(() => queryClient.invalidateQueries({ queryKey: ['wtr-timesheet', year, month + 1] }))
+      .catch(onError)
+  }
+
+  function clearWeek(group: DayInfo[]) {
+    if (!editable) return
+    setLocalByKey(prev => {
+      const monthLocal = { ...(prev[key] ?? {}) }
+      group.forEach(d => (monthLocal[d.day] = null))
+      return { ...prev, [key]: monthLocal }
+    })
+    ;(async () => {
+      for (const d of group.filter(x => serverEntries[x.day] !== undefined))
+        await deleteWorkDay(year, month + 1, dateOf(d.day))
+    })()
+      .then(() => queryClient.invalidateQueries({ queryKey: ['wtr-timesheet', year, month + 1] }))
+      .catch(onError)
+  }
+
+  function submit() {
+    submitTimesheet(year, month + 1)
+      .then(() => {
+        toast.success('Month submitted for approval.')
+        queryClient.invalidateQueries({ queryKey: ['wtr-timesheet', year, month + 1] })
+      })
+      .catch(err => toast.error(getApiErrorMessage(err)))
   }
 
   function navigate(delta: number) {
     const d = new Date(year, month + delta, 1)
-    const nextKey = monthKey(d.getFullYear(), d.getMonth())
     setYear(d.getFullYear())
     setMonth(d.getMonth())
-    setByMonth(prev => (prev[nextKey] ? prev : { ...prev, [nextKey]: loadMonth(nextKey) }))
   }
 
   const all = daysOf(year, month)
-
-  // Group into weeks (Monday starts a new group).
   const groups: DayInfo[][] = []
   all.forEach(d => {
     if (!groups.length || d.dow === 'Mo') groups.push([])
@@ -131,26 +207,34 @@ export function WorkingTimePage() {
   const recordedWorkdays = all.filter(d => !d.weekend && hoursFor(entries[d.day]) != null).length
   const balance = totalH - recordedWorkdays * TARGET_PER_DAY
   const pct = workdays === 0 ? 0 : Math.min(100, Math.round((recordedWorkdays / workdays) * 100))
+  const status = sheet?.status ?? 'Draft'
+  const [statusColor, statusBg] = STATUS_COLOR[status] ?? STATUS_COLOR.Draft
 
   return (
     <div className="wtr min-h-full px-8 pt-7 pb-16">
-      <div className="max-w-[1180px] mx-auto flex flex-col gap-[22px]">
+      <div className="max-w-[1400px] mx-auto flex flex-col gap-[22px]">
         {/* Header */}
         <div className="flex items-start justify-between gap-6 flex-wrap">
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center gap-[11px]">
-              <Clock className="h-[22px] w-[22px] text-[#5EC8F2]" strokeWidth={1.8} />
+              <Clock className="h-[22px] w-[22px] text-[color:var(--wtr-accent)]" strokeWidth={1.8} />
               <h1 className="m-0 text-[25px] font-semibold tracking-[-0.4px]">My working time</h1>
+              <span
+                className="text-[11px] font-semibold tracking-[0.4px] px-2 py-0.5 rounded-full whitespace-nowrap"
+                style={{ color: statusColor, background: statusBg }}
+              >
+                {status}
+              </span>
             </div>
-            <p className="m-0 text-sm text-[#8C9AB4] max-w-[52ch]">
+            <p className="m-0 text-sm text-[color:var(--wtr-text-sec)] max-w-[52ch]">
               Fill a whole week in one go, then adjust the days that were different.
             </p>
           </div>
           <div className="flex items-center gap-2.5">
-            <div className="flex items-center gap-0.5 bg-[#0E1524] border border-[#1C2740] rounded-[10px] p-1">
+            <div className="flex items-center gap-0.5 bg-[color:var(--wtr-head)] border border-[color:var(--wtr-border2)] rounded-[10px] p-1">
               <button
                 onClick={() => navigate(-1)}
-                className="w-[30px] h-[30px] grid place-items-center bg-transparent border-0 rounded-[7px] text-[#8C9AB4] cursor-pointer hover:bg-[#18223A] hover:text-[#E6ECF6]"
+                className="w-[30px] h-[30px] grid place-items-center bg-transparent border-0 rounded-[7px] text-[color:var(--wtr-text-sec)] cursor-pointer hover:bg-[color:var(--wtr-muted)] hover:text-[color:var(--wtr-text)]"
               >
                 <ChevronLeft className="h-[15px] w-[15px]" strokeWidth={2.2} />
               </button>
@@ -159,14 +243,15 @@ export function WorkingTimePage() {
               </div>
               <button
                 onClick={() => navigate(1)}
-                className="w-[30px] h-[30px] grid place-items-center bg-transparent border-0 rounded-[7px] text-[#8C9AB4] cursor-pointer hover:bg-[#18223A] hover:text-[#E6ECF6]"
+                className="w-[30px] h-[30px] grid place-items-center bg-transparent border-0 rounded-[7px] text-[color:var(--wtr-text-sec)] cursor-pointer hover:bg-[color:var(--wtr-muted)] hover:text-[color:var(--wtr-text)]"
               >
                 <ChevronRight className="h-[15px] w-[15px]" strokeWidth={2.2} />
               </button>
             </div>
             <button
-              onClick={() => toast.info('Submit is not wired up yet — the backend endpoint follows.')}
-              className="wtr-primary h-10 px-[18px] text-sm"
+              onClick={submit}
+              disabled={!editable || recorded === 0}
+              className="wtr-primary h-10 px-[18px] text-sm disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Submit month
             </button>
@@ -174,43 +259,43 @@ export function WorkingTimePage() {
         </div>
 
         {/* Stat strip */}
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-px bg-[#162035] border border-[#162035] rounded-[14px] overflow-hidden">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-px bg-[color:var(--wtr-border)] border border-[color:var(--wtr-border)] rounded-[14px] overflow-hidden">
           <StatCell label="Recorded" sub={`${recorded} of ${all.length} days recorded`}>
             <span className="wtr-mono text-2xl font-medium">
               {fmt(totalH)}
-              <span className="text-sm text-[#7B89A3] ml-[3px]">h</span>
+              <span className="text-sm text-[color:var(--wtr-dim2)] ml-[3px]">h</span>
             </span>
           </StatCell>
           <StatCell label="Monthly target" sub={`${workdays} workdays × ${TARGET_PER_DAY} h`}>
-            <span className="wtr-mono text-2xl font-medium text-[#C3CDDF]">
+            <span className="wtr-mono text-2xl font-medium text-[color:var(--wtr-text2)]">
               {targetH.toFixed(0)}
-              <span className="text-sm text-[#7B89A3] ml-[3px]">h</span>
+              <span className="text-sm text-[color:var(--wtr-dim2)] ml-[3px]">h</span>
             </span>
           </StatCell>
           <StatCell label="Balance" sub="vs. target so far">
             <span
               className="wtr-mono text-2xl font-medium"
               style={{
-                color: Math.abs(balance) < 0.01 ? '#C3CDDF' : balance > 0 ? '#63D9A4' : '#F2A25E',
+                color: Math.abs(balance) < 0.01 ? 'var(--wtr-text2)' : balance > 0 ? 'var(--wtr-tint-green-fg)' : 'var(--wtr-tint-orange-fg)',
               }}
             >
               {balance >= 0 ? '+' : '−'}
               {fmt(Math.abs(balance))}
-              <span className="text-sm text-[#7B89A3] ml-[3px]">h</span>
+              <span className="text-sm text-[color:var(--wtr-dim2)] ml-[3px]">h</span>
             </span>
           </StatCell>
-          <div className="bg-[#0C1322] px-[18px] py-4 flex flex-col gap-2.5 justify-center">
+          <div className="bg-[color:var(--wtr-panel)] px-[18px] py-4 flex flex-col gap-2.5 justify-center">
             <div className="flex items-baseline justify-between gap-2">
-              <span className="text-[11px] font-semibold tracking-[1px] uppercase text-[#7B89A3]">Draft</span>
-              <span className="wtr-mono text-[13px] text-[#C3CDDF]">{pct}%</span>
+              <span className="text-[11px] font-semibold tracking-[1px] uppercase text-[color:var(--wtr-dim2)]">{status}</span>
+              <span className="wtr-mono text-[13px] text-[color:var(--wtr-text2)]">{pct}%</span>
             </div>
-            <div className="h-1.5 rounded-full bg-[#18223A] overflow-hidden">
+            <div className="h-1.5 rounded-full bg-[color:var(--wtr-muted)] overflow-hidden">
               <div
                 className="h-full rounded-full"
-                style={{ width: `${pct}%`, background: 'linear-gradient(90deg,#3C9BD6,#5EC8F2)' }}
+                style={{ width: `${pct}%`, background: 'linear-gradient(90deg,#3C9BD6,var(--wtr-accent))' }}
               />
             </div>
-            <div className="text-[12.5px] text-[#7B89A3]">{workdays - recordedWorkdays} workdays left to fill</div>
+            <div className="text-[12.5px] text-[color:var(--wtr-dim2)]">{workdays - recordedWorkdays} workdays left to fill</div>
           </div>
         </div>
 
@@ -222,41 +307,32 @@ export function WorkingTimePage() {
             year={year}
             month={month}
             entries={entries}
+            editable={editable}
             onSet={setField}
-            onFill={() =>
-              updateEntries(prev => {
-                const next = { ...prev }
-                g.filter(d => !d.weekend).forEach(d => {
-                  next[d.day] = { start: '08:00', end: '16:30', brk: '30' }
-                })
-                return next
-              })
-            }
-            onClear={() =>
-              updateEntries(prev => {
-                const next = { ...prev }
-                g.forEach(d => delete next[d.day])
-                return next
-              })
-            }
+            onFill={() => fillWeek(g)}
+            onClear={() => clearWeek(g)}
           />
         ))}
 
         {/* Legend */}
-        <div className="flex items-center gap-[18px] text-[12.5px] text-[#8391AB] pt-0.5 flex-wrap">
+        <div className="flex items-center gap-[18px] text-[12.5px] text-[color:var(--wtr-label)] pt-0.5 flex-wrap">
           <span className="flex items-center gap-[7px]">
-            <span className="w-[5px] h-[5px] rounded-full bg-[#5EC8F2]" />
+            <span className="w-[5px] h-[5px] rounded-full bg-[color:var(--wtr-accent)]" />
             Recorded
           </span>
           <span className="flex items-center gap-[7px]">
-            <span className="w-[5px] h-[5px] rounded-full bg-[#2E3A54]" />
+            <span className="w-[5px] h-[5px] rounded-full bg-[color:var(--wtr-dot-empty)]" />
             Not yet filled
           </span>
           <span className="flex items-center gap-[7px]">
-            <span className="w-2.5 h-2.5 rounded-[3px] bg-[#080D17] border border-[#18223A]" />
+            <span className="w-2.5 h-2.5 rounded-[3px] bg-[color:var(--wtr-weekend)] border border-[color:var(--wtr-muted)]" />
             Weekend
           </span>
-          <span className="ml-auto">Times are stored in your local timezone · draft saves automatically</span>
+          <span className="ml-auto">
+            {editable
+              ? 'Times are stored in your local timezone · changes save automatically'
+              : 'This month is submitted — reopen it from Approvals to edit.'}
+          </span>
         </div>
       </div>
     </div>
@@ -265,10 +341,10 @@ export function WorkingTimePage() {
 
 function StatCell({ label, sub, children }: { label: string; sub: string; children: React.ReactNode }) {
   return (
-    <div className="bg-[#0C1322] px-[18px] py-4 flex flex-col gap-[7px]">
-      <div className="text-[11px] font-semibold tracking-[1px] uppercase text-[#7B89A3]">{label}</div>
+    <div className="bg-[color:var(--wtr-panel)] px-[18px] py-4 flex flex-col gap-[7px]">
+      <div className="text-[11px] font-semibold tracking-[1px] uppercase text-[color:var(--wtr-dim2)]">{label}</div>
       {children}
-      <div className="text-[12.5px] text-[#7B89A3]">{sub}</div>
+      <div className="text-[12.5px] text-[color:var(--wtr-dim2)]">{sub}</div>
     </div>
   )
 }
@@ -280,6 +356,7 @@ function WeekCard({
   year,
   month,
   entries,
+  editable,
   onSet,
   onFill,
   onClear,
@@ -288,6 +365,7 @@ function WeekCard({
   year: number
   month: number
   entries: MonthEntries
+  editable: boolean
   onSet: (day: number, field: keyof DayEntry, value: string) => void
   onFill: () => void
   onClear: () => void
@@ -298,75 +376,78 @@ function WeekCard({
   const monthShort = MONTH_NAMES[month].slice(0, 3)
 
   return (
-    <div className="border border-[#162035] rounded-[14px] bg-[#0A101C] overflow-hidden">
-      {/* Week header */}
-      <div className="flex items-center justify-between gap-4 px-[18px] py-[13px] bg-[#0E1524] border-b border-[#162035] flex-wrap">
+    <div className="border border-[color:var(--wtr-border)] rounded-[14px] bg-[color:var(--wtr-card)] overflow-hidden">
+      <div className="flex items-center justify-between gap-4 px-[18px] py-[13px] bg-[color:var(--wtr-head)] border-b border-[color:var(--wtr-border)] flex-wrap">
         <div className="flex items-center gap-3">
           <span className="text-sm font-semibold">Week {weekNo}</span>
-          <span className="text-[12.5px] text-[#7B89A3]">
+          <span className="text-[12.5px] text-[color:var(--wtr-dim2)]">
             {monthShort} {days[0].day} – {days[days.length - 1].day}
           </span>
         </div>
         <div className="flex items-center gap-2.5">
-          <button onClick={onFill} className="wtr-btn h-8 px-[13px] flex items-center gap-[7px] text-[12.5px] font-medium">
+          <button
+            onClick={onFill}
+            disabled={!editable}
+            className="wtr-btn h-8 px-[13px] flex items-center gap-[7px] text-[12.5px] font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+          >
             <Plus className="h-[13px] w-[13px]" strokeWidth={2.2} />
             Fill Mon–Fri
           </button>
-          <button onClick={onClear} className="wtr-ghost h-8 px-[11px] text-[12.5px]">
+          <button onClick={onClear} disabled={!editable} className="wtr-ghost h-8 px-[11px] text-[12.5px] disabled:opacity-40 disabled:cursor-not-allowed">
             Clear
           </button>
-          <div className="flex items-baseline gap-1.5 pl-1.5 border-l border-[#1C2740]">
+          <div className="flex items-baseline gap-1.5 pl-1.5 border-l border-[color:var(--wtr-border2)]">
             <span
               className="wtr-mono text-[15px] font-medium"
-              style={{ color: total === 0 ? '#6B7893' : total >= weekTarget ? '#63D9A4' : '#E6ECF6' }}
+              style={{ color: total === 0 ? 'var(--wtr-dim)' : total >= weekTarget ? 'var(--wtr-tint-green-fg)' : 'var(--wtr-text)' }}
             >
               {fmt(total)}
             </span>
-            <span className="text-xs text-[#7B89A3]">/ {weekTarget} h</span>
+            <span className="text-xs text-[color:var(--wtr-dim2)]">/ {weekTarget} h</span>
           </div>
         </div>
       </div>
 
-      {/* Column headers */}
-      <div className={`${GRID} px-[18px] py-[9px] border-b border-[#121B2D]`}>
+      <div className={`${GRID} px-[18px] py-[9px] border-b border-[color:var(--wtr-row-border)]`}>
         {['Day', 'Start', 'End', 'Break', 'Hours'].map((h, i) => (
           <div
             key={h}
-            className={`text-[11px] font-semibold tracking-[0.9px] uppercase text-[#8391AB] ${i === 4 ? 'text-right' : ''}`}
+            className={`text-[11px] font-semibold tracking-[0.9px] uppercase text-[color:var(--wtr-label)] ${i === 4 ? 'text-right' : ''}`}
           >
             {h}
           </div>
         ))}
       </div>
 
-      {/* Day rows */}
       {days.map(d => {
         const e = entries[d.day]
         const h = hoursFor(e)
         const filled = h != null
         const inputStyle = {
-          background: d.weekend ? '#0B1120' : '#0E1727',
-          borderColor: filled ? '#28405C' : '#18223A',
+          background: d.weekend ? 'var(--wtr-input-weekend)' : 'var(--wtr-input)',
+          borderColor: filled ? 'var(--wtr-border-active)' : 'var(--wtr-muted)',
+          opacity: editable ? 1 : 0.6,
         }
         return (
           <div
             key={d.day}
-            className={`${GRID} items-center px-[18px] py-[7px] border-b border-[#0F1727] wtr-row-hover`}
-            style={{ background: d.weekend ? '#080D17' : 'transparent' }}
+            className={`${GRID} items-center px-[18px] py-[7px] border-b border-[color:var(--wtr-row-border)] wtr-row-hover`}
+            style={{ background: d.weekend ? 'var(--wtr-weekend)' : 'transparent' }}
           >
             <div className="flex items-center gap-[9px]">
               <span
                 className="w-[5px] h-[5px] rounded-full flex-none"
-                style={{ background: filled ? '#5EC8F2' : d.weekend ? '#1B2439' : '#2E3A54' }}
+                style={{ background: filled ? 'var(--wtr-accent)' : d.weekend ? 'var(--wtr-dot-weekend)' : 'var(--wtr-dot-empty)' }}
               />
-              <span className="text-[13px] text-[#8C9AB4] w-[22px]">{d.dow}</span>
-              <span className="wtr-mono text-sm font-medium" style={{ color: d.weekend ? '#7B89A3' : '#E6ECF6' }}>
+              <span className="text-[13px] text-[color:var(--wtr-text-sec)] w-[22px]">{d.dow}</span>
+              <span className="wtr-mono text-sm font-medium" style={{ color: d.weekend ? 'var(--wtr-dim2)' : 'var(--wtr-text)' }}>
                 {String(d.day).padStart(2, '0')}
               </span>
             </div>
             <input
               type="time"
               value={e?.start ?? ''}
+              disabled={!editable}
               onChange={ev => onSet(d.day, 'start', ev.target.value)}
               className="wtr-input wtr-mono h-9 w-full px-2.5 text-sm"
               style={inputStyle}
@@ -374,6 +455,7 @@ function WeekCard({
             <input
               type="time"
               value={e?.end ?? ''}
+              disabled={!editable}
               onChange={ev => onSet(d.day, 'end', ev.target.value)}
               className="wtr-input wtr-mono h-9 w-full px-2.5 text-sm"
               style={inputStyle}
@@ -385,15 +467,16 @@ function WeekCard({
                 step={5}
                 placeholder="—"
                 value={e?.brk ?? ''}
+                disabled={!editable}
                 onChange={ev => onSet(d.day, 'brk', ev.target.value)}
                 className="wtr-input wtr-mono h-9 w-full pl-2.5 pr-[34px] text-sm"
                 style={inputStyle}
               />
-              <span className="absolute right-2.5 top-2.5 text-xs text-[#8C9AB4] pointer-events-none">min</span>
+              <span className="absolute right-2.5 top-2.5 text-xs text-[color:var(--wtr-text-sec)] pointer-events-none">min</span>
             </div>
             <div
               className="wtr-mono text-right text-sm font-medium"
-              style={{ color: filled ? '#E6ECF6' : '#6B7893' }}
+              style={{ color: filled ? 'var(--wtr-text)' : 'var(--wtr-dim)' }}
             >
               {fmt(h)}
             </div>

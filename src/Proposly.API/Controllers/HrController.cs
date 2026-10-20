@@ -8,6 +8,7 @@ using Proposly.Application.Hr.Commands.AddWorkerNote;
 using Proposly.Application.Hr.Commands.DeleteWorkerFile;
 using Proposly.Application.Hr.Commands.DeleteWorkerNote;
 using Proposly.Application.Hr.Commands.InviteWorker;
+using Proposly.Application.Hr.Commands.SetWorkerDocumentCategory;
 using Proposly.Application.Hr.Commands.SetWorkerNotePinned;
 using Proposly.Application.Hr.Commands.UpdateWorker;
 using Proposly.Application.Hr.Commands.UploadWorkerFile;
@@ -116,6 +117,18 @@ public sealed class HrController : ControllerBase
         return NoContent();
     }
 
+    [HttpPut("workers/{userId:guid}/documents/{documentId:guid}/category")]
+    public async Task<IActionResult> SetDocumentCategory(
+        Guid userId,
+        Guid documentId,
+        [FromBody] SetCategoryRequest request,
+        [FromServices] ICommandHandler<SetWorkerDocumentCategoryCommand> handler,
+        CancellationToken ct)
+    {
+        await handler.HandleAsync(new SetWorkerDocumentCategoryCommand(userId, documentId, request.Category), ct);
+        return NoContent();
+    }
+
     [HttpPost("workers/{userId:guid}/files")]
     [RequestSizeLimit(30 * 1024 * 1024)]
     public async Task<ActionResult<WorkerDocumentResponse?>> UploadFile(
@@ -166,4 +179,5 @@ public sealed class HrController : ControllerBase
     public sealed record AddWorkerAbsenceRequest(AbsenceType Type, DateOnly StartDate, DateOnly EndDate);
     public sealed record AddNoteRequest(string Tag, string Text);
     public sealed record PinNoteRequest(bool Pinned);
+    public sealed record SetCategoryRequest(string Category);
 }

@@ -1,47 +1,54 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* App-wide palette (user-defined):
+   Light — soft grey, not stark white: bg #E4E8EF, cards #F2F4F8, headers #E9EDF4,
+     borders #D6DBE4/#DDE2EA, text #14171F/#6B7280/#8A919E, accent #3466F6 (hover #1F4FD8).
+   Dark — handoff navy: bg #070B14, cards #0A101C, headers #0E1524, borders #162035/#1C2740,
+     text #E6ECF6/#8C9AB4/#6B7893, accent #5EC8F2 (text on accent #061019). */
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --background: 218 26% 92%;        /* #E4E8EF */
+    --foreground: 224 22% 10%;        /* #14171F */
+    --card: 220 30% 96%;              /* #F2F4F8 */
+    --card-foreground: 224 22% 10%;
+    --border: 219 21% 87%;            /* #D6DBE4 */
+    --input: 219 21% 87%;
+    --primary: 225 92% 58%;           /* #3466F6 */
+    --primary-foreground: 0 0% 100%;  /* #FFFFFF */
+    --secondary: 218 33% 94%;         /* #E9EDF4 */
+    --secondary-foreground: 224 22% 10%;
+    --muted: 218 33% 94%;             /* #E9EDF4 */
+    --muted-foreground: 220 9% 46%;   /* #6B7280 */
+    --accent: 218 35% 94%;            /* #EAEEF5 row hover */
+    --accent-foreground: 224 22% 10%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
-    --ring: 221.2 83.2% 53.3%;
+    --ring: 225 92% 58%;              /* focus = accent */
     --radius: 0.5rem;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 47.4% 8%;
-    --card-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --background: 222 48% 5%;         /* #070B14 */
+    --foreground: 218 47% 93%;        /* #E6ECF6 */
+    --card: 220 47% 7%;               /* #0A101C */
+    --card-foreground: 218 47% 93%;
+    --border: 221 41% 15%;            /* #162035 */
+    --input: 222 39% 18%;             /* #1C2740 */
+    --primary: 197 85% 66%;           /* #5EC8F2 */
+    --primary-foreground: 208 61% 6%; /* #061019 */
+    --secondary: 221 44% 10%;         /* #0E1524 */
+    --secondary-foreground: 218 47% 93%;
+    --muted: 221 44% 10%;             /* #0E1524 */
+    --muted-foreground: 219 21% 63%;  /* #8C9AB4 */
+    --accent: 219 47% 12%;            /* #101A2C row hover */
+    --accent-foreground: 218 47% 93%;
     --destructive: 0 62.8% 50%;
     --destructive-foreground: 210 40% 98%;
-    --ring: 224.3 76.3% 48%;
+    --ring: 197 85% 66%;              /* focus = accent */
   }
 
   * {
@@ -52,6 +59,7 @@
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
     margin: 0;
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
   }
 
   input[type="date"],

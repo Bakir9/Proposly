@@ -1,17 +1,25 @@
 import { useRef, useState } from 'react'
 import { Upload } from 'lucide-react'
 import type { CvEntry, Worker } from './types'
-import { fmtDate, fmtSize, today } from './types'
+import { fmtDate, fmtSize } from './types'
 import { AddButton, Card, CardHeader, EmptyRow, Field, FileIcon, INPUT, INPUT_MONO, RemoveButton } from './primitives'
-import type { UpdateWorker } from './TeamSettingsShared'
+import type { UpdateWorker, WorkerActions } from './TeamSettingsShared'
 
-export function CvTab({ worker: w, upd }: { worker: Worker; upd: UpdateWorker }) {
+export function CvTab({
+  worker: w,
+  upd,
+  actions,
+}: {
+  worker: Worker
+  upd: UpdateWorker
+  actions: WorkerActions
+}) {
   const cvRef = useRef<HTMLInputElement>(null)
   const [drag, setDrag] = useState(false)
   const [skillDraft, setSkillDraft] = useState('')
 
   function setCv(file: File | null | undefined) {
-    if (file) upd({ cvFile: { name: file.name, size: file.size, date: today(), url: URL.createObjectURL(file) } })
+    if (file) actions.uploadCv(file)
   }
 
   function addSkill() {
@@ -50,38 +58,25 @@ export function CvTab({ worker: w, upd }: { worker: Worker; upd: UpdateWorker })
         <CardHeader title="CV" sub="Upload their CV file, add details manually below — or both." />
         <div className="p-5">
           {w.cvFile ? (
-            <div className="flex items-center gap-3.5 px-4 py-3.5 rounded-[10px] border border-[#253352] bg-[#0E1727] flex-wrap">
+            <div className="flex items-center gap-3.5 px-4 py-3.5 rounded-[10px] border border-[color:var(--wtr-border3)] bg-[color:var(--wtr-input)] flex-wrap">
               <FileIcon />
               <div className="flex-1 min-w-[180px] flex flex-col gap-[3px]">
                 <span className="text-sm font-medium break-all">{w.cvFile.name}</span>
-                <span className="text-[12.5px] text-[#8C9AB4]">
+                <span className="text-[12.5px] text-[color:var(--wtr-text-sec)]">
                   {fmtSize(w.cvFile.size)} · uploaded {fmtDate(w.cvFile.date)}
                 </span>
               </div>
               <div className="flex gap-2 flex-wrap">
-                <a
-                  href={w.cvFile.url}
-                  target="_blank"
-                  rel="noopener"
-                  title={w.cvFile.url ? '' : 'Sample file — upload a real one to open it'}
-                  className="wtr-ghost h-8 px-3 flex items-center text-[12.5px] font-medium no-underline"
-                  style={{ opacity: w.cvFile.url ? 1 : 0.4 }}
-                >
-                  View
-                </a>
-                <a
-                  href={w.cvFile.url}
-                  download={w.cvFile.name}
-                  title={w.cvFile.url ? '' : 'Sample file — upload a real one to open it'}
-                  className="wtr-ghost h-8 px-3 flex items-center text-[12.5px] font-medium no-underline"
-                  style={{ opacity: w.cvFile.url ? 1 : 0.4 }}
+                <button
+                  onClick={() => actions.downloadCv(w.cvFile!.name)}
+                  className="wtr-ghost h-8 px-3 text-[12.5px] font-medium"
                 >
                   Download
-                </a>
+                </button>
                 <button onClick={() => cvRef.current?.click()} className="wtr-ghost h-8 px-3 text-[12.5px] font-medium">
                   Replace
                 </button>
-                <button onClick={() => upd({ cvFile: null })} className="wtr-ghost h-8 px-3 text-[12.5px] font-medium">
+                <button onClick={() => actions.removeCv()} className="wtr-ghost h-8 px-3 text-[12.5px] font-medium">
                   Remove
                 </button>
               </div>
@@ -90,12 +85,12 @@ export function CvTab({ worker: w, upd }: { worker: Worker; upd: UpdateWorker })
             <button
               onClick={() => cvRef.current?.click()}
               {...dragProps}
-              className="w-full px-4 py-[22px] rounded-[10px] bg-transparent text-[#E6ECF6] flex flex-col items-center gap-1.5 cursor-pointer"
-              style={{ border: `1px dashed ${drag ? '#5EC8F2' : '#253352'}` }}
+              className="w-full px-4 py-[22px] rounded-[10px] bg-transparent text-[color:var(--wtr-text)] flex flex-col items-center gap-1.5 cursor-pointer"
+              style={{ border: `1px dashed ${drag ? 'var(--wtr-accent)' : 'var(--wtr-border3)'}` }}
             >
-              <Upload className="h-4 w-4 text-[#5EC8F2]" strokeWidth={2} />
+              <Upload className="h-4 w-4 text-[color:var(--wtr-accent)]" strokeWidth={2} />
               <span className="text-sm font-medium">Upload CV</span>
-              <span className="text-[12.5px] text-[#8C9AB4]">Drop a PDF or Word file, or click to browse</span>
+              <span className="text-[12.5px] text-[color:var(--wtr-text-sec)]">Drop a PDF or Word file, or click to browse</span>
             </button>
           )}
         </div>
@@ -126,13 +121,13 @@ export function CvTab({ worker: w, upd }: { worker: Worker; upd: UpdateWorker })
               {w.skills.map(s => (
                 <span
                   key={s}
-                  className="flex items-center gap-1.5 h-[30px] pl-3 pr-1.5 whitespace-nowrap rounded-full bg-[#12253A] text-[#9BE0FA] text-[13px] font-medium"
+                  className="flex items-center gap-1.5 h-[30px] pl-3 pr-1.5 whitespace-nowrap rounded-full bg-[color:var(--wtr-tint-cyan-bg)] text-[color:var(--wtr-tint-cyan-fg)] text-[13px] font-medium"
                 >
                   {s}
                   <button
                     onClick={() => upd(x => ({ skills: x.skills.filter(y => y !== s) }))}
                     aria-label="Remove"
-                    className="w-5 h-5 rounded-full border-0 bg-transparent text-[#9BE0FA] grid place-items-center cursor-pointer p-0 hover:bg-[#1E3A55]"
+                    className="w-5 h-5 rounded-full border-0 bg-transparent text-[color:var(--wtr-tint-cyan-fg)] grid place-items-center cursor-pointer p-0 hover:bg-[color:var(--wtr-tint-cyan-hover)]"
                   >
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
                       <path d="M6 6l12 12M18 6 6 18" />
@@ -170,7 +165,7 @@ export function CvTab({ worker: w, upd }: { worker: Worker; upd: UpdateWorker })
           {w.langs.map((l, i) => (
             <div
               key={i}
-              className="grid grid-cols-[minmax(0,1fr)_120px_auto] gap-2.5 items-center px-5 py-2.5 border-b border-[#0F1727]"
+              className="grid grid-cols-[minmax(0,1fr)_120px_auto] gap-2.5 items-center px-5 py-2.5 border-b border-[color:var(--wtr-row-border)]"
             >
               <input
                 type="text"
@@ -226,7 +221,7 @@ function CvEntryList({
         action={<AddButton onClick={() => onChange([...entries, { a: '', b: '', from: '', to: '', desc: '' }])} />}
       />
       {entries.map((x, i) => (
-        <div key={i} className="px-5 py-3.5 border-b border-[#0F1727] flex flex-col gap-2.5">
+        <div key={i} className="px-5 py-3.5 border-b border-[color:var(--wtr-row-border)] flex flex-col gap-2.5">
           <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-2.5">
             <Field label={labels.a}>
               <input type="text" value={x.a} placeholder={labels.a} onChange={e => set(i, 'a', e.target.value)} className={`${INPUT} !h-9`} />

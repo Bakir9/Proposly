@@ -4,7 +4,7 @@ import type { ReactNode } from 'react'
 
 export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
-    <div className={`border border-[#162035] rounded-[14px] bg-[#0A101C] overflow-hidden ${className}`}>
+    <div className={`border border-[color:var(--wtr-border)] rounded-[14px] bg-[color:var(--wtr-card)] overflow-hidden ${className}`}>
       {children}
     </div>
   )
@@ -20,10 +20,10 @@ export function CardHeader({
   action?: ReactNode
 }) {
   return (
-    <div className="px-5 py-4 flex items-center justify-between gap-3 border-b border-[#162035] flex-wrap">
+    <div className="px-5 py-4 flex items-center justify-between gap-3 border-b border-[color:var(--wtr-border)] flex-wrap">
       <div className="flex flex-col gap-1">
         <h2 className="m-0 text-[15px] font-semibold">{title}</h2>
-        {sub && <p className="m-0 text-[13px] text-[#8C9AB4]">{sub}</p>}
+        {sub && <p className="m-0 text-[13px] text-[color:var(--wtr-text-sec)]">{sub}</p>}
       </div>
       {action}
     </div>
@@ -41,9 +41,9 @@ export function Field({
 }) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="text-[12.5px] font-medium text-[#8C9AB4]">
+      <span className="text-[12.5px] font-medium text-[color:var(--wtr-text-sec)]">
         {label}
-        {hint && <span className="text-[#8391AB]"> · {hint}</span>}
+        {hint && <span className="text-[color:var(--wtr-label)]"> · {hint}</span>}
       </span>
       {children}
     </label>
@@ -66,15 +66,15 @@ export function Segmented<T extends string>({
   className?: string
 }) {
   return (
-    <div className={`flex gap-1 bg-[#0E1524] border border-[#1C2740] rounded-[10px] p-1 flex-wrap ${className}`}>
+    <div className={`flex gap-1 bg-[color:var(--wtr-head)] border border-[color:var(--wtr-border2)] rounded-[10px] p-1 flex-wrap ${className}`}>
       {options.map(o => (
         <button
           key={o}
           onClick={() => onChange(o)}
           className="h-8 px-3.5 rounded-[7px] border-0 text-[13.5px] font-medium cursor-pointer whitespace-nowrap"
           style={{
-            background: o === value ? '#1E2B47' : 'transparent',
-            color: o === value ? '#E6ECF6' : '#8C9AB4',
+            background: o === value ? 'var(--wtr-active-bg)' : 'transparent',
+            color: o === value ? 'var(--wtr-active-fg)' : 'var(--wtr-text-sec)',
           }}
         >
           {o}
@@ -90,11 +90,11 @@ export function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
       onClick={onClick}
       aria-pressed={on}
       className="w-[42px] h-6 rounded-full border-0 p-[3px] cursor-pointer flex-none"
-      style={{ background: on ? '#5EC8F2' : '#1C2740' }}
+      style={{ background: on ? 'var(--wtr-accent)' : 'var(--wtr-border2)' }}
     >
       <span
         className="block w-[18px] h-[18px] rounded-full transition-transform duration-150"
-        style={{ background: on ? '#061019' : '#8391AB', transform: `translateX(${on ? 18 : 0}px)` }}
+        style={{ background: on ? 'var(--wtr-on-accent)' : 'var(--wtr-label)', transform: `translateX(${on ? 18 : 0}px)` }}
       />
     </button>
   )
@@ -120,10 +120,10 @@ export function RemoveButton({ onClick, className = '' }: { onClick: () => void;
 }
 
 export function EmptyRow({ children }: { children: ReactNode }) {
-  return <div className="px-5 py-6 text-center text-[13px] text-[#8C9AB4]">{children}</div>
+  return <div className="px-5 py-6 text-center text-[13px] text-[color:var(--wtr-text-sec)]">{children}</div>
 }
 
-export const SECTION_LABEL = 'text-[11px] font-semibold tracking-[0.9px] uppercase text-[#8391AB]'
+export const SECTION_LABEL = 'text-[11px] font-semibold tracking-[0.9px] uppercase text-[color:var(--wtr-label)]'
 
 export function FileIcon({ size = 18, muted = false }: { size?: number; muted?: boolean }) {
   return (
@@ -132,8 +132,8 @@ export function FileIcon({ size = 18, muted = false }: { size?: number; muted?: 
       style={{
         width: size + 22,
         height: size + 22,
-        background: muted ? '#121B2D' : '#12253A',
-        color: muted ? '#8C9AB4' : '#9BE0FA',
+        background: muted ? 'var(--wtr-row-border)' : 'var(--wtr-tint-cyan-bg)',
+        color: muted ? 'var(--wtr-text-sec)' : 'var(--wtr-tint-cyan-fg)',
       }}
     >
       <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round">

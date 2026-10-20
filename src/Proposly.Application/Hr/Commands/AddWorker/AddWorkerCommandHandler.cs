@@ -13,6 +13,7 @@ public sealed class AddWorkerCommandHandler(
     IUserRepository users,
     IEmployeeProfileRepository profiles,
     IEmploymentTermsRepository terms,
+    IAbsenceRepository absences,
     ICurrentUserService currentUser) : ICommandHandler<AddWorkerCommand, Guid>
 {
     public async Task<Guid> HandleAsync(AddWorkerCommand command, CancellationToken ct = default)
@@ -38,6 +39,12 @@ public sealed class AddWorkerCommandHandler(
                 MondayHours: dailyDefault, TuesdayHours: dailyDefault, WednesdayHours: dailyDefault,
                 ThursdayHours: dailyDefault, FridayHours: dailyDefault));
         await terms.AddAsync(initialTerms, ct);
+
+        // The current year's entitlement row exists from day one — absence approval consumes
+        // from it, and a missing row would make the first vacation approval fail.
+        await absences.AddEntitlementAsync(
+            AbsenceEntitlement.Create(currentUser.CompanyId, user.Id, DateTime.UtcNow.Year,
+                entitledDays: 25, carriedOverDays: 0), ct);
 
         await profiles.SaveChangesAsync(ct);
         return user.Id;

@@ -16,6 +16,7 @@ public sealed class AddWorkerCommandHandlerTests
     private readonly IUserRepository _users = Substitute.For<IUserRepository>();
     private readonly IEmployeeProfileRepository _profiles = Substitute.For<IEmployeeProfileRepository>();
     private readonly IEmploymentTermsRepository _terms = Substitute.For<IEmploymentTermsRepository>();
+    private readonly IAbsenceRepository _absences = Substitute.For<IAbsenceRepository>();
     private readonly ICurrentUserService _currentUser = Substitute.For<ICurrentUserService>();
     private readonly AddWorkerCommandHandler _sut;
 
@@ -24,7 +25,7 @@ public sealed class AddWorkerCommandHandlerTests
     public AddWorkerCommandHandlerTests()
     {
         _currentUser.CompanyId.Returns(_companyId);
-        _sut = new AddWorkerCommandHandler(_users, _profiles, _terms, _currentUser);
+        _sut = new AddWorkerCommandHandler(_users, _profiles, _terms, _absences, _currentUser);
     }
 
     [Fact]
@@ -53,6 +54,11 @@ public sealed class AddWorkerCommandHandlerTests
         Assert.Equal(38.5m, savedTerms.WeeklyHours);
         Assert.Equal(WeekDays.MondayToFriday, savedTerms.WorkingDays);
         Assert.Equal(7.7m, savedTerms.MondayHours);
+
+        // The entitlement row exists from day one — vacation approval consumes from it.
+        await _absences.Received(1).AddEntitlementAsync(
+            Arg.Is<AbsenceEntitlement>(e =>
+                e.UserId == userId && e.Year == DateTime.UtcNow.Year && e.EntitledDays == 25));
 
         await _profiles.Received(1).SaveChangesAsync();
     }

@@ -1,10 +1,18 @@
 import { useRef, useState } from 'react'
-import type { Worker } from './types'
+import type { Worker, WorkerDraft } from './types'
 import { initialsOf } from './types'
 import { Card, CardHeader, Field, INPUT, INPUT_MONO } from './primitives'
-import type { UpdateWorker } from './TeamSettingsShared'
+import type { UpdateWorker, WorkerActions } from './TeamSettingsShared'
 
-export function ProfileTab({ worker: w, upd }: { worker: Worker; upd: UpdateWorker }) {
+export function ProfileTab({
+  worker: w,
+  upd,
+  actions,
+}: {
+  worker: Worker
+  upd: UpdateWorker
+  actions: WorkerActions
+}) {
   const photoRef = useRef<HTMLInputElement>(null)
   const [drag, setDrag] = useState(false)
 
@@ -12,11 +20,11 @@ export function ProfileTab({ worker: w, upd }: { worker: Worker; upd: UpdateWork
   const lastName = w.name.trim().split(/\s+/).slice(1).join(' ')
 
   function setPhoto(file: File | null | undefined) {
-    if (file && file.type.startsWith('image/')) upd({ photo: URL.createObjectURL(file) })
+    if (file && file.type.startsWith('image/')) actions.uploadPhoto(file)
   }
 
-  const text = (field: keyof Worker) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-    upd({ [field]: e.target.value } as Partial<Worker>)
+  const text = (field: keyof WorkerDraft) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+    upd({ [field]: e.target.value } as Partial<WorkerDraft>)
 
   return (
     <div className="flex flex-col gap-4">
@@ -45,17 +53,17 @@ export function ProfileTab({ worker: w, upd }: { worker: Worker; upd: UpdateWork
                 setDrag(false)
                 setPhoto(e.dataTransfer.files?.[0])
               }}
-              className="w-[168px] h-[200px] rounded-xl p-0 bg-[#0E1727] text-[#8C9AB4] cursor-pointer overflow-hidden flex flex-col items-center justify-center gap-2 hover:!border-[#5EC8F2]"
-              style={{ border: `1px dashed ${drag ? '#5EC8F2' : '#253352'}` }}
+              className="w-[168px] h-[200px] rounded-xl p-0 bg-[color:var(--wtr-input)] text-[color:var(--wtr-text-sec)] cursor-pointer overflow-hidden flex flex-col items-center justify-center gap-2 hover:!border-[color:var(--wtr-accent)]"
+              style={{ border: `1px dashed ${drag ? 'var(--wtr-accent)' : 'var(--wtr-border3)'}` }}
             >
               {w.photo ? (
                 <span className="w-full h-full block bg-cover bg-center" style={{ backgroundImage: `url(${w.photo})` }} />
               ) : (
                 <>
-                  <span className="w-16 h-16 rounded-full grid place-items-center bg-[#12253A] text-[#9BE0FA] text-[22px] font-semibold">
+                  <span className="w-16 h-16 rounded-full grid place-items-center bg-[color:var(--wtr-tint-cyan-bg)] text-[color:var(--wtr-tint-cyan-fg)] text-[22px] font-semibold">
                     {initialsOf(w.name)}
                   </span>
-                  <span className="text-[13px] font-medium text-[#E6ECF6]">Upload photo</span>
+                  <span className="text-[13px] font-medium text-[color:var(--wtr-text)]">Upload photo</span>
                   <span className="text-xs">Drop or click · JPG, PNG</span>
                 </>
               )}
@@ -65,7 +73,7 @@ export function ProfileTab({ worker: w, upd }: { worker: Worker; upd: UpdateWork
                 <button onClick={() => photoRef.current?.click()} className="wtr-btn h-[30px] px-[11px] text-[12.5px]">
                   Change
                 </button>
-                <button onClick={() => upd({ photo: '' })} className="wtr-ghost h-[30px] px-[11px] text-[12.5px]">
+                <button onClick={() => actions.removePhoto()} className="wtr-ghost h-[30px] px-[11px] text-[12.5px]">
                   Remove
                 </button>
               </div>
@@ -75,7 +83,7 @@ export function ProfileTab({ worker: w, upd }: { worker: Worker; upd: UpdateWork
           <div className="flex-1 min-w-[260px] flex flex-col gap-[18px]">
             <div className="flex flex-col gap-1">
               <h2 className="m-0 text-[15px] font-semibold">Personal information</h2>
-              <p className="m-0 text-[13px] text-[#8C9AB4]">Visible to managers and HR only.</p>
+              <p className="m-0 text-[13px] text-[color:var(--wtr-text-sec)]">Visible to managers and HR only.</p>
             </div>
             <div className="grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-3.5">
               <Field label="First name">
