@@ -14,6 +14,8 @@ public sealed class TimeEntry : Entity<Guid>
         Guid? taskId,
         decimal hoursWorked,
         Money hourlyRateSnapshot,
+        Money costRateSnapshot,
+        Money billRateSnapshot,
         string? description,
         DateOnly date)
         : base(id)
@@ -23,6 +25,8 @@ public sealed class TimeEntry : Entity<Guid>
         TaskId = taskId;
         HoursWorked = hoursWorked;
         HourlyRateSnapshot = hourlyRateSnapshot;
+        CostRateSnapshot = costRateSnapshot;
+        BillRateSnapshot = billRateSnapshot;
         Description = description;
         Date = date;
         LoggedAt = DateTime.UtcNow;
@@ -34,9 +38,11 @@ public sealed class TimeEntry : Entity<Guid>
         Guid? taskId,
         decimal hoursWorked,
         Money hourlyRateSnapshot,
+        Money costRateSnapshot,
+        Money billRateSnapshot,
         string? description,
         DateOnly date)
-        => new(Guid.NewGuid(), projectId, memberId, taskId, hoursWorked, hourlyRateSnapshot, description, date);
+        => new(Guid.NewGuid(), projectId, memberId, taskId, hoursWorked, hourlyRateSnapshot, costRateSnapshot, billRateSnapshot, description, date);
 
     public void Update(decimal hoursWorked, string? description)
     {
@@ -49,8 +55,14 @@ public sealed class TimeEntry : Entity<Guid>
     public Guid? TaskId { get; private set; }
     public decimal HoursWorked { get; private set; }
 
-    /// <summary>Snapshot of the member's hourly rate at the time of logging.</summary>
+    /// <summary>Legacy snapshot (equals the cost rate for new entries) — kept for old reads.</summary>
     public Money HourlyRateSnapshot { get; private set; } = null!;
+
+    /// <summary>What this hour cost the company — snapshotted so rate changes never rewrite history.</summary>
+    public Money CostRateSnapshot { get; private set; } = null!;
+
+    /// <summary>What the client pays for this hour on T&amp;M — snapshotted at logging time.</summary>
+    public Money BillRateSnapshot { get; private set; } = null!;
     public string? Description { get; private set; }
     public DateOnly Date { get; private set; }
     public DateTime LoggedAt { get; private set; }

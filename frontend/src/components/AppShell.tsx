@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { LayoutDashboard, FileText, FolderKanban, Users, LogOut, Building2, Settings, BarChart3, CalendarDays, ShieldCheck, Clock, ClipboardCheck, CalendarOff, CalendarCheck, MessageCircle, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useAuth } from '@/features/auth/AuthContext'
@@ -10,27 +10,50 @@ import { TopBar } from './TopBar'
 import proposlyLogo from '@/assets/proposly.png'
 import { NotificationTaskProvider } from '@/contexts/NotificationTaskContext'
 import { useChatUnread } from '@/features/chat/useChatUnread'
+import { ChatDock } from '@/features/chat/dock/ChatDock'
 
-const ALL_NAV_ITEMS = [
-  { to: '/dashboard',        label: 'Dashboard', icon: LayoutDashboard, adminOnly: false, superAdminOnly: false },
-  { to: '/offers',           label: 'Offers',    icon: FileText,        adminOnly: true,  superAdminOnly: false },
-  { to: '/projects',         label: 'Projects',  icon: FolderKanban,   adminOnly: false, superAdminOnly: false },
-  { to: '/calendar',         label: 'Calendar',  icon: CalendarDays,   adminOnly: false, superAdminOnly: false },
-  { to: '/worktime',         label: 'Work time', icon: Clock,          adminOnly: false, superAdminOnly: false },
-  { to: '/absences',         label: 'Time off',  icon: CalendarOff,    adminOnly: false, superAdminOnly: false },
-  { to: '/worktime/approvals', label: 'Approvals', icon: ClipboardCheck, adminOnly: true, superAdminOnly: false },
-  { to: '/absences/approvals', label: 'Time off approvals', icon: CalendarCheck, adminOnly: true, superAdminOnly: false },
-  { to: '/chat',             label: 'Messages',  icon: MessageCircle,  adminOnly: false, superAdminOnly: false },
-  { to: '/clients',          label: 'Clients',   icon: Building2,      adminOnly: true,  superAdminOnly: false },
-  { to: '/users',            label: 'Team',      icon: Users,          adminOnly: true,  superAdminOnly: false },
-  { to: '/reports',          label: 'Reports',   icon: BarChart3,      adminOnly: true,  superAdminOnly: false },
-  { to: '/admin/companies',  label: 'Companies', icon: ShieldCheck,    adminOnly: false, superAdminOnly: true  },
-]
-
-// HR section — the working-time redesign pages (frontend preview, backend wiring follows).
-const HR_NAV_ITEMS = [
-  { to: '/redesign/working-time', label: 'My working time', icon: Clock, adminOnly: false, superAdminOnly: false },
-  { to: '/redesign/team',         label: 'Team settings',   icon: Users, adminOnly: true,  superAdminOnly: false },
+// Grouped navigation per the workspace redesign: Workspace · Sales · Delivery · People.
+// Old routes stay alive (e.g. /worktime, /worktime/approvals) — only the entries moved:
+// "Work time" now opens the redesigned page, the two approval pages merged into /approvals.
+const NAV_GROUPS = [
+  {
+    label: 'Workspace',
+    items: [
+      { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, adminOnly: false, superAdminOnly: false },
+      { to: '/chat',      label: 'Messages',  icon: MessageCircle,   adminOnly: false, superAdminOnly: false },
+      { to: '/calendar',  label: 'Calendar',  icon: CalendarDays,    adminOnly: false, superAdminOnly: false },
+    ],
+  },
+  {
+    label: 'Sales',
+    items: [
+      { to: '/offers',  label: 'Offers',  icon: FileText,  adminOnly: true, superAdminOnly: false },
+      { to: '/clients', label: 'Clients', icon: Building2, adminOnly: true, superAdminOnly: false },
+    ],
+  },
+  {
+    label: 'Delivery',
+    items: [
+      { to: '/projects', label: 'Projects', icon: FolderKanban, adminOnly: false, superAdminOnly: false },
+      { to: '/reports',  label: 'Reports',  icon: BarChart3,    adminOnly: true,  superAdminOnly: false },
+    ],
+  },
+  {
+    label: 'People',
+    items: [
+      { to: '/redesign/working-time', label: 'Work time',     icon: Clock,          adminOnly: false, superAdminOnly: false },
+      { to: '/absences',              label: 'Time off',      icon: CalendarOff,    adminOnly: false, superAdminOnly: false },
+      { to: '/approvals',             label: 'Approvals',     icon: ClipboardCheck, adminOnly: true,  superAdminOnly: false },
+      { to: '/users',                 label: 'Team',          icon: Users,          adminOnly: true,  superAdminOnly: false },
+      { to: '/redesign/team',         label: 'Team settings', icon: CalendarCheck,  adminOnly: true,  superAdminOnly: false },
+    ],
+  },
+  {
+    label: 'Admin',
+    items: [
+      { to: '/admin/companies', label: 'Companies', icon: ShieldCheck, adminOnly: false, superAdminOnly: true },
+    ],
+  },
 ]
 
 function getInitials(fullName: string) {
@@ -73,8 +96,10 @@ export function AppShell() {
     if (item.adminOnly) return isAdminOrOwner && !isSuperAdmin
     return !isSuperAdmin
   }
-  const navItems = ALL_NAV_ITEMS.filter(byRole)
-  const hrItems = HR_NAV_ITEMS.filter(byRole)
+  const navGroups = NAV_GROUPS
+    .map(g => ({ ...g, items: g.items.filter(byRole) }))
+    .filter(g => g.items.length > 0)
+  const navItems = navGroups.flatMap(g => g.items)
 
   const { pathname } = useLocation()
 
@@ -82,13 +107,9 @@ export function AppShell() {
   // route is open — /worktime/approvals would highlight both "Work time" and "Approvals". Marking
   // the parents `end` instead would leave routes like /worktime/report highlighting nothing, so
   // the most specific matching entry wins and it alone is active.
-  const activePath = useMemo(() => {
-    const matches = [...navItems, ...hrItems]
-      .filter(item => pathname === item.to || pathname.startsWith(`${item.to}/`))
-      .sort((a, b) => b.to.length - a.to.length)
-
-    return matches[0]?.to ?? null
-  }, [navItems, hrItems, pathname])
+  const activePath = navItems
+    .filter(item => pathname === item.to || pathname.startsWith(`${item.to}/`))
+    .sort((a, b) => b.to.length - a.to.length)[0]?.to ?? null
 
   useEffect(() => {
     const handler = () => setAvatarColorState(getAvatarColor())
@@ -138,57 +159,59 @@ export function AppShell() {
         </div>
 
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto overflow-x-hidden">
-          {navItems.map(({ to, label, icon: Icon }) => (
-            <NavLink key={to} to={to} title={label} className={itemClass(activePath === to)}>
-              <span className="relative shrink-0">
-                <Icon className="h-4 w-4" />
-                {to === '/chat' && chatUnread > 0 && (
-                  <span
-                    className={cn(
-                      'absolute -right-1 -top-1 h-2 w-2 rounded-full transition-opacity',
-                      collapsed ? 'opacity-100' : 'opacity-0',
-                      activePath === to ? 'bg-primary-foreground' : 'bg-primary ring-2 ring-card'
-                    )}
-                  />
+          {navGroups.map((g, gi) => (
+            <div key={g.label} className="space-y-1">
+              {/* Collapsed: a short divider; expanded: the group heading. Same height, no jump. */}
+              <div className={cn('relative h-7', gi > 0 && 'mt-2')}>
+                {gi > 0 && (
+                  <span className={cn('absolute left-3 right-3 top-1/2 border-t transition-opacity', collapsed ? 'opacity-100' : 'opacity-0')} />
                 )}
-              </span>
-              <span className={cn('flex-1', fade)}>{label}</span>
-              {to === '/chat' && chatUnread > 0 && (
-                <span
-                  className={cn(
-                    'min-w-5 h-5 px-1.5 rounded-full text-[11px] font-semibold flex items-center justify-center',
-                    fade,
-                    activePath === to
-                      ? 'bg-primary-foreground text-primary'
-                      : 'bg-primary text-primary-foreground'
-                  )}
-                >
-                  {chatUnread > 99 ? '99+' : chatUnread}
-                </span>
-              )}
-            </NavLink>
-          ))}
-
-          {hrItems.length > 0 && (
-            <>
-              {/* Collapsed: a short divider; expanded: the HR heading. Same height, no jump. */}
-              <div className="relative h-7 mt-2">
-                <span className={cn('absolute left-3 right-3 top-1/2 border-t transition-opacity', collapsed ? 'opacity-100' : 'opacity-0')} />
                 <p className={cn('absolute inset-x-0 bottom-0.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70', fade)}>
-                  HR
+                  {g.label}
                 </p>
               </div>
-              {hrItems.map(({ to, label, icon: Icon }) => (
+              {g.items.map(({ to, label, icon: Icon }) => (
                 <NavLink key={to} to={to} title={label} className={itemClass(activePath === to)}>
-                  <Icon className="h-4 w-4 shrink-0" />
-                  <span className={fade}>{label}</span>
+                  <span className="relative shrink-0">
+                    <Icon className="h-4 w-4" />
+                    {to === '/chat' && chatUnread > 0 && (
+                      <span
+                        className={cn(
+                          'absolute -right-1 -top-1 h-2 w-2 rounded-full transition-opacity',
+                          collapsed ? 'opacity-100' : 'opacity-0',
+                          activePath === to ? 'bg-primary-foreground' : 'bg-primary ring-2 ring-card'
+                        )}
+                      />
+                    )}
+                  </span>
+                  <span className={cn('flex-1', fade)}>{label}</span>
+                  {to === '/chat' && chatUnread > 0 && (
+                    <span
+                      className={cn(
+                        'min-w-5 h-5 px-1.5 rounded-full text-[11px] font-semibold flex items-center justify-center',
+                        fade,
+                        activePath === to
+                          ? 'bg-primary-foreground text-primary'
+                          : 'bg-primary text-primary-foreground'
+                      )}
+                    >
+                      {chatUnread > 99 ? '99+' : chatUnread}
+                    </span>
+                  )}
                 </NavLink>
               ))}
-            </>
-          )}
+            </div>
+          ))}
         </nav>
 
         <div className="p-3 border-t space-y-1">
+          <div
+            title="EU-hosted · DSGVO-konform"
+            className="flex items-center gap-2 rounded-md bg-green-100 px-2.5 py-2 text-xs text-green-800 whitespace-nowrap overflow-hidden dark:bg-green-950/40 dark:text-green-400"
+          >
+            <ShieldCheck className="h-4 w-4 shrink-0" />
+            <span className={fade}>EU-hosted · DSGVO-konform</span>
+          </div>
           <NavLink
             to="/settings"
             title="Settings"
@@ -240,6 +263,9 @@ export function AppShell() {
           <Outlet />
         </div>
       </main>
+
+      {/* Floating chat dock — launcher, people panel, docked DM windows */}
+      <ChatDock />
     </div>
     </NotificationTaskProvider>
   )

@@ -430,6 +430,9 @@ namespace Proposly.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<DateTime?>("LastSeenAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasMaxLength(500)
@@ -942,6 +945,13 @@ namespace Proposly.Infrastructure.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("BillingType")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("FixedPrice");
+
                     b.Property<Guid?>("ClientId")
                         .HasColumnType("uuid");
 
@@ -989,10 +999,65 @@ namespace Proposly.Infrastructure.Migrations
                     b.ToTable("Projects", (string)null);
                 });
 
+            modelBuilder.Entity("Proposly.Domain.ProjectManagement.Entities.ProjectFile", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("SizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("StorageKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UploadedByName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("UploadedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProjectId");
+
+                    b.ToTable("ProjectFiles", (string)null);
+                });
+
             modelBuilder.Entity("Proposly.Domain.ProjectManagement.Entities.ProjectMember", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
+
+                    b.Property<decimal>("AllocatedHours")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("numeric(9,2)")
+                        .HasDefaultValue(0m);
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -1984,6 +2049,29 @@ namespace Proposly.Infrastructure.Migrations
                                 .HasForeignKey("ProjectId");
                         });
 
+                    b.OwnsOne("Proposly.Shared.ValueObjects.Money", "ExpenseBudget", b1 =>
+                        {
+                            b1.Property<Guid>("ProjectId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<decimal>("Amount")
+                                .HasColumnType("numeric(18,2)")
+                                .HasColumnName("ExpenseBudgetAmount");
+
+                            b1.Property<string>("Currency")
+                                .IsRequired()
+                                .HasMaxLength(3)
+                                .HasColumnType("character varying(3)")
+                                .HasColumnName("ExpenseBudgetCurrency");
+
+                            b1.HasKey("ProjectId");
+
+                            b1.ToTable("Projects");
+
+                            b1.WithOwner()
+                                .HasForeignKey("ProjectId");
+                        });
+
                     b.OwnsOne("Proposly.Shared.ValueObjects.Money", "OfferedAmount", b1 =>
                         {
                             b1.Property<Guid>("ProjectId")
@@ -2010,6 +2098,8 @@ namespace Proposly.Infrastructure.Migrations
                     b.Navigation("Budget")
                         .IsRequired();
 
+                    b.Navigation("ExpenseBudget");
+
                     b.Navigation("OfferedAmount");
                 });
 
@@ -2020,6 +2110,60 @@ namespace Proposly.Infrastructure.Migrations
                         .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.OwnsOne("Proposly.Shared.ValueObjects.Money", "BillRate", b1 =>
+                        {
+                            b1.Property<Guid>("ProjectMemberId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<decimal>("Amount")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("numeric(18,2)")
+                                .HasDefaultValue(0m)
+                                .HasColumnName("BillRateAmount");
+
+                            b1.Property<string>("Currency")
+                                .IsRequired()
+                                .ValueGeneratedOnAdd()
+                                .HasMaxLength(3)
+                                .HasColumnType("character varying(3)")
+                                .HasDefaultValue("EUR")
+                                .HasColumnName("BillRateCurrency");
+
+                            b1.HasKey("ProjectMemberId");
+
+                            b1.ToTable("ProjectMembers");
+
+                            b1.WithOwner()
+                                .HasForeignKey("ProjectMemberId");
+                        });
+
+                    b.OwnsOne("Proposly.Shared.ValueObjects.Money", "CostRate", b1 =>
+                        {
+                            b1.Property<Guid>("ProjectMemberId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<decimal>("Amount")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("numeric(18,2)")
+                                .HasDefaultValue(0m)
+                                .HasColumnName("CostRateAmount");
+
+                            b1.Property<string>("Currency")
+                                .IsRequired()
+                                .ValueGeneratedOnAdd()
+                                .HasMaxLength(3)
+                                .HasColumnType("character varying(3)")
+                                .HasDefaultValue("EUR")
+                                .HasColumnName("CostRateCurrency");
+
+                            b1.HasKey("ProjectMemberId");
+
+                            b1.ToTable("ProjectMembers");
+
+                            b1.WithOwner()
+                                .HasForeignKey("ProjectMemberId");
+                        });
 
                     b.OwnsOne("Proposly.Shared.ValueObjects.Money", "HourlyRate", b1 =>
                         {
@@ -2043,6 +2187,12 @@ namespace Proposly.Infrastructure.Migrations
                             b1.WithOwner()
                                 .HasForeignKey("ProjectMemberId");
                         });
+
+                    b.Navigation("BillRate")
+                        .IsRequired();
+
+                    b.Navigation("CostRate")
+                        .IsRequired();
 
                     b.Navigation("HourlyRate")
                         .IsRequired();
@@ -2083,6 +2233,60 @@ namespace Proposly.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.OwnsOne("Proposly.Shared.ValueObjects.Money", "BillRateSnapshot", b1 =>
+                        {
+                            b1.Property<Guid>("TimeEntryId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<decimal>("Amount")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("numeric(18,2)")
+                                .HasDefaultValue(0m)
+                                .HasColumnName("BillRateAmount");
+
+                            b1.Property<string>("Currency")
+                                .IsRequired()
+                                .ValueGeneratedOnAdd()
+                                .HasMaxLength(3)
+                                .HasColumnType("character varying(3)")
+                                .HasDefaultValue("EUR")
+                                .HasColumnName("BillRateCurrency");
+
+                            b1.HasKey("TimeEntryId");
+
+                            b1.ToTable("TimeEntries");
+
+                            b1.WithOwner()
+                                .HasForeignKey("TimeEntryId");
+                        });
+
+                    b.OwnsOne("Proposly.Shared.ValueObjects.Money", "CostRateSnapshot", b1 =>
+                        {
+                            b1.Property<Guid>("TimeEntryId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<decimal>("Amount")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("numeric(18,2)")
+                                .HasDefaultValue(0m)
+                                .HasColumnName("CostRateAmount");
+
+                            b1.Property<string>("Currency")
+                                .IsRequired()
+                                .ValueGeneratedOnAdd()
+                                .HasMaxLength(3)
+                                .HasColumnType("character varying(3)")
+                                .HasDefaultValue("EUR")
+                                .HasColumnName("CostRateCurrency");
+
+                            b1.HasKey("TimeEntryId");
+
+                            b1.ToTable("TimeEntries");
+
+                            b1.WithOwner()
+                                .HasForeignKey("TimeEntryId");
+                        });
+
                     b.OwnsOne("Proposly.Shared.ValueObjects.Money", "HourlyRateSnapshot", b1 =>
                         {
                             b1.Property<Guid>("TimeEntryId")
@@ -2105,6 +2309,12 @@ namespace Proposly.Infrastructure.Migrations
                             b1.WithOwner()
                                 .HasForeignKey("TimeEntryId");
                         });
+
+                    b.Navigation("BillRateSnapshot")
+                        .IsRequired();
+
+                    b.Navigation("CostRateSnapshot")
+                        .IsRequired();
 
                     b.Navigation("HourlyRateSnapshot")
                         .IsRequired();

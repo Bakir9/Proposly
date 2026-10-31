@@ -30,6 +30,17 @@ public sealed class ProjectConfiguration : IEntityTypeConfiguration<Project>
             m.Property(x => x.Currency).HasColumnName("OfferedCurrency").HasMaxLength(3);
         });
 
+        builder.Property(p => p.BillingType)
+            .HasConversion<string>()
+            .HasMaxLength(20)
+            .HasDefaultValue(Domain.ProjectManagement.Enums.BillingType.FixedPrice);
+
+        builder.OwnsOne(p => p.ExpenseBudget, m =>
+        {
+            m.Property(x => x.Amount).HasColumnName("ExpenseBudgetAmount").HasColumnType("numeric(18,2)");
+            m.Property(x => x.Currency).HasColumnName("ExpenseBudgetCurrency").HasMaxLength(3);
+        });
+
         builder.HasMany(p => p.Members)
             .WithOne()
             .HasForeignKey(m => m.ProjectId)

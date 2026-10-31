@@ -39,6 +39,7 @@ public sealed class GetProjectByIdQueryHandler : IQueryHandler<GetProjectByIdQue
             project.TimeEntries.Select(te => new TimeEntryResponse(
                 te.Id, te.MemberId,
                 project.Members.FirstOrDefault(m => m.Id == te.MemberId)?.Name ?? "Unknown",
+                te.TaskId,
                 te.HoursWorked, te.HourlyRateSnapshot.Amount, te.HourlyRateSnapshot.Currency,
                 te.Description, te.Date,
                 te.HoursWorked * te.HourlyRateSnapshot.Amount)).ToList(),

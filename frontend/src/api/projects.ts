@@ -120,6 +120,7 @@ export interface TimeEntry {
   id: string
   memberId: string
   memberName: string
+  taskId: string | null
   hoursWorked: number
   hourlyRateSnapshot: number
   currency: string
@@ -169,6 +170,130 @@ export interface UpdateProjectRequest {
   budgetCurrency?: string
   clientId?: string
 }
+
+// ── Project workspace redesign: billing, rates, overview ────────────────────
+
+export type BillingType = 'FixedPrice' | 'TimeAndMaterials' | 'Internal'
+
+export interface OverviewKpis {
+  startDate: string
+  deadline: string | null
+  daysLeft: number | null
+  dayOfTotal: number | null
+  totalDays: number | null
+  budgetAmount: number
+  spentAmount: number | null
+  tasksDone: number
+  tasksTotal: number
+  tasksWithoutDates: number
+  nextMilestoneTitle: string | null
+  nextMilestoneDue: string | null
+  nextMilestoneLinkedTasks: number
+}
+
+export interface OverviewChecklist {
+  membersCount: number
+  allRatesSet: boolean
+  milestonesCount: number
+  openTasks: number
+  scheduledOpenTasks: number
+  estimatedOpenTasks: number
+  timeEntriesCount: number
+}
+
+export interface OverviewProfitability {
+  revenue: number | null
+  revenueToDate: number
+  plannedLaborCost: number
+  plannedHours: number
+  loggedHours: number
+  actualLaborCost: number
+  actualExpenses: number
+  actualCost: number
+  forecastCost: number
+  result: number
+  marginPercent: number | null
+  isProjected: boolean
+}
+
+export interface OverviewMilestone {
+  id: string
+  title: string
+  dueDate: string
+  isCompleted: boolean
+  linkedTasks: number
+  doneLinkedTasks: number
+}
+
+export interface OverviewTeamMember {
+  memberId: string
+  userId: string
+  name: string
+  role: string
+  costRate: number | null
+  billRate: number | null
+  allocatedHours: number
+}
+
+export interface ProjectOverview {
+  billingType: BillingType
+  currency: string
+  canViewMoney: boolean
+  kpis: OverviewKpis
+  checklist: OverviewChecklist
+  profitability: OverviewProfitability | null
+  milestones: OverviewMilestone[]
+  team: OverviewTeamMember[]
+  plannedHours: number
+}
+
+export const getProjectOverview = (id: string) =>
+  api.get<ProjectOverview>(`/projects/${id}/overview`).then(r => r.data)
+
+export const setBillingType = (projectId: string, billingType: BillingType) =>
+  api.put(`/projects/${projectId}/billing-type`, { projectId, billingType })
+
+export const updateProjectMember = (
+  projectId: string,
+  memberId: string,
+  data: { role: string; costRate: number; billRate: number; allocatedHours: number },
+) => api.put(`/projects/${projectId}/members/${memberId}`, { projectId, memberId, ...data })
+
+// ── Collaborate › Files ──────────────────────────────────────────────────────
+
+export interface ProjectFileItem {
+  id: string
+  fileName: string
+  contentType: string
+  sizeBytes: number
+  /** "Upload" = direct project upload · "Discussion" = project channel attachment. */
+  source: 'Upload' | 'Discussion'
+  uploadedByName: string
+  uploadedAt: string
+  canDelete: boolean
+}
+
+export const getProjectFiles = (projectId: string) =>
+  api.get<ProjectFileItem[]>(`/projects/${projectId}/files`).then(r => r.data)
+
+export const uploadProjectFile = (projectId: string, file: File, onProgress?: (percent: number) => void) => {
+  const form = new FormData()
+  form.append('file', file)
+  return api
+    .post<ProjectFileItem>(`/projects/${projectId}/files`, form, {
+      onUploadProgress: e => {
+        if (e.total) onProgress?.(Math.round((e.loaded / e.total) * 100))
+      },
+    })
+    .then(r => r.data)
+}
+
+export const deleteProjectFile = (projectId: string, fileId: string) =>
+  api.delete(`/projects/${projectId}/files/${fileId}`)
+
+/** Downloads sit behind the JWT, so they go through axios as blobs. */
+export const fetchProjectFileBlob = (projectId: string, fileId: string) =>
+  api.get<Blob>(`/projects/${projectId}/files/${fileId}`, { responseType: 'blob' }).then(r => r.data)
 
 export const getProjects = () =>
   api.get<ProjectSummary[]>('/projects').then(r => r.data)

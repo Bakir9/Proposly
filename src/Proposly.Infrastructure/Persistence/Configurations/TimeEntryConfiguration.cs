@@ -21,5 +21,17 @@ public sealed class TimeEntryConfiguration : IEntityTypeConfiguration<TimeEntry>
             money.Property(x => x.Amount).HasColumnName("HourlyRateAmount").HasColumnType("numeric(18,2)").IsRequired();
             money.Property(x => x.Currency).HasColumnName("HourlyRateCurrency").HasMaxLength(3).IsRequired();
         });
+
+        builder.OwnsOne(t => t.CostRateSnapshot, money =>
+        {
+            money.Property(x => x.Amount).HasColumnName("CostRateAmount").HasColumnType("numeric(18,2)").IsRequired().HasDefaultValue(0m);
+            money.Property(x => x.Currency).HasColumnName("CostRateCurrency").HasMaxLength(3).IsRequired().HasDefaultValue("EUR");
+        });
+
+        builder.OwnsOne(t => t.BillRateSnapshot, money =>
+        {
+            money.Property(x => x.Amount).HasColumnName("BillRateAmount").HasColumnType("numeric(18,2)").IsRequired().HasDefaultValue(0m);
+            money.Property(x => x.Currency).HasColumnName("BillRateCurrency").HasMaxLength(3).IsRequired().HasDefaultValue("EUR");
+        });
     }
 }

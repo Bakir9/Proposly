@@ -18,13 +18,20 @@ using Proposly.Application.ProjectManagement.Commands.DeleteTaskComment;
 using Proposly.Application.ProjectManagement.Commands.EditTaskComment;
 using Proposly.Application.ProjectManagement.Commands.DeleteTimeEntry;
 using Proposly.Application.ProjectManagement.Commands.LogTime;
+using Proposly.Application.ProjectManagement.Commands.DeleteProjectFile;
+using Proposly.Application.ProjectManagement.Commands.SetBillingType;
 using Proposly.Application.ProjectManagement.Commands.UpdateProject;
+using Proposly.Application.ProjectManagement.Commands.UploadProjectFile;
+using Proposly.Application.ProjectManagement.Commands.UpdateProjectMember;
 using Proposly.Application.ProjectManagement.Commands.UpdateTask;
 using Proposly.Application.ProjectManagement.Commands.UpdateTaskStatus;
 using Proposly.Application.ProjectManagement.Queries.GetBurndown;
 using Proposly.Application.ProjectManagement.Queries.GetCapacity;
 using Proposly.Application.ProjectManagement.Queries.GetVelocity;
 using Proposly.Application.ProjectManagement.Queries.GetProjectById;
+using Proposly.Application.ProjectManagement.Queries.GetProjectFile;
+using Proposly.Application.ProjectManagement.Queries.GetProjectFiles;
+using Proposly.Application.ProjectManagement.Queries.GetProjectOverview;
 using Proposly.Application.ProjectManagement.Queries.GetProjects;
 using Proposly.Application.ProjectManagement.Responses;
 
@@ -50,6 +57,99 @@ public sealed class ProjectsController : ControllerBase
     {
         var result = await handler.HandleAsync(new GetProjectByIdQuery(id), ct);
         return result is null ? NotFound() : Ok(result);
+    }
+
+    // All roles — money fields are nulled for members inside the handler
+    [HttpGet("{id:guid}/overview")]
+    public async Task<ActionResult<ProjectOverviewResponse>> GetOverview(
+        Guid id,
+        [FromServices] IQueryHandler<GetProjectOverviewQuery, ProjectOverviewResponse?> handler,
+        CancellationToken ct)
+    {
+        var result = await handler.HandleAsync(new GetProjectOverviewQuery(id), ct);
+        return result is null ? NotFound() : Ok(result);
+    }
+
+    [HttpPut("{id:guid}/billing-type")]
+    [Authorize(Policy = Policies.ManageProjects)]
+    public async Task<IActionResult> SetBillingType(
+        Guid id,
+        [FromBody] SetBillingTypeCommand command,
+        [FromServices] ICommandHandler<SetBillingTypeCommand> handler,
+        CancellationToken ct)
+    {
+        await handler.HandleAsync(command with { ProjectId = id }, ct);
+        return NoContent();
+    }
+
+    // ── Collaborate › Files ──────────────────────────────────────────────────
+    // All roles with project visibility; handlers return 404 for members not on the project.
+
+    [HttpGet("{id:guid}/files")]
+    public async Task<ActionResult<IReadOnlyList<ProjectFileResponse>>> GetFiles(
+        Guid id,
+        [FromServices] IQueryHandler<GetProjectFilesQuery, IReadOnlyList<ProjectFileResponse>?> handler,
+        CancellationToken ct)
+    {
+        var result = await handler.HandleAsync(new GetProjectFilesQuery(id), ct);
+        return result is null ? NotFound() : Ok(result);
+    }
+
+    [HttpPost("{id:guid}/files")]
+    [RequestSizeLimit(30 * 1024 * 1024)]
+    public async Task<ActionResult<ProjectFileResponse>> UploadFile(
+        Guid id,
+        IFormFile file,
+        [FromServices] ICommandHandler<UploadProjectFileCommand, ProjectFileResponse> handler,
+        CancellationToken ct)
+    {
+        using var stream = new MemoryStream();
+        await file.CopyToAsync(stream, ct);
+
+        var command = new UploadProjectFileCommand(
+            id,
+            Path.GetFileName(file.FileName),
+            string.IsNullOrWhiteSpace(file.ContentType) ? "application/octet-stream" : file.ContentType,
+            stream.ToArray());
+
+        return await handler.HandleAsync(command, ct);
+    }
+
+    [HttpGet("{id:guid}/files/{fileId:guid}")]
+    public async Task<IActionResult> DownloadFile(
+        Guid id,
+        Guid fileId,
+        [FromServices] IQueryHandler<GetProjectFileQuery, ProjectFileContentResponse?> handler,
+        CancellationToken ct)
+    {
+        var fileContent = await handler.HandleAsync(new GetProjectFileQuery(id, fileId), ct);
+        return fileContent is null
+            ? NotFound()
+            : File(fileContent.Content, fileContent.ContentType, fileContent.FileName);
+    }
+
+    [HttpDelete("{id:guid}/files/{fileId:guid}")]
+    public async Task<IActionResult> DeleteFile(
+        Guid id,
+        Guid fileId,
+        [FromServices] ICommandHandler<DeleteProjectFileCommand> handler,
+        CancellationToken ct)
+    {
+        await handler.HandleAsync(new DeleteProjectFileCommand(id, fileId), ct);
+        return NoContent();
+    }
+
+    [HttpPut("{id:guid}/members/{memberId:guid}")]
+    [Authorize(Policy = Policies.ManageProjects)]
+    public async Task<IActionResult> UpdateMember(
+        Guid id,
+        Guid memberId,
+        [FromBody] UpdateProjectMemberCommand command,
+        [FromServices] ICommandHandler<UpdateProjectMemberCommand> handler,
+        CancellationToken ct)
+    {
+        await handler.HandleAsync(command with { ProjectId = id, MemberId = memberId }, ct);
+        return NoContent();
     }
 
     // Only Owner and Admin can create projects

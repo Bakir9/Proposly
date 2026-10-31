@@ -30,4 +30,4 @@ public record TaskCommentResponse(Guid Id, Guid AuthorId, string AuthorName, str
 public record ProjectNoteResponse(Guid Id, string Title, string Content, Guid AuthorId, string AuthorName, DateTime CreatedAt, DateTime UpdatedAt);
 public record MilestoneResponse(Guid Id, string Title, DateOnly DueDate, bool IsCompleted);
 public record ExpenseResponse(Guid Id, string Description, decimal Amount, string Currency, string Category, DateOnly Date);
-public record TimeEntryResponse(Guid Id, Guid MemberId, string MemberName, decimal HoursWorked, decimal HourlyRateSnapshot, string Currency, string? Description, DateOnly Date, decimal Cost);
+public record TimeEntryResponse(Guid Id, Guid MemberId, string MemberName, Guid? TaskId, decimal HoursWorked, decimal HourlyRateSnapshot, string Currency, string? Description, DateOnly Date, decimal Cost);

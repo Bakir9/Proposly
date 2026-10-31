@@ -38,6 +38,7 @@ import { EmploymentTermsPage } from './features/settings/EmploymentTermsPage'
 import { HolidayCalendarPage } from './features/settings/HolidayCalendarPage'
 import { AbsencesPage } from './features/absences/AbsencesPage'
 import { AbsenceApprovalsPage } from './features/absences/AbsenceApprovalsPage'
+import { ApprovalsInboxPage } from './features/approvals/ApprovalsInboxPage'
 import { AdminCompaniesPage } from './features/admin/AdminCompaniesPage'
 import { useAuth } from './features/auth/AuthContext'
 
@@ -70,6 +71,7 @@ export default function App() {
         <Route path="/projects" element={<ProjectsPage />} />
         <Route path="/projects/:id" element={<ProjectDetailPage />} />
         <Route path="/projects/:id/tasks/:taskId" element={<TaskDetailPage />} />
+        <Route path="/projects/:id/:group/:sub?" element={<ProjectDetailPage />} />
         <Route path="/clients" element={<ClientsPage />} />
         <Route path="/clients/:id" element={<ClientDetailPage />} />
         <Route path="/users" element={<UsersPage />} />
@@ -82,6 +84,7 @@ export default function App() {
         <Route path="/calendar" element={<CalendarPage />} />
         <Route path="/worktime" element={<TimesheetPage />} />
         <Route path="/worktime/approvals" element={<ApprovalsPage />} />
+        <Route path="/approvals" element={<ApprovalsInboxPage />} />
         <Route path="/worktime/company" element={<CompanyOverviewPage />} />
         <Route path="/worktime/report" element={<MonthlyReportPage />} />
         <Route path="/settings/worktime-rules" element={<WorkTimePolicyPage />} />

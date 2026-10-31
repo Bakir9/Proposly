@@ -65,6 +65,13 @@ public sealed class Project : AggregateRoot<Guid>, ITenantEntity, IAuditableEnti
     public Guid? LinkedOfferId { get; private set; }
     public Money? OfferedAmount { get; private set; }
     public Money Budget { get; private set; } = null!;
+
+    /// <summary>How this project earns money — see <see cref="Enums.BillingType"/>.</summary>
+    public BillingType BillingType { get; private set; } = BillingType.FixedPrice;
+
+    /// <summary>Planned expenses; feeds the cost forecast. Null = not planned yet.</summary>
+    public Money? ExpenseBudget { get; private set; }
+
     public DateOnly StartDate { get; private set; }
     public DateOnly? Deadline { get; private set; }
     public ProjectStatus Status { get; private set; }
@@ -133,6 +140,29 @@ public sealed class Project : AggregateRoot<Guid>, ITenantEntity, IAuditableEnti
         Touch();
     }
 
+    public void SetBillingType(BillingType billingType)
+    {
+        BillingType = billingType;
+        Touch();
+    }
+
+    public void SetExpenseBudget(Money? expenseBudget)
+    {
+        if (expenseBudget is not null && expenseBudget.Amount < 0)
+            throw new InvalidOperationException("Expense budget cannot be negative.");
+        ExpenseBudget = expenseBudget;
+        Touch();
+    }
+
+    /// <summary>Rates and allocation for one member — rate changes never rewrite past entries.</summary>
+    public void UpdateMemberEngagement(Guid memberId, string role, Money costRate, Money billRate, decimal allocatedHours)
+    {
+        var member = _members.FirstOrDefault(m => m.Id == memberId)
+            ?? throw new InvalidOperationException($"Member {memberId} is not part of this project.");
+        member.UpdateEngagement(role, costRate, billRate, allocatedHours);
+        Touch();
+    }
+
     // --- Domain operations ---
 
     public void LinkOffer(Guid offerId, Money offeredAmount)
@@ -159,10 +189,13 @@ public sealed class Project : AggregateRoot<Guid>, ITenantEntity, IAuditableEnti
         var member = _members.FirstOrDefault(m => m.Id == memberId)
             ?? throw new InvalidOperationException($"Member {memberId} is not part of this project.");
 
-        // Create a NEW Money instance — never reuse member.HourlyRate directly.
+        // Create NEW Money instances — never reuse the member's owned values directly.
         // EF Core cannot track the same object as an owned entity under two different parents.
-        var rateSnapshot = new Money(member.HourlyRate.Amount, member.HourlyRate.Currency);
-        var entry = TimeEntry.Create(Id, memberId, taskId, hoursWorked, rateSnapshot, description, date);
+        // Cost and bill rates are snapshotted so later rate changes never rewrite history.
+        var costSnapshot = new Money(member.CostRate.Amount, member.CostRate.Currency);
+        var billSnapshot = new Money(member.BillRate.Amount, member.BillRate.Currency);
+        var rateSnapshot = new Money(member.CostRate.Amount, member.CostRate.Currency); // legacy column
+        var entry = TimeEntry.Create(Id, memberId, taskId, hoursWorked, rateSnapshot, costSnapshot, billSnapshot, description, date);
         _timeEntries.Add(entry);
         Touch();
         return entry;
@@ -301,7 +334,7 @@ public sealed class Project : AggregateRoot<Guid>, ITenantEntity, IAuditableEnti
     public Money CalculateLaborCost()
     {
         var zero = Money.Zero(Budget.Currency);
-        return _timeEntries.Aggregate(zero, (total, entry) => total + entry.HourlyRateSnapshot * entry.HoursWorked);
+        return _timeEntries.Aggregate(zero, (total, entry) => total + entry.CostRateSnapshot * entry.HoursWorked);
     }
 
     public Money CalculateTotalCost()

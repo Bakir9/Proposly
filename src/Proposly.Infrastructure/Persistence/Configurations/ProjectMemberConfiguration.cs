@@ -20,5 +20,19 @@ public sealed class ProjectMemberConfiguration : IEntityTypeConfiguration<Projec
             money.Property(x => x.Amount).HasColumnName("HourlyRateAmount").HasColumnType("numeric(18,2)").IsRequired();
             money.Property(x => x.Currency).HasColumnName("HourlyRateCurrency").HasMaxLength(3).IsRequired();
         });
+
+        builder.OwnsOne(m => m.CostRate, money =>
+        {
+            money.Property(x => x.Amount).HasColumnName("CostRateAmount").HasColumnType("numeric(18,2)").IsRequired().HasDefaultValue(0m);
+            money.Property(x => x.Currency).HasColumnName("CostRateCurrency").HasMaxLength(3).IsRequired().HasDefaultValue("EUR");
+        });
+
+        builder.OwnsOne(m => m.BillRate, money =>
+        {
+            money.Property(x => x.Amount).HasColumnName("BillRateAmount").HasColumnType("numeric(18,2)").IsRequired().HasDefaultValue(0m);
+            money.Property(x => x.Currency).HasColumnName("BillRateCurrency").HasMaxLength(3).IsRequired().HasDefaultValue("EUR");
+        });
+
+        builder.Property(m => m.AllocatedHours).HasColumnType("numeric(9,2)").HasDefaultValue(0m);
     }
 }

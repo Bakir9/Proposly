@@ -4,6 +4,7 @@ import { useNotificationTask } from '@/contexts/NotificationTaskContext'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   getProjectById,
+  getProjectOverview,
   getBurndown,
   updateProject,
   addTask,
@@ -29,48 +30,53 @@ import { getActiveUsers } from '@/api/users'
 import { getClients } from '@/api/clients'
 import { ProjectDiscussionTab } from '@/features/chat/ProjectDiscussionTab'
 import { useAuth } from '@/features/auth/AuthContext'
+import { ProjectHeader } from './workspace/ProjectHeader'
+import { resolveTab } from './workspace/project-nav'
+import { ProjectOverviewTab } from './workspace/ProjectOverviewTab'
+import { PlanTaskListTab } from './workspace/PlanTaskListTab'
+import { CollabFilesTab } from './workspace/CollabFilesTab'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
-import { Tabs } from '@/components/ui/tabs'
 import { Dialog } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
-import { ArrowLeft, Pencil, Plus, UserPlus, Clock, Receipt, Flag, CheckCircle2, MessageSquare, Send, Trash2, CalendarDays, SquareCheck, Maximize2, Minimize2, Lock, X, TrendingUp, Search } from 'lucide-react'
+import { Pencil, Plus, UserPlus, Clock, Receipt, Flag, CheckCircle2, MessageSquare, Send, Trash2, CalendarDays, SquareCheck, Maximize2, Minimize2, Lock, X, TrendingUp, Search } from 'lucide-react'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { NotesTab } from './NotesTab'
 import { VelocityCapacityTab } from './VelocityCapacityTab'
 import { GanttChart } from './GanttChart'
 import { stripHtml, hasRichContent } from '@/lib/utils'
 
+// Monday-style status colors: each column gets a solid header band, a tinted body, and a
+// matching accent on its cards. Classes are written out (not interpolated) so Tailwind sees them.
 const KANBAN_COLUMNS = [
-  { status: 'Todo', label: 'Not Started' },
-  { status: 'InProgress', label: 'In Progress' },
-  { status: 'Done', label: 'Finished' },
-]
-
-const projectStatusVariant: Record<string, 'default' | 'secondary' | 'success' | 'destructive' | 'warning' | 'outline'> = {
-  Planning: 'secondary',
-  Active: 'default',
-  OnHold: 'warning',
-  Completed: 'success',
-  Cancelled: 'destructive',
-}
-
-const TABS = [
-  { id: 'overview', label: 'Overview' },
-  { id: 'tasks', label: 'Tasks' },
-  { id: 'gantt', label: 'Gantt' },
-  { id: 'burndown', label: 'Burndown' },
-  { id: 'velocity', label: 'Velocity' },
-  { id: 'team', label: 'Team' },
-  { id: 'timelog', label: 'Time Log' },
-  { id: 'expenses', label: 'Expenses' },
-  { id: 'milestones', label: 'Milestones' },
-  { id: 'notes', label: 'Notes' },
-  { id: 'discussion', label: 'Discussion' },
+  {
+    status: 'Todo',
+    label: 'Not Started',
+    band: 'bg-slate-500',
+    body: 'bg-slate-100/70 dark:bg-slate-800/30 border-slate-200 dark:border-slate-700/60',
+    dragOver: 'bg-slate-200/80 dark:bg-slate-800/60 ring-2 ring-slate-400',
+    accent: '#64748b',
+  },
+  {
+    status: 'InProgress',
+    label: 'In Progress',
+    band: 'bg-amber-500',
+    body: 'bg-amber-50/80 dark:bg-amber-950/20 border-amber-200/80 dark:border-amber-900/40',
+    dragOver: 'bg-amber-100/90 dark:bg-amber-950/45 ring-2 ring-amber-400',
+    accent: '#f59e0b',
+  },
+  {
+    status: 'Done',
+    label: 'Finished',
+    band: 'bg-emerald-500',
+    body: 'bg-emerald-50/80 dark:bg-emerald-950/20 border-emerald-200/80 dark:border-emerald-900/40',
+    dragOver: 'bg-emerald-100/90 dark:bg-emerald-950/45 ring-2 ring-emerald-400',
+    accent: '#10b981',
+  },
 ]
 
 // const TASK_STATUS_COLOR: Record<string, string> = {
@@ -105,6 +111,20 @@ function timeAgo(dateStr: string) {
   const days = Math.floor(hours / 24)
   if (days < 7) return `${days}d ago`
   return new Date(dateStr).toLocaleDateString('de-AT', { day: '2-digit', month: '2-digit', year: 'numeric' })
+}
+
+// For DateOnly values from the API ("2026-10-31"): new Date() would read that as UTC midnight,
+// making timeAgo count hours since midnight ("12h ago" for a task closed just now). A bare date
+// has no time, so compare calendar days instead.
+function dateAgo(dateStr: string) {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  const date = new Date(y, m - 1, d)
+  const today = new Date(); today.setHours(0, 0, 0, 0)
+  const days = Math.round((today.getTime() - date.getTime()) / 86_400_000)
+  if (days <= 0) return 'today'
+  if (days === 1) return 'yesterday'
+  if (days < 7) return `${days}d ago`
+  return date.toLocaleDateString('de-AT', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
 
@@ -164,18 +184,34 @@ function BurndownTab({ projectId }: { projectId: string }) {
 }
 
 export function ProjectDetailPage() {
-  const { id } = useParams<{ id: string }>()
+  const { id, group: groupParam, sub: subParam } = useParams<{ id: string; group?: string; sub?: string }>()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const { pendingTaskId, setPendingTaskId } = useNotificationTask()
   const queryClient = useQueryClient()
 
   const { user: authUser } = useAuth()
+  const canManage = authUser?.role === 'Owner' || authUser?.role === 'Admin'
+
+  // Workspace IA: /projects/:id/:group/:sub — normalize unknown segments to the defaults.
+  const { group, sub, tab: activeTab } = resolveTab(groupParam, subParam)
+  useEffect(() => {
+    if (groupParam !== group || subParam !== sub)
+      navigate(`/projects/${id}/${group}/${sub}${window.location.search}`, { replace: true })
+  }, [id, group, sub, groupParam, subParam, navigate])
 
   const { data: project, isLoading, isError } = useQuery({
     queryKey: ['project', id],
     queryFn: () => getProjectById(id!),
   })
+
+  // Billing-type chip in the header; shares the cache with the Overview tab.
+  const { data: overviewData } = useQuery({
+    queryKey: ['project-overview', id],
+    queryFn: () => getProjectOverview(id!),
+    enabled: !!id,
+  })
+  const overviewBilling = overviewData?.billingType
 
   const { data: users } = useQuery({ queryKey: ['users', 'active'], queryFn: getActiveUsers })
   const { data: clients } = useQuery({ queryKey: ['clients'], queryFn: getClients })
@@ -282,6 +318,7 @@ export function ProjectDetailPage() {
   // Task filters
   const [taskDateFilter, setTaskDateFilter] = useState<'all' | 'this-week' | 'this-month' | 'next-week' | 'next-month' | 'overdue'>('all')
   const [taskMemberFilter, setTaskMemberFilter] = useState<string>('all')
+  const [taskSearch, setTaskSearch] = useState('')
 
   // Description expand state (shared across both task modals)
   const [descExpanded, setDescExpanded] = useState(false)
@@ -512,58 +549,6 @@ export function ProjectDetailPage() {
   const p = project
   const prof = p.profitability
   const fmtCur = (n: number, cur: string) => n.toLocaleString('de-AT', { style: 'currency', currency: cur })
-  const margin = prof.revenue > 0 ? ((prof.profit / prof.revenue) * 100).toFixed(1) : null
-
-  const roleChartData = (() => {
-    const roleMap: Record<string, number> = {}
-    p.timeEntries.forEach(entry => {
-      const role = p.members.find(m => m.id === entry.memberId)?.role ?? 'Other'
-      roleMap[role] = (roleMap[role] ?? 0) + entry.hoursWorked
-    })
-    return Object.entries(roleMap).map(([role, hours]) => ({ role, hours }))
-  })()
-
-  const activityItems = (() => {
-    const items: { type: 'time' | 'milestone' | 'overdue'; bold: string; label: string; time: string; sortMs: number }[] = []
-
-    ;[...p.timeEntries]
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-      .slice(0, 3)
-      .forEach(entry => {
-        items.push({
-          type: 'time',
-          bold: entry.memberName,
-          label: `logged ${entry.hoursWorked}h${entry.description ? ` — ${entry.description}` : ''}`,
-          time: timeAgo(entry.date),
-          sortMs: new Date(entry.date).getTime(),
-        })
-      })
-
-    p.milestones.filter(m => m.isCompleted).forEach(m => {
-      items.push({
-        type: 'milestone',
-        bold: m.title,
-        label: 'milestone reached',
-        time: new Date(m.dueDate).toLocaleDateString('de-AT', { day: '2-digit', month: '2-digit' }),
-        sortMs: new Date(m.dueDate).getTime(),
-      })
-    })
-
-    const today = new Date(); today.setHours(0, 0, 0, 0)
-    p.tasks
-      .filter(t => t.dueDate && new Date(t.dueDate) < today && t.status !== 'Done')
-      .forEach(t => {
-        items.push({
-          type: 'overdue',
-          bold: t.title,
-          label: 'is overdue',
-          time: 'Overdue',
-          sortMs: t.dueDate ? new Date(t.dueDate).getTime() : 0,
-        })
-      })
-
-    return items.sort((a, b) => b.sortMs - a.sortMs).slice(0, 6)
-  })()
 
   const totalLoggedHours = p.timeEntries.reduce((s, e) => s + e.hoursWorked, 0)
   const totalLoggedValue = p.timeEntries.reduce((s, e) => s + e.cost, 0)
@@ -667,8 +652,11 @@ export function ProjectDetailPage() {
     const nextWeek  = new Date(now); nextWeek.setDate(nextWeek.getDate() + 7)
     const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1)
 
+    const q = taskSearch.trim().toLowerCase()
+
     return p.tasks.filter(t => {
       if (taskMemberFilter !== 'all' && t.assignedMemberId !== taskMemberFilter) return false
+      if (q && !t.title.toLowerCase().includes(q) && !(t.description ?? '').toLowerCase().includes(q)) return false
 
       if (taskDateFilter === 'all') return true
       const due = t.dueDate ? new Date(t.dueDate) : null
@@ -685,20 +673,21 @@ export function ProjectDetailPage() {
 
   return (
     <div className="p-6 space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="h-8 w-8 p-0 shrink-0">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold">{p.name}</h1>
-              <Badge variant={projectStatusVariant[p.status] ?? 'outline'}>{p.status}</Badge>
-            </div>
-            <p className="text-sm text-muted-foreground">{p.clientName}</p>
-          </div>
-        </div>
-        <Button size="sm" variant="outline" onClick={() => {
+      <ProjectHeader
+        projectId={p.id}
+        name={p.name}
+        clientName={p.clientName}
+        status={p.status}
+        billingType={overviewBilling}
+        startDate={p.startDate}
+        deadline={p.deadline}
+        budgetAmount={p.budgetAmount}
+        currency={p.currency}
+        memberNames={p.members.map(m => m.name)}
+        group={group}
+        sub={sub}
+        showMoney={canManage}
+        onEditProject={() => {
           setEditName(p.name)
           setEditDescription(p.description ?? '')
           setEditDeadline(p.deadline ? p.deadline.slice(0, 10) : '')
@@ -707,160 +696,27 @@ export function ProjectDetailPage() {
           setEditCurrency(p.currency)
           setEditClientId(p.clientId ?? '')
           setEditOpen(true)
-        }}><Pencil className="h-3.5 w-3.5 mr-1" />Edit Project</Button>
-      </div>
+        }}
+      />
 
-      <Tabs tabs={TABS}>
-        {activeTab => (
+      {(() => {
+        return (
           <>
             {activeTab === 'overview' && (
-              <div className="space-y-4">
-                {/* Top row */}
-                <div className="grid grid-cols-2 gap-4">
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-base">Project Info</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-xs text-muted-foreground uppercase tracking-wide">Budget</p>
-                          <p className="text-lg font-semibold mt-0.5">{fmtCur(p.budgetAmount, p.currency)}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground uppercase tracking-wide">Timeline</p>
-                          <p className="text-sm font-medium mt-0.5">
-                            {new Date(p.startDate).toLocaleDateString('de-AT', { day: 'numeric', month: 'short', year: 'numeric' })}
-                            {p.deadline ? ` — ${new Date(p.deadline).toLocaleDateString('de-AT', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
-                          </p>
-                        </div>
-                      </div>
-                      {p.description && (
-                        <div className="bg-muted/40 rounded-md p-3 text-sm text-foreground/80 leading-relaxed">
-                          {p.description}
-                        </div>
-                      )}
-                      <div>
-                        <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Team Members</p>
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          {p.members.slice(0, 5).map(m => (
-                            <span
-                              key={m.id}
-                              title={m.name}
-                              className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-primary/20 text-primary font-semibold text-xs"
-                            >
-                              {m.name.charAt(0).toUpperCase()}
-                            </span>
-                          ))}
-                          {p.members.length > 5 && (
-                            <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-muted text-muted-foreground font-medium text-xs">
-                              +{p.members.length - 5}
-                            </span>
-                          )}
-                          {p.members.length === 0 && <span className="text-sm text-muted-foreground">No members yet</span>}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+              <ProjectOverviewTab projectId={p.id} canManage={canManage} />
+            )}
 
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-base">Profitability</CardTitle>
-                        <TrendingUp className="h-4 w-4 text-green-500" />
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-0 text-sm">
-                        {[
-                          { label: 'Labor Cost', value: fmtCur(prof.laborCost, prof.currency), red: false },
-                          { label: 'Expenses', value: fmtCur(prof.expensesTotal, prof.currency), red: false },
-                          { label: 'Total Cost', value: fmtCur(prof.totalCost, prof.currency), red: true },
-                          { label: 'Revenue', value: fmtCur(prof.revenue, prof.currency), red: false },
-                        ].map(row => (
-                          <div key={row.label} className="flex justify-between py-2 border-b border-border/40 last:border-0">
-                            <span className="text-muted-foreground">{row.label}</span>
-                            <span className={row.red ? 'font-medium text-destructive' : 'font-medium'}>{row.value}</span>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="mt-4 rounded-lg bg-muted/30 p-4">
-                        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Net Profit</p>
-                        <div className="flex items-end justify-between mb-3">
-                          <p className={`text-2xl font-bold ${prof.profit >= 0 ? 'text-green-500' : 'text-destructive'}`}>
-                            {fmtCur(prof.profit, prof.currency)}
-                          </p>
-                          {margin !== null && (
-                            <span className={`text-xs font-semibold px-2 py-1 rounded-md ${prof.profit >= 0 ? 'bg-green-500/20 text-green-600' : 'bg-destructive/20 text-destructive'}`}>
-                              {margin}%
-                            </span>
-                          )}
-                        </div>
-                        {prof.revenue > 0 && (
-                          <div className="w-full bg-muted rounded-full h-1.5">
-                            <div
-                              className={`h-1.5 rounded-full transition-all ${prof.profit >= 0 ? 'bg-green-500' : 'bg-destructive'}`}
-                              style={{ width: `${Math.min(100, Math.max(0, (prof.profit / prof.revenue) * 100))}%` }}
-                            />
-                          </div>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
+            {activeTab === 'files' && (
+              <CollabFilesTab projectId={p.id} />
+            )}
 
-                {/* Bottom row */}
-                <div className="grid grid-cols-2 gap-4">
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-base">Resource Allocation</CardTitle>
-                      <p className="text-xs text-muted-foreground">Hours logged per role</p>
-                    </CardHeader>
-                    <CardContent>
-                      {roleChartData.length === 0 ? (
-                        <p className="text-sm text-muted-foreground py-6 text-center">No time logged yet.</p>
-                      ) : (
-                        <ResponsiveContainer width="100%" height={180}>
-                          <BarChart data={roleChartData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                            <XAxis dataKey="role" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
-                            <YAxis tick={{ fontSize: 11 }} allowDecimals={false} axisLine={false} tickLine={false} />
-                            <Tooltip formatter={(v) => [`${v}h`, 'Hours']} />
-                            <Bar dataKey="hours" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                          </BarChart>
-                        </ResponsiveContainer>
-                      )}
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-base">Recent Project Activity</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      {activityItems.length === 0 ? (
-                        <p className="text-sm text-muted-foreground py-6 text-center">No activity yet.</p>
-                      ) : (
-                        <div className="space-y-3.5">
-                          {activityItems.map((item, i) => (
-                            <div key={i} className="flex items-start gap-3">
-                              <span className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${
-                                item.type === 'time' ? 'bg-green-500' :
-                                item.type === 'milestone' ? 'bg-blue-500' : 'bg-destructive'
-                              }`} />
-                              <p className="flex-1 text-sm leading-snug">
-                                <span className="font-medium">{item.bold}</span>
-                                {item.label ? ` ${item.label}` : ''}
-                              </p>
-                              <span className="text-xs text-muted-foreground shrink-0 mt-0.5">{item.time}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </div>
-              </div>
+            {activeTab === 'tasklist' && (
+              <PlanTaskListTab
+                project={p}
+                canManage={canManage}
+                onNewTask={() => { setTaskOpen(true); setDescExpanded(false) }}
+                onOpenTask={openEditTask}
+              />
             )}
 
             {activeTab === 'gantt' && (
@@ -897,6 +753,17 @@ export function ProjectDetailPage() {
 
                 {/* Filters + live indicator */}
                 <div className="flex items-center gap-2 flex-wrap">
+                  <label className="h-8 w-48 flex items-center gap-1.5 px-2.5 rounded-md border bg-card text-muted-foreground">
+                    <Search className="h-3.5 w-3.5 shrink-0" />
+                    <input
+                      type="search"
+                      aria-label="Search tasks"
+                      placeholder="Search tasks"
+                      value={taskSearch}
+                      onChange={e => setTaskSearch(e.target.value)}
+                      className="min-w-0 flex-1 border-0 bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground/70"
+                    />
+                  </label>
                   <Select value={taskDateFilter} onChange={e => setTaskDateFilter(e.target.value as typeof taskDateFilter)} className="h-8 text-xs w-36">
                     <option value="all">All dates</option>
                     <option value="this-week">This week</option>
@@ -911,10 +778,10 @@ export function ProjectDetailPage() {
                       <option key={m.id} value={m.id}>{m.name}</option>
                     ))}
                   </Select>
-                  {(taskDateFilter !== 'all' || taskMemberFilter !== 'all') && (
+                  {(taskDateFilter !== 'all' || taskMemberFilter !== 'all' || taskSearch !== '') && (
                     <button
                       className="text-xs text-muted-foreground hover:text-foreground underline"
-                      onClick={() => { setTaskDateFilter('all'); setTaskMemberFilter('all') }}
+                      onClick={() => { setTaskDateFilter('all'); setTaskMemberFilter('all'); setTaskSearch('') }}
                     >
                       Clear
                     </button>
@@ -960,12 +827,11 @@ export function ProjectDetailPage() {
                     <div className="grid grid-cols-3 gap-4">
                       {KANBAN_COLUMNS.map(col => {
                         const colTasks = filteredTasks.filter(t => t.status === col.status)
-                        const dotColor = col.status === 'Todo' ? 'bg-slate-400' : col.status === 'InProgress' ? 'bg-blue-500' : 'bg-green-500'
                         const today = new Date(); today.setHours(0, 0, 0, 0)
                         return (
                           <div
                             key={col.status}
-                            className={`rounded-xl p-3 min-h-48 transition-colors ${dragOverColumn === col.status ? 'bg-primary/10 ring-2 ring-primary/30' : 'bg-muted/30'}`}
+                            className={`rounded-xl overflow-hidden border flex flex-col min-h-56 transition-colors ${dragOverColumn === col.status ? col.dragOver : col.body}`}
                             onDragOver={e => { e.preventDefault(); setDragOverColumn(col.status) }}
                             onDragLeave={e => {
                               if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverColumn(null)
@@ -991,17 +857,21 @@ export function ProjectDetailPage() {
                               setDragOverColumn(null)
                             }}
                           >
-                            {/* Column header */}
-                            <div className="flex items-center gap-2 mb-3 px-1">
-                              <span className={`w-2 h-2 rounded-full shrink-0 ${dotColor}`} />
-                              <span className="text-xs font-bold uppercase tracking-widest flex-1">{col.label}</span>
-                              <span className="text-xs bg-background/60 rounded-full px-2 py-0.5 font-semibold tabular-nums">
+                            {/* Column header — solid status-color band, monday style */}
+                            <div className={`${col.band} px-3.5 py-2 flex items-center gap-2`}>
+                              <span className="text-xs font-bold uppercase tracking-widest flex-1 text-white">{col.label}</span>
+                              <span className="text-[11px] bg-white/25 text-white rounded-full px-2 py-0.5 font-semibold tabular-nums">
                                 {colTasks.length}
                               </span>
                             </div>
 
                             {/* Cards */}
-                            <div className="space-y-2.5">
+                            <div className="space-y-2.5 p-3 flex-1">
+                              {colTasks.length === 0 && (
+                                <div className="border-2 border-dashed border-foreground/10 rounded-lg py-6 text-center text-xs text-muted-foreground">
+                                  {dragOverColumn === col.status ? 'Drop here' : 'No tasks'}
+                                </div>
+                              )}
                               {colTasks.map(task => {
                                 const isBlocked = task.blockedByTaskIds.length > 0 && task.blockedByTaskIds.some(bid => {
                                   const blocker = p.tasks.find(t => t.id === bid)
@@ -1023,11 +893,12 @@ export function ProjectDetailPage() {
                                       onDragEnd={() => { setDraggedTaskId(null); setDragOverColumn(null) }}
                                       onClick={() => { if (!draggedTaskId) openEditTask(task) }}
                                       className={`bg-card border rounded-lg p-3 cursor-pointer shadow-sm select-none transition-opacity ${draggedTaskId === task.id ? 'opacity-40' : 'hover:border-primary/40 opacity-70 hover:opacity-100'}`}
+                                      style={{ borderLeft: `3px solid ${col.accent}` }}
                                     >
                                       <p className="text-sm font-medium line-through text-muted-foreground leading-snug">{task.title}</p>
                                       <div className="flex items-center justify-between mt-2">
                                         <span className="text-[10px] text-muted-foreground">
-                                          {task.completedAt ? `Closed ${timeAgo(task.completedAt)}` : 'Completed'}
+                                          {task.completedAt ? `Closed ${dateAgo(task.completedAt)}` : 'Completed'}
                                         </span>
                                         {task.assignedMemberName && (
                                           <span
@@ -1050,6 +921,7 @@ export function ProjectDetailPage() {
                                     onDragEnd={() => { setDraggedTaskId(null); setDragOverColumn(null) }}
                                     onClick={() => { if (!draggedTaskId) openEditTask(task) }}
                                     className={`bg-card border rounded-lg p-3 cursor-pointer shadow-sm select-none transition-colors ${draggedTaskId === task.id ? 'opacity-40 cursor-grabbing' : 'hover:border-primary/50'}`}
+                                    style={{ borderLeft: `3px solid ${col.accent}` }}
                                   >
                                     {milestoneName && (
                                       <span className="inline-flex items-center gap-1 text-[10px] font-medium text-amber-600 bg-amber-100 dark:bg-amber-950 dark:text-amber-400 px-1.5 py-0.5 rounded mb-2">
@@ -1100,7 +972,7 @@ export function ProjectDetailPage() {
                             {/* Add Card button */}
                             <button
                               onClick={() => { setTaskOpen(true); setDescExpanded(false) }}
-                              className="mt-2.5 w-full flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground py-1.5 px-2 rounded-md hover:bg-background/60 transition-colors"
+                              className="mx-3 mb-3 flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground py-1.5 px-2 rounded-md hover:bg-background/60 transition-colors"
                             >
                               <Plus className="h-3.5 w-3.5" /> Add Card
                             </button>
@@ -1818,8 +1690,8 @@ export function ProjectDetailPage() {
               </div>
             )}
           </>
-        )}
-      </Tabs>
+        )
+      })()}
 
       {/* Azure DevOps–style task detail modal */}
       {editTaskOpen && editingTask && (
