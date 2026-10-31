@@ -13,6 +13,7 @@ using Proposly.Application.Chat.Queries.GetConversation;
 using Proposly.Application.Chat.Queries.GetConversationFiles;
 using Proposly.Application.Chat.Queries.GetConversations;
 using Proposly.Application.Chat.Queries.GetMessages;
+using Proposly.Application.Chat.Queries.GetPresence;
 using Proposly.Application.Chat.Queries.GetUnreadTotal;
 using Proposly.Application.Chat.Responses;
 
@@ -106,6 +107,12 @@ public sealed class ChatController : ControllerBase
         [FromServices] IQueryHandler<GetUnreadTotalQuery, ChatUnreadResponse> handler,
         CancellationToken ct)
         => await handler.HandleAsync(new GetUnreadTotalQuery(), ct);
+
+    [HttpGet("presence")]
+    public async Task<IReadOnlyList<PresenceResponse>> GetPresence(
+        [FromServices] IQueryHandler<GetPresenceQuery, IReadOnlyList<PresenceResponse>> handler,
+        CancellationToken ct)
+        => await handler.HandleAsync(new GetPresenceQuery(), ct);
 
     [HttpPost("conversations/{id:guid}/attachments")]
     [RequestSizeLimit(30 * 1024 * 1024)]

@@ -81,6 +81,20 @@ export const deleteConversation = (conversationId: string) =>
 export const getUnreadTotal = () =>
   api.get<{ totalUnread: number }>('/chat/unread').then(r => r.data.totalUnread)
 
+export type Presence = 'online' | 'away' | 'offline'
+
+export interface PresenceResponse {
+  userId: string
+  name: string
+  role: string
+  presence: Presence
+  lastSeenAt: string | null
+}
+
+/** Colleagues with presence for the chat dock: online < 2 min, away < 15 min, else offline. */
+export const getPresence = () =>
+  api.get<PresenceResponse[]>('/chat/presence').then(r => r.data)
+
 export const uploadAttachment = (
   conversationId: string,
   file: File,

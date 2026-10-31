@@ -69,4 +69,11 @@ public sealed class UserRepository : IUserRepository
         => await _context.Users
             .Where(u => u.CompanyId == companyId && !u.IsDisabled && u.Role != UserRole.Owner && !u.IsProfileOnly)
             .CountAsync(ct);
+
+    // ExecuteUpdate on purpose: no aggregate load, no audit stamping, no domain events — a
+    // heartbeat is not an edit. The global tenant filter still applies (own-company row only).
+    public async Task TouchLastSeenAsync(Guid userId, DateTime seenAtUtc, CancellationToken ct = default)
+        => await _context.Users
+            .Where(u => u.Id == userId)
+            .ExecuteUpdateAsync(s => s.SetProperty(u => u.LastSeenAt, seenAtUtc), ct);
 }

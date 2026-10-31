@@ -73,6 +73,12 @@ public sealed class User : Entity<Guid>, ITenantEntity, IAuditableEntity
 
     /// <summary>True for workers created without login access — see <see cref="CreateProfileOnly"/>.</summary>
     public bool IsProfileOnly { get; private set; }
+
+    /// <summary>
+    /// Last authenticated request, updated (throttled) by the API as a presence heartbeat.
+    /// Online &lt; 2 min, away &lt; 15 min, else offline — see GetPresenceQueryHandler.
+    /// </summary>
+    public DateTime? LastSeenAt { get; private set; }
     public string? PasswordResetToken { get; private set; }
     public DateTime? PasswordResetTokenExpiry { get; private set; }
     public DateTime CreatedAt { get; private set; }
@@ -98,6 +104,9 @@ public sealed class User : Entity<Guid>, ITenantEntity, IAuditableEntity
         PasswordHash = newPasswordHash;
         UpdatedAt = DateTime.UtcNow;
     }
+
+    /// <summary>Presence heartbeat. Deliberately does not touch UpdatedAt — it is not an edit.</summary>
+    public void RecordSeen(DateTime seenAtUtc) => LastSeenAt = seenAtUtc;
 
     /// <summary>
     /// Upgrades a profile-only worker to an invitable account: real email, chosen role, and an

@@ -16,4 +16,10 @@ public interface IUserRepository
     Task UpdateAsync(User user, CancellationToken ct = default);
     Task RemoveAsync(User user, CancellationToken ct = default);
     Task<int> CountInvitedByCompanyIdAsync(Guid companyId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Presence heartbeat: stamps <see cref="User.LastSeenAt"/> without loading the aggregate
+    /// or touching audit fields. Called per authenticated request, throttled by the API.
+    /// </summary>
+    Task TouchLastSeenAsync(Guid userId, DateTime seenAtUtc, CancellationToken ct = default);
 }

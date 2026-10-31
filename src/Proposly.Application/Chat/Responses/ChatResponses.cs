@@ -54,3 +54,11 @@ public sealed record ChatFileContentResponse(
     string FileName,
     string ContentType,
     byte[] Content);
+
+/// <summary>A colleague's presence for the chat dock. Presence: online / away / offline.</summary>
+public sealed record PresenceResponse(
+    Guid UserId,
+    string Name,
+    string Role,
+    string Presence,
+    DateTime? LastSeenAt);

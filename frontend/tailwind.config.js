@@ -39,6 +39,13 @@ export default {
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
       },
+      boxShadow: {
+        // Chat dock elevations from the design handoff
+        dock: '0 -4px 24px -6px rgb(9 9 11 / 0.16), 0 0 0 1px rgb(9 9 11 / 0.02)',
+        panel: '0 16px 40px -10px rgb(9 9 11 / 0.22), 0 2px 6px rgb(9 9 11 / 0.06)',
+        launcher: '0 8px 24px -6px rgb(9 9 11 / 0.35)',
+        head: '0 4px 14px -4px rgb(9 9 11 / 0.3)',
+      },
       fontFamily: {
         sans: ['Plus Jakarta Sans', 'system-ui', 'sans-serif'],
         mono: ['IBM Plex Mono', 'ui-monospace', 'monospace'],
