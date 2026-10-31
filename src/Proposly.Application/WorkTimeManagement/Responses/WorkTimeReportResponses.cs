@@ -26,6 +26,12 @@ public sealed record MonthlyWorkTimeReportResponse(
     decimal ActualHours,
     decimal? MonthlyDifference,
 
+    /// <summary>Hourly rate from the employment terms in force at month end; null when unset.</summary>
+    decimal? HourlyRate,
+    string? Currency,
+    /// <summary>ActualHours × HourlyRate — a payroll estimate for the approver, not an invoice.</summary>
+    decimal? EstimatedPay,
+
     IReadOnlyList<AbsenceDaysByType> AbsenceDays,
 
     decimal OpeningBalanceHours,

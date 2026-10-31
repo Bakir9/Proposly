@@ -25,6 +25,12 @@ export interface MonthlyWorkTimeReport {
   actualHours: number
   monthlyDifference: number | null
 
+  /** Hourly rate from the employment terms in force; null when unset. */
+  hourlyRate: number | null
+  currency: string | null
+  /** actualHours × hourlyRate — a payroll estimate for the approver. */
+  estimatedPay: number | null
+
   absenceDays: AbsenceDaysByType[]
 
   openingBalanceHours: number

@@ -51,6 +51,14 @@ public sealed class GetMonthlyWorkTimeReportQueryHandler
 
         var employee = await _users.GetByIdAsync(userId, ct);
 
+        // Pay estimate: the terms version in force at month end provides the hourly rate.
+        var monthStart = new DateOnly(query.Year, query.Month, 1);
+        var monthEnd = monthStart.AddMonths(1).AddDays(-1);
+        var rate = (await _terms.GetForRangeAsync(userId, monthStart, monthEnd, ct))
+            .Where(t => t.ValidFrom <= monthEnd)
+            .OrderByDescending(t => t.ValidFrom)
+            .FirstOrDefault()?.HourlyRate;
+
         return new MonthlyWorkTimeReportResponse(
             UserId: userId,
             EmployeeName: employee?.FullName ?? "Unknown",
@@ -67,6 +75,10 @@ public sealed class GetMonthlyWorkTimeReportQueryHandler
             MonthlyDifference: figures.TargetHours.HasValue
                 ? figures.Balance.MonthlyDifference
                 : null,
+
+            HourlyRate: rate?.Amount,
+            Currency: rate?.Currency,
+            EstimatedPay: rate is null ? null : Math.Round(figures.ActualHours * rate.Amount, 2),
 
             AbsenceDays: figures.AbsenceDays
                 .Select(a => new AbsenceDaysByType(a.Type, a.Days))

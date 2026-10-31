@@ -44,6 +44,7 @@ const NAV_GROUPS = [
       { to: '/redesign/working-time', label: 'Work time',     icon: Clock,          adminOnly: false, superAdminOnly: false },
       { to: '/absences',              label: 'Time off',      icon: CalendarOff,    adminOnly: false, superAdminOnly: false },
       { to: '/approvals',             label: 'Approvals',     icon: ClipboardCheck, adminOnly: true,  superAdminOnly: false },
+      { to: '/team-time',             label: 'Team time',     icon: Clock,          adminOnly: true,  superAdminOnly: false },
       { to: '/users',                 label: 'Team',          icon: Users,          adminOnly: true,  superAdminOnly: false },
       { to: '/redesign/team',         label: 'Team settings', icon: CalendarCheck,  adminOnly: true,  superAdminOnly: false },
     ],

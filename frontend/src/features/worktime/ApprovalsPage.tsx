@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
@@ -12,7 +12,8 @@ import { getApiErrorMessage } from '@/lib/api-errors'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog } from '@/components/ui/dialog'
-import { ClipboardCheck, Check, Undo2, AlertTriangle } from 'lucide-react'
+import { ClipboardCheck, Check, Undo2, AlertTriangle, FileText, ChevronUp } from 'lucide-react'
+import { MonthReportPanel } from './MonthReportPanel'
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -22,6 +23,7 @@ const MONTHS = [
 export function ApprovalsPage() {
   const queryClient = useQueryClient()
   const [returning, setReturning] = useState<TimesheetSummary | null>(null)
+  const [reportFor, setReportFor] = useState<string | null>(null)
   const [acknowledging, setAcknowledging] = useState<TimesheetSummary | null>(null)
   const [reason, setReason] = useState('')
 
@@ -101,7 +103,8 @@ export function ApprovalsPage() {
             </thead>
             <tbody>
               {data!.map(row => (
-                <tr key={row.id} className="border-t">
+                <Fragment key={row.id}>
+                <tr className="border-t">
                   <td className="px-4 py-2 font-medium">{row.employeeName}</td>
                   <td className="px-4 py-2">{MONTHS[row.month - 1]} {row.year}</td>
                   <td className="px-4 py-2 text-right tabular-nums">
@@ -124,6 +127,13 @@ export function ApprovalsPage() {
                     <div className="flex justify-end gap-2">
                       <Button
                         variant="outline" size="sm" className="gap-1.5"
+                        onClick={() => setReportFor(reportFor === row.id ? null : row.id)}
+                      >
+                        {reportFor === row.id ? <ChevronUp className="h-3.5 w-3.5" /> : <FileText className="h-3.5 w-3.5" />}
+                        Report
+                      </Button>
+                      <Button
+                        variant="outline" size="sm" className="gap-1.5"
                         onClick={() => { setReturning(row); setReason('') }}
                       >
                         <Undo2 className="h-3.5 w-3.5" />
@@ -140,6 +150,14 @@ export function ApprovalsPage() {
                     </div>
                   </td>
                 </tr>
+                {reportFor === row.id && (
+                  <tr className="border-t bg-muted/20">
+                    <td colSpan={6} className="px-4 py-4">
+                      <MonthReportPanel userId={row.userId} year={row.year} month={row.month} />
+                    </td>
+                  </tr>
+                )}
+                </Fragment>
               ))}
             </tbody>
           </table>
