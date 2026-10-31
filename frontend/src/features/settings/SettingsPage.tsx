@@ -115,11 +115,14 @@ export function SettingsPage() {
     : false
 
   return (
-    <div className="p-6 space-y-6 max-w-2xl">
+    <div className="p-6 space-y-6">
       <h1 className="text-2xl font-semibold">Settings</h1>
 
+      {/* Row 1: the three small cards · Row 2: the two large ones. */}
+      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3 items-start">
+
       {/* Appearance */}
-      <Card>
+      <Card className="h-full">
         <CardHeader>
           <CardTitle className="text-base">Appearance</CardTitle>
         </CardHeader>
@@ -152,8 +155,50 @@ export function SettingsPage() {
         </CardContent>
       </Card>
 
+      {/* Plan */}
+      {settings && (
+        <Card className="h-full">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-3">
+              Plan
+              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${PLAN_COLORS[settings.planTier]}`}>
+                {settings.planTier}
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="text-muted-foreground">Invited users</p>
+                <p className="font-medium mt-0.5">
+                  {usageLabel(settings.currentUserCount, settings.maxUsers)}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Projects</p>
+                <p className="font-medium mt-0.5">
+                  {usageLabel(settings.currentProjectCount, settings.maxProjects)}
+                </p>
+              </div>
+              {settings.planExpiresAt && (
+                <div className="col-span-2">
+                  <p className="text-muted-foreground">Plan expires</p>
+                  <p className="font-medium mt-0.5">
+                    {new Date(settings.planExpiresAt).toLocaleDateString()}
+                  </p>
+                </div>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground mt-4">
+              Plan changes are managed by your Proposly administrator.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+
       {/* Fiscal Year */}
-      <Card>
+      <Card className="h-full">
         <CardHeader>
           <CardTitle className="text-base">Fiscal Year</CardTitle>
         </CardHeader>
@@ -196,8 +241,12 @@ export function SettingsPage() {
         </CardContent>
       </Card>
 
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-2 items-start">
+
       {/* Company Contact Info */}
-      <Card>
+      <Card className="h-full">
         <CardHeader>
           <CardTitle className="text-base">Company Contact Info</CardTitle>
         </CardHeader>
@@ -236,7 +285,7 @@ export function SettingsPage() {
       </Card>
 
       {/* VAT Settings */}
-      <Card>
+      <Card className="h-full">
         <CardHeader>
           <CardTitle className="text-base">VAT Settings</CardTitle>
         </CardHeader>
@@ -363,46 +412,8 @@ export function SettingsPage() {
         </CardContent>
       </Card>
 
-      {/* Plan */}
-      {settings && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-3">
-              Plan
-              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${PLAN_COLORS[settings.planTier]}`}>
-                {settings.planTier}
-              </span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <p className="text-muted-foreground">Invited users</p>
-                <p className="font-medium mt-0.5">
-                  {usageLabel(settings.currentUserCount, settings.maxUsers)}
-                </p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Projects</p>
-                <p className="font-medium mt-0.5">
-                  {usageLabel(settings.currentProjectCount, settings.maxProjects)}
-                </p>
-              </div>
-              {settings.planExpiresAt && (
-                <div className="col-span-2">
-                  <p className="text-muted-foreground">Plan expires</p>
-                  <p className="font-medium mt-0.5">
-                    {new Date(settings.planExpiresAt).toLocaleDateString()}
-                  </p>
-                </div>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground mt-4">
-              Plan changes are managed by your Proposly administrator.
-            </p>
-          </CardContent>
-        </Card>
-      )}
+      </div>
+
     </div>
   )
 }
