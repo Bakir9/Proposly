@@ -67,6 +67,16 @@ public sealed class ProjectRepository : IProjectRepository
             .OrderByDescending(p => p.CreatedAt)
             .ToListAsync(ct);
 
+    public async Task<IReadOnlyList<Project>> GetAllForDashboardAsync(CancellationToken ct = default)
+        => await Visible()
+            .Include(p => p.Members)
+            .Include(p => p.TimeEntries)
+            .Include(p => p.Tasks)
+            .Include(p => p.Milestones)
+            .Include(p => p.Expenses)
+            .OrderByDescending(p => p.CreatedAt)
+            .ToListAsync(ct);
+
     public async Task<IReadOnlyList<Project>> SearchAsync(string term, CancellationToken ct = default)
         => await Visible()
             .Where(p => EF.Functions.ILike(p.Name, $"%{term}%") ||

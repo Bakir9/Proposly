@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Proposly.Application.Abstractions;
 using Proposly.Application.Chat.Services;
+using Proposly.Application.Dashboard.Services;
 using Proposly.Application.Reports.Services;
 using Proposly.Application.WorkTimeManagement.Services;
 using Proposly.Domain.CalendarManagement.Repositories;
@@ -58,6 +59,7 @@ public static class DependencyInjection
         services.AddScoped<IEmploymentTermsRepository, EmploymentTermsRepository>();
         services.AddScoped<INonWorkingDayRepository, NonWorkingDayRepository>();
         services.AddScoped<IProjectBookingReader, ProjectBookingReader>();
+        services.AddScoped<IWhosOutReader, WhosOutReader>();
         services.AddScoped<IEmployeeProfileRepository, EmployeeProfileRepository>();
         services.AddScoped<IConversationRepository, ConversationRepository>();
         services.AddScoped<IChatMessageRepository, ChatMessageRepository>();
