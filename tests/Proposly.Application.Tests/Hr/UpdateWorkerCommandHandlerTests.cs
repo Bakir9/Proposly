@@ -132,7 +132,7 @@ public sealed class UpdateWorkerCommandHandlerTests
     public async Task HandleAsync_UnknownWorker_Throws()
     {
         _users.GetByIdAsync(Arg.Any<Guid>()).Returns((User?)null);
-        await Assert.ThrowsAsync<InvalidOperationException>(
+        await Assert.ThrowsAnyAsync<InvalidOperationException>(
             () => _sut.HandleAsync(Command(FiveDays)));
     }
 }

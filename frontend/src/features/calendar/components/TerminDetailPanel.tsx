@@ -92,19 +92,16 @@ export function TerminDetailPanel({ terminId, onClose }: Props) {
   const { mutate: doCancel } = useMutation({
     mutationFn: () => cancelTermin(terminId),
     onSuccess: () => { invalidate(); toast.success('Meeting cancelled.') },
-    onError: () => toast.error('Failed to cancel.'),
   })
 
   const { mutate: doDelete } = useMutation({
     mutationFn: () => deleteTermin(terminId),
     onSuccess: () => { invalidate(); toast.success('Meeting deleted.'); onClose() },
-    onError: () => toast.error('Failed to delete.'),
   })
 
   const { mutate: doUpdate, isPending: updating } = useMutation({
     mutationFn: () => updateTermin(terminId, { title: editTitle, description: editDesc || null, location: editLoc || null }),
     onSuccess: () => { invalidate(); setEditMode(false); toast.success('Meeting updated.') },
-    onError: () => toast.error('Failed to update.'),
   })
 
   
@@ -113,14 +110,12 @@ export function TerminDetailPanel({ terminId, onClose }: Props) {
   const { mutate: doReschedule, isPending: rescheduling } = useMutation({
     mutationFn: () => rescheduleTermin(terminId, new Date(newStart).toISOString(), new Date(newEnd).toISOString()),
     onSuccess: () => { invalidate(); setRescheduleMode(false); toast.success('Meeting rescheduled.') },
-    onError: () => toast.error('Failed to reschedule.'),
   })
 
   const { mutate: doRespondProposal } = useMutation({
     mutationFn: ({ inviteeId, accept }: { inviteeId: string; accept: boolean }) =>
       respondToProposal(terminId, inviteeId, accept),
     onSuccess: (_, { accept }) => { invalidate(); toast.success(accept ? 'Proposal accepted — meeting rescheduled.' : 'Proposal declined.') },
-    onError: () => toast.error('Failed.'),
   })
 
   if (isLoading) return (

@@ -1,6 +1,7 @@
 using Proposly.Application.Abstractions;
 using Proposly.Application.Auth.Responses;
 using Proposly.Domain.CompanyManagement.Repositories;
+using Proposly.Shared.Exceptions;
 
 namespace Proposly.Application.Auth.Commands.VerifyEmail;
 
@@ -18,7 +19,7 @@ public sealed class VerifyEmailCommandHandler : ICommandHandler<VerifyEmailComma
     public async Task<AuthResponse> HandleAsync(VerifyEmailCommand command, CancellationToken ct = default)
     {
         var user = await _userRepository.GetByEmailVerificationTokenAsync(command.Token, ct)
-            ?? throw new InvalidOperationException("Invalid or expired verification link.");
+            ?? throw new AppException("auth.invalid_verification_link", "Invalid or expired verification link.");
 
         if (user.EmailVerificationTokenExpiry < DateTime.UtcNow)
             throw new InvalidOperationException("This verification link has expired. Please register again.");

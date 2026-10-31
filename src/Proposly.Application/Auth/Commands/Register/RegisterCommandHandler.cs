@@ -3,6 +3,7 @@ using Proposly.Application.Abstractions;
 using Proposly.Domain.CompanyManagement.Entities;
 using Proposly.Domain.CompanyManagement.Enums;
 using Proposly.Domain.CompanyManagement.Repositories;
+using Proposly.Shared.Exceptions;
 
 namespace Proposly.Application.Auth.Commands.Register;
 
@@ -31,7 +32,7 @@ public sealed class RegisterCommandHandler : ICommandHandler<RegisterCommand>
     public async Task HandleAsync(RegisterCommand command, CancellationToken ct = default)
     {
         if (await _userRepository.ExistsByEmailAsync(command.Email, ct))
-            throw new InvalidOperationException($"Email '{command.Email}' is already registered.");
+            throw AppException.Conflict("email.already_registered", $"Email '{command.Email}' is already registered.");
 
         var company = Company.Create(command.CompanyName);
         var passwordHash = _passwordHasher.Hash(command.Password);

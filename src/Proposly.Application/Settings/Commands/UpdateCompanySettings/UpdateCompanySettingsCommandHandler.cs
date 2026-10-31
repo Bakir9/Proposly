@@ -1,5 +1,6 @@
 using Proposly.Application.Abstractions;
 using Proposly.Domain.CompanyManagement.Repositories;
+using Proposly.Shared.Exceptions;
 
 namespace Proposly.Application.Settings.Commands.UpdateCompanySettings;
 
@@ -17,7 +18,7 @@ public sealed class UpdateCompanySettingsCommandHandler : ICommandHandler<Update
     public async Task HandleAsync(UpdateCompanySettingsCommand command, CancellationToken cancellationToken = default)
     {
         var company = await _companyRepository.GetByIdAsync(_currentUserService.CompanyId, cancellationToken)
-            ?? throw new InvalidOperationException("Company not found.");
+            ?? throw AppException.NotFound("company.not_found", "Company not found.");
 
         company.UpdateSettings(command.FiscalYearStartMonth);
         company.UpdateContactInfo(

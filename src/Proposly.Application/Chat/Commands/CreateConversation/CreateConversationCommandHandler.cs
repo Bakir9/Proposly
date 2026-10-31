@@ -2,6 +2,7 @@ using Proposly.Application.Abstractions;
 using Proposly.Domain.Chat.Entities;
 using Proposly.Domain.Chat.Repositories;
 using Proposly.Domain.CompanyManagement.Repositories;
+using Proposly.Shared.Exceptions;
 
 namespace Proposly.Application.Chat.Commands.CreateConversation;
 
@@ -21,7 +22,7 @@ public sealed class CreateConversationCommandHandler(
         foreach (var id in participantIds)
         {
             _ = await users.GetByIdAsync(id, ct)
-                ?? throw new InvalidOperationException($"User {id} not found.");
+                ?? throw AppException.NotFound("user.not_found", $"User {id} not found.");
         }
 
         if (command.Kind == "Direct")

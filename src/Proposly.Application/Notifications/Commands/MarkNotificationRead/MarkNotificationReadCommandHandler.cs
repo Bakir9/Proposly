@@ -1,5 +1,6 @@
 using Proposly.Application.Abstractions;
 using Proposly.Domain.Notifications;
+using Proposly.Shared.Exceptions;
 
 namespace Proposly.Application.Notifications.Commands.MarkNotificationRead;
 
@@ -9,7 +10,7 @@ public sealed class MarkNotificationReadCommandHandler(INotificationRepository r
     public async Task HandleAsync(MarkNotificationReadCommand command, CancellationToken cancellationToken = default)
     {
         var notification = await repository.GetByIdAsync(command.NotificationId, cancellationToken)
-            ?? throw new InvalidOperationException("Notification not found.");
+            ?? throw AppException.NotFound("notification.not_found", "Notification not found.");
 
         notification.MarkAsRead();
         await repository.SaveChangesAsync(cancellationToken);

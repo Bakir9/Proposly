@@ -1,5 +1,6 @@
 ﻿using Proposly.Application.Abstractions;
 using Proposly.Domain.ProjectManagement.Repositories;
+using Proposly.Shared.Exceptions;
 
 namespace Proposly.Application.ProjectManagement.Commands.DeleteTaskComment;
 
@@ -17,7 +18,7 @@ public sealed class DeleteTaskCommentCommandHandler : ICommandHandler<DeleteTask
     public async Task HandleAsync(DeleteTaskCommentCommand command, CancellationToken ct = default)
     {
         var project = await _projects.GetByIdForWriteAsync(command.ProjectId, ct)
-            ?? throw new InvalidOperationException($"Project {command.ProjectId} not found.");
+            ?? throw AppException.NotFound("project.not_found", $"Project {command.ProjectId} not found.");
 
         var isAdmin = _currentUser.Role is "Owner" or "Admin";
         project.DeleteTaskComment(command.TaskId, command.CommentId, _currentUser.UserId, isAdmin);

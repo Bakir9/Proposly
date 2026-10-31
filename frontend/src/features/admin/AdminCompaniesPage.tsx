@@ -56,7 +56,6 @@ export function AdminCompaniesPage() {
       toast.success('Plan updated.')
       setEditing(null)
     },
-    onError: () => toast.error('Failed to update plan.'),
   })
 
   function openEdit(company: CompanyAdminSummary) {

@@ -48,7 +48,7 @@ public sealed class DeleteConversationCommandHandlerTests
         conversation.EnsureParticipants([_userId]);
         _conversations.GetByIdAsync(conversation.Id).Returns(conversation);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
+        await Assert.ThrowsAnyAsync<InvalidOperationException>(
             () => _sut.HandleAsync(new DeleteConversationCommand(conversation.Id)));
 
         await _conversations.DidNotReceive().RemoveAsync(Arg.Any<Conversation>());
@@ -60,7 +60,7 @@ public sealed class DeleteConversationCommandHandlerTests
         var conversation = Conversation.CreateDirect(_companyId, _otherUserId, Guid.NewGuid());
         _conversations.GetByIdAsync(conversation.Id).Returns(conversation);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
+        await Assert.ThrowsAnyAsync<InvalidOperationException>(
             () => _sut.HandleAsync(new DeleteConversationCommand(conversation.Id)));
     }
 
@@ -69,7 +69,7 @@ public sealed class DeleteConversationCommandHandlerTests
     {
         _conversations.GetByIdAsync(Arg.Any<Guid>()).Returns((Conversation?)null);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
+        await Assert.ThrowsAnyAsync<InvalidOperationException>(
             () => _sut.HandleAsync(new DeleteConversationCommand(Guid.NewGuid())));
     }
 }

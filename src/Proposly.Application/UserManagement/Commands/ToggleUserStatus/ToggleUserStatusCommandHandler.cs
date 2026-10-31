@@ -1,5 +1,6 @@
 using Proposly.Application.Abstractions;
 using Proposly.Domain.CompanyManagement.Repositories;
+using Proposly.Shared.Exceptions;
 
 namespace Proposly.Application.UserManagement.Commands.ToggleUserStatus;
 
@@ -20,7 +21,7 @@ public sealed class ToggleUserStatusCommandHandler : ICommandHandler<ToggleUserS
             throw new InvalidOperationException("You cannot change your own status.");
 
         var user = await _userRepository.GetByIdAsync(command.UserId, ct)
-            ?? throw new InvalidOperationException($"User {command.UserId} not found.");
+            ?? throw AppException.NotFound("user.not_found", $"User {command.UserId} not found.");
 
         if (command.Disable)
             user.Disable();

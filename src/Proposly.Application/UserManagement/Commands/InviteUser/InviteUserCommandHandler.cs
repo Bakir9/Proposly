@@ -4,6 +4,7 @@ using Proposly.Domain.CompanyManagement.Entities;
 using Proposly.Domain.CompanyManagement.Enums;
 using Proposly.Domain.CompanyManagement.Repositories;
 using Proposly.Domain.ProjectManagement.Repositories;
+using Proposly.Shared.Exceptions;
 
 namespace Proposly.Application.UserManagement.Commands.InviteUser;
 
@@ -32,14 +33,14 @@ public sealed class InviteUserCommandHandler : ICommandHandler<InviteUserCommand
     public async Task HandleAsync(InviteUserCommand command, CancellationToken ct = default)
     {
         var company = await _companyRepository.GetByIdAsync(_currentUser.CompanyId, ct)
-            ?? throw new InvalidOperationException("Company not found.");
+            ?? throw AppException.NotFound("company.not_found", "Company not found.");
 
         var invitedCount = await _userRepository.CountInvitedByCompanyIdAsync(_currentUser.CompanyId, ct);
         if (company.IsUserLimitReached(invitedCount))
-            throw new InvalidOperationException($"User limit reached for your current plan. Upgrade to invite more users.");
+            throw AppException.Conflict("plan.user_limit_reached", "User limit reached for your current plan. Upgrade to invite more users.");
 
         if (await _userRepository.ExistsByEmailAsync(command.Email, ct))
-            throw new InvalidOperationException($"Email '{command.Email}' is already registered.");
+            throw AppException.Conflict("email.already_registered", $"Email '{command.Email}' is already registered.");
 
         if (!Enum.TryParse<UserRole>(command.Role, ignoreCase: true, out var role))
             throw new ArgumentException($"Invalid role '{command.Role}'. Valid values: Admin, Member.");

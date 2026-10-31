@@ -2,6 +2,7 @@ using Proposly.Application.Abstractions;
 using Proposly.Application.Chat.Responses;
 using Proposly.Application.Chat.Services;
 using Proposly.Domain.Chat.Repositories;
+using Proposly.Shared.Exceptions;
 
 namespace Proposly.Application.Chat.Queries.GetMessages;
 
@@ -13,7 +14,7 @@ public sealed class GetMessagesQueryHandler(
     public async Task<ChatMessagesPageResponse> HandleAsync(GetMessagesQuery query, CancellationToken ct = default)
     {
         var conversation = await conversations.GetByIdAsync(query.ConversationId, ct)
-            ?? throw new InvalidOperationException($"Conversation {query.ConversationId} not found.");
+            ?? throw AppException.NotFound("conversation.not_found", $"Conversation {query.ConversationId} not found.");
 
         if (!conversation.IsParticipant(currentUser.UserId))
             throw new InvalidOperationException("Only participants can read this conversation.");

@@ -68,7 +68,7 @@ public sealed class UpdateTaskStatusCommandHandlerTests
     {
         _repo.GetByIdForWriteAsync(Arg.Any<Guid>()).Returns((Project?)null);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
+        await Assert.ThrowsAnyAsync<InvalidOperationException>(
             () => _sut.HandleAsync(new UpdateTaskStatusCommand(Guid.NewGuid(), Guid.NewGuid(), "InProgress", null)));
     }
 
@@ -78,7 +78,7 @@ public sealed class UpdateTaskStatusCommandHandlerTests
         var project = MakeProject();
         _repo.GetByIdForWriteAsync(project.Id).Returns(project);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
+        await Assert.ThrowsAnyAsync<InvalidOperationException>(
             () => _sut.HandleAsync(new UpdateTaskStatusCommand(project.Id, Guid.NewGuid(), "InProgress", null)));
     }
 
@@ -89,7 +89,7 @@ public sealed class UpdateTaskStatusCommandHandlerTests
         var task = project.AddTask("T", null, null, null, null);
         _repo.GetByIdForWriteAsync(project.Id).Returns(project);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
+        await Assert.ThrowsAnyAsync<InvalidOperationException>(
             () => _sut.HandleAsync(new UpdateTaskStatusCommand(project.Id, task.Id, "Bogus", null)));
     }
 }

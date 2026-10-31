@@ -3,6 +3,7 @@ using Proposly.Application.Chat.Responses;
 using Proposly.Domain.Chat.Entities;
 using Proposly.Domain.Chat.Repositories;
 using Proposly.Domain.CompanyManagement.Repositories;
+using Proposly.Shared.Exceptions;
 
 namespace Proposly.Application.Chat.Commands.SendMessage;
 
@@ -15,19 +16,19 @@ public sealed class SendMessageCommandHandler(
     public async Task<ChatMessageResponse> HandleAsync(SendMessageCommand command, CancellationToken ct = default)
     {
         var conversation = await conversations.GetByIdAsync(command.ConversationId, ct)
-            ?? throw new InvalidOperationException($"Conversation {command.ConversationId} not found.");
+            ?? throw AppException.NotFound("conversation.not_found", $"Conversation {command.ConversationId} not found.");
 
         if (!conversation.IsParticipant(currentUser.UserId))
             throw new InvalidOperationException("Only participants can send messages in this conversation.");
 
         var author = await users.GetByIdAsync(currentUser.UserId, ct)
-            ?? throw new InvalidOperationException("Current user not found.");
+            ?? throw AppException.NotFound("current_user.not_found", "Current user not found.");
         var authorName = $"{author.FirstName} {author.LastName}";
 
         var attachmentIds = command.AttachmentIds.Distinct().ToList();
         var pending = await messages.GetPendingAttachmentsAsync(attachmentIds, conversation.Id, ct);
         if (pending.Count != attachmentIds.Count)
-            throw new InvalidOperationException("One or more attachments were not found in this conversation or are already sent.");
+            throw AppException.NotFound("attachment.not_found", "One or more attachments were not found in this conversation or are already sent.");
 
         var message = ChatMessage.Create(
             currentUser.CompanyId,

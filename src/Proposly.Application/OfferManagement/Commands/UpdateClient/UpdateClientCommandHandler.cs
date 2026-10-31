@@ -1,6 +1,7 @@
 using Proposly.Application.Abstractions;
 using Proposly.Domain.OfferManagement.Repositories;
 using Proposly.Shared.ValueObjects;
+using Proposly.Shared.Exceptions;
 
 namespace Proposly.Application.OfferManagement.Commands.UpdateClient;
 
@@ -13,7 +14,7 @@ public sealed class UpdateClientCommandHandler : ICommandHandler<UpdateClientCom
     public async Task HandleAsync(UpdateClientCommand command, CancellationToken ct = default)
     {
         var client = await _repository.GetByIdAsync(command.ClientId, ct)
-            ?? throw new InvalidOperationException($"Client {command.ClientId} not found.");
+            ?? throw AppException.NotFound("client.not_found", $"Client {command.ClientId} not found.");
 
         Address? address = null;
         if (command.Street is not null || command.City is not null || command.PostalCode is not null || command.Country is not null)

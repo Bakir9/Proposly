@@ -1,5 +1,6 @@
 ﻿using Proposly.Application.Abstractions;
 using Proposly.Domain.ProjectManagement.Repositories;
+using Proposly.Shared.Exceptions;
 
 namespace Proposly.Application.ProjectManagement.Commands.UpdateTask;
 
@@ -12,7 +13,7 @@ public sealed class UpdateTaskCommandHandler : ICommandHandler<UpdateTaskCommand
     public async Task HandleAsync(UpdateTaskCommand command, CancellationToken cancellationToken = default)
     {
         var project = await _repository.GetByIdForWriteAsync(command.ProjectId, cancellationToken)
-            ?? throw new InvalidOperationException($"Project {command.ProjectId} not found.");
+            ?? throw AppException.NotFound("project.not_found", $"Project {command.ProjectId} not found.");
 
         project.UpdateTask(command.TaskId, command.Title, command.Description, command.EstimatedHours, command.ActualHours,
             command.StartDate, command.DueDate, command.MilestoneId, command.AssignedMemberId);

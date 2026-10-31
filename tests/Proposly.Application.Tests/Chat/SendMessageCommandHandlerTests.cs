@@ -69,7 +69,7 @@ public sealed class SendMessageCommandHandlerTests
         var conversation = Conversation.CreateDirect(_companyId, _otherUserId, Guid.NewGuid());
         _conversations.GetByIdAsync(conversation.Id).Returns(conversation);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
+        await Assert.ThrowsAnyAsync<InvalidOperationException>(
             () => _sut.HandleAsync(new SendMessageCommand(conversation.Id, "Hi", [])));
     }
 
@@ -78,7 +78,7 @@ public sealed class SendMessageCommandHandlerTests
     {
         _conversations.GetByIdAsync(Arg.Any<Guid>()).Returns((Conversation?)null);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
+        await Assert.ThrowsAnyAsync<InvalidOperationException>(
             () => _sut.HandleAsync(new SendMessageCommand(Guid.NewGuid(), "Hi", [])));
     }
 
@@ -91,7 +91,7 @@ public sealed class SendMessageCommandHandlerTests
         _messages.GetPendingAttachmentsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), conversation.Id)
             .Returns([]); // requested attachment does not come back
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
+        await Assert.ThrowsAnyAsync<InvalidOperationException>(
             () => _sut.HandleAsync(new SendMessageCommand(conversation.Id, null, [Guid.NewGuid()])));
     }
 

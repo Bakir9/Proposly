@@ -1,6 +1,7 @@
 using Proposly.Application.Abstractions;
 using Proposly.Domain.OfferManagement.Repositories;
 using Proposly.Shared.ValueObjects;
+using Proposly.Shared.Exceptions;
 
 namespace Proposly.Application.OfferManagement.Commands.UpdateOfferItem;
 
@@ -13,7 +14,7 @@ public sealed class UpdateOfferItemCommandHandler : ICommandHandler<UpdateOfferI
     public async Task HandleAsync(UpdateOfferItemCommand command, CancellationToken ct = default)
     {
         var offer = await _repository.GetByIdAsync(command.OfferId, ct)
-            ?? throw new InvalidOperationException($"Offer {command.OfferId} not found.");
+            ?? throw AppException.NotFound("offer.not_found", $"Offer {command.OfferId} not found.");
 
         offer.UpdateItem(command.ItemId, command.Description, command.Quantity, new Money(command.UnitPrice, offer.Currency));
 

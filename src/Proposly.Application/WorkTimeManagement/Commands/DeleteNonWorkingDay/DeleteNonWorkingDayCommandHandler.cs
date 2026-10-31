@@ -1,6 +1,7 @@
 using Proposly.Application.Abstractions;
 using Proposly.Application.WorkTimeManagement.Services;
 using Proposly.Domain.WorkTimeManagement.Repositories;
+using Proposly.Shared.Exceptions;
 
 namespace Proposly.Application.WorkTimeManagement.Commands.DeleteNonWorkingDay;
 
@@ -23,7 +24,7 @@ public sealed class DeleteNonWorkingDayCommandHandler : ICommandHandler<DeleteNo
     public async Task HandleAsync(DeleteNonWorkingDayCommand command, CancellationToken ct = default)
     {
         var day = await _calendar.GetByIdAsync(command.Id, ct)
-            ?? throw new InvalidOperationException($"Non-working day {command.Id} not found.");
+            ?? throw AppException.NotFound("non_working_day.not_found", $"Non-working day {command.Id} not found.");
 
         await ClosedMonthGuard.EnsureMonthIsOpenAsync(day.Date, _timesheets, ct);
 

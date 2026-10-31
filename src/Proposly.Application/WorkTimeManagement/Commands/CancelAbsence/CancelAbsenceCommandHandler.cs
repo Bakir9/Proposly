@@ -2,6 +2,7 @@ using Proposly.Application.Abstractions;
 using Proposly.Application.WorkTimeManagement.Services;
 using Proposly.Domain.WorkTimeManagement.Enums;
 using Proposly.Domain.WorkTimeManagement.Repositories;
+using Proposly.Shared.Exceptions;
 
 namespace Proposly.Application.WorkTimeManagement.Commands.CancelAbsence;
 
@@ -24,7 +25,7 @@ public sealed class CancelAbsenceCommandHandler : ICommandHandler<CancelAbsenceC
     public async Task HandleAsync(CancelAbsenceCommand command, CancellationToken ct = default)
     {
         var absence = await _absences.GetByIdAsync(command.AbsenceId, ct)
-            ?? throw new InvalidOperationException($"Absence {command.AbsenceId} not found.");
+            ?? throw AppException.NotFound("absence.not_found", $"Absence {command.AbsenceId} not found.");
 
         var wasApproved = absence.Status == AbsenceStatus.Approved;
         var today = DateOnly.FromDateTime(_clock.GetUtcNow().UtcDateTime);

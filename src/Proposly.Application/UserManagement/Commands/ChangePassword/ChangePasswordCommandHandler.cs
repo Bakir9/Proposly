@@ -1,5 +1,6 @@
 using Proposly.Application.Abstractions;
 using Proposly.Domain.CompanyManagement.Repositories;
+using Proposly.Shared.Exceptions;
 
 namespace Proposly.Application.UserManagement.Commands.ChangePassword;
 
@@ -19,7 +20,7 @@ public sealed class ChangePasswordCommandHandler : ICommandHandler<ChangePasswor
     public async Task HandleAsync(ChangePasswordCommand command, CancellationToken cancellationToken = default)
     {
         var user = await _repository.GetByIdAsync(_currentUser.UserId, cancellationToken)
-            ?? throw new InvalidOperationException("Current user not found.");
+            ?? throw AppException.NotFound("current_user.not_found", "Current user not found.");
 
         if (!_passwordHasher.Verify(command.CurrentPassword, user.PasswordHash))
             throw new InvalidOperationException("Current password is incorrect.");

@@ -3,6 +3,7 @@ using Proposly.Domain.CompanyManagement.Repositories;
 using Proposly.Domain.OfferManagement.Enums;
 using Proposly.Domain.OfferManagement.Repositories;
 using Proposly.Domain.OfferManagement.Services;
+using Proposly.Shared.Exceptions;
 
 namespace Proposly.Application.OfferManagement.Commands.UpdateOffer;
 
@@ -28,7 +29,7 @@ public sealed class UpdateOfferCommandHandler : ICommandHandler<UpdateOfferComma
     public async Task HandleAsync(UpdateOfferCommand command, CancellationToken ct = default)
     {
         var offer = await _repository.GetByIdAsync(command.OfferId, ct)
-            ?? throw new InvalidOperationException($"Offer {command.OfferId} not found.");
+            ?? throw AppException.NotFound("offer.not_found", $"Offer {command.OfferId} not found.");
 
         offer.UpdateDetails(command.Title, command.Notes, command.ValidUntil, command.DiscountPercent);
 

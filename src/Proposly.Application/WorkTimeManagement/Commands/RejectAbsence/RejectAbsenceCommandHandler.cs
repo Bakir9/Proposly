@@ -1,5 +1,6 @@
 using Proposly.Application.Abstractions;
 using Proposly.Domain.WorkTimeManagement.Repositories;
+using Proposly.Shared.Exceptions;
 
 namespace Proposly.Application.WorkTimeManagement.Commands.RejectAbsence;
 
@@ -19,7 +20,7 @@ public sealed class RejectAbsenceCommandHandler : ICommandHandler<RejectAbsenceC
     public async Task HandleAsync(RejectAbsenceCommand command, CancellationToken ct = default)
     {
         var absence = await _absences.GetByIdAsync(command.AbsenceId, ct)
-            ?? throw new InvalidOperationException($"Absence {command.AbsenceId} not found.");
+            ?? throw AppException.NotFound("absence.not_found", $"Absence {command.AbsenceId} not found.");
 
         // No entitlement is consumed by a rejection, so nothing to adjust.
         absence.Reject(_currentUser.UserId, command.Reason);

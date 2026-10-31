@@ -75,7 +75,7 @@ public sealed class OpenProjectConversationCommandHandlerTests
         var project = MakeProject();
         _projects.GetByIdForWriteAsync(project.Id).Returns(project);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
+        await Assert.ThrowsAnyAsync<InvalidOperationException>(
             () => _sut.HandleAsync(new OpenProjectConversationCommand(project.Id)));
     }
 
@@ -84,7 +84,7 @@ public sealed class OpenProjectConversationCommandHandlerTests
     {
         _projects.GetByIdForWriteAsync(Arg.Any<Guid>()).Returns((Project?)null);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
+        await Assert.ThrowsAnyAsync<InvalidOperationException>(
             () => _sut.HandleAsync(new OpenProjectConversationCommand(Guid.NewGuid())));
     }
 }

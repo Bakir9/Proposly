@@ -1,5 +1,6 @@
 using Proposly.Application.Abstractions;
 using Proposly.Domain.Chat.Repositories;
+using Proposly.Shared.Exceptions;
 
 namespace Proposly.Application.Chat.Commands.MarkConversationUnread;
 
@@ -10,7 +11,7 @@ public sealed class MarkConversationUnreadCommandHandler(
     public async Task HandleAsync(MarkConversationUnreadCommand command, CancellationToken ct = default)
     {
         var conversation = await conversations.GetByIdAsync(command.ConversationId, ct)
-            ?? throw new InvalidOperationException($"Conversation {command.ConversationId} not found.");
+            ?? throw AppException.NotFound("conversation.not_found", $"Conversation {command.ConversationId} not found.");
 
         conversation.MarkUnread(currentUser.UserId);
         await conversations.SaveChangesAsync(ct);

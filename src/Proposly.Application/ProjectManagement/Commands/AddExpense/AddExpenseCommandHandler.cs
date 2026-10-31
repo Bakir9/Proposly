@@ -2,6 +2,7 @@
 using Proposly.Domain.ProjectManagement.Enums;
 using Proposly.Domain.ProjectManagement.Repositories;
 using Proposly.Shared.ValueObjects;
+using Proposly.Shared.Exceptions;
 
 namespace Proposly.Application.ProjectManagement.Commands.AddExpense;
 
@@ -14,7 +15,7 @@ public sealed class AddExpenseCommandHandler : ICommandHandler<AddExpenseCommand
     public async Task<Guid> HandleAsync(AddExpenseCommand command, CancellationToken cancellationToken = default)
     {
         var project = await _repository.GetByIdForWriteAsync(command.ProjectId, cancellationToken)
-            ?? throw new InvalidOperationException($"Project {command.ProjectId} not found.");
+            ?? throw AppException.NotFound("project.not_found", $"Project {command.ProjectId} not found.");
 
         var category = Enum.Parse<ExpenseCategory>(command.Category, ignoreCase: true);
         var expense = project.AddExpense(command.Description, new Money(command.Amount, command.Currency), category, command.Date);

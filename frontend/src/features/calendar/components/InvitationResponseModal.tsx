@@ -34,13 +34,11 @@ export function InvitationResponseModal({ termin, onClose }: Props) {
   const { mutate: accept, isPending: accepting } = useMutation({
     mutationFn: () => respondToInvitation(termin.id, 'Accept'),
     onSuccess: () => { invalidate(); toast.success('You accepted the invitation.'); onClose() },
-    onError: () => toast.error('Failed to respond.'),
   })
 
   const { mutate: decline, isPending: declining } = useMutation({
     mutationFn: () => respondToInvitation(termin.id, 'Decline'),
     onSuccess: () => { invalidate(); toast.success('You declined the invitation.'); onClose() },
-    onError: () => toast.error('Failed to respond.'),
   })
 
   const { mutate: propose, isPending: proposing } = useMutation({
@@ -49,7 +47,6 @@ export function InvitationResponseModal({ termin, onClose }: Props) {
       new Date(propEnd).toISOString(),
       message.trim() || undefined),
     onSuccess: () => { invalidate(); toast.success('Reschedule proposal sent.'); onClose() },
-    onError: () => toast.error('Failed to send proposal.'),
   })
 
   const start = new Date(termin.start)

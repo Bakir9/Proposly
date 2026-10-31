@@ -86,7 +86,7 @@ public class ApproveWithBreachesTests
         WithAustrianPolicy();
         var sheet = SubmittedMonthWithABreach();
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+        var ex = await Assert.ThrowsAnyAsync<InvalidOperationException>(
             () => Handler().HandleAsync(new ApproveTimesheetCommand(sheet.Id, AcknowledgeBreaches: false)));
 
         Assert.Contains("must be acknowledged", ex.Message);

@@ -1,4 +1,5 @@
 using Proposly.Domain.CompanyManagement.Repositories;
+using Proposly.Shared.Exceptions;
 
 namespace Proposly.Application.WorkTimeManagement.Services;
 
@@ -12,10 +13,10 @@ internal static class WorkTimeModuleGuard
         ICompanyRepository companies, Guid companyId, CancellationToken ct)
     {
         var company = await companies.GetByIdAsync(companyId, ct)
-            ?? throw new InvalidOperationException($"Company {companyId} not found.");
+            ?? throw AppException.NotFound("company.not_found", $"Company {companyId} not found.");
 
         if (!company.HasWorkTimeModule())
-            throw new InvalidOperationException(
+            throw AppException.Forbidden("plan.worktime_module_required",
                 "Working time management is available on the Pro and Business plans.");
     }
 }

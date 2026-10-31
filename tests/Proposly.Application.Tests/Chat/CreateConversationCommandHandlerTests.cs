@@ -77,12 +77,12 @@ public sealed class CreateConversationCommandHandlerTests
     {
         _users.GetByIdAsync(Arg.Any<Guid>()).Returns((User?)null);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
+        await Assert.ThrowsAnyAsync<InvalidOperationException>(
             () => _sut.HandleAsync(new CreateConversationCommand("Direct", [_otherUserId], null)));
     }
 
     [Fact]
     public async Task HandleAsync_OnlySelfAsParticipant_Throws()
-        => await Assert.ThrowsAsync<InvalidOperationException>(
+        => await Assert.ThrowsAnyAsync<InvalidOperationException>(
             () => _sut.HandleAsync(new CreateConversationCommand("Direct", [_userId], null)));
 }

@@ -92,7 +92,6 @@ export function CreateTerminModal({ defaultStart, onClose }: Props) {
       toast.success('Meeting created.')
       onClose()
     },
-    onError: () => toast.error('Failed to create meeting.'),
   })
 
   const toggleInvitee = (id: string) =>

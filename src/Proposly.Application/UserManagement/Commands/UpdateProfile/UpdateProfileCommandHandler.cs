@@ -1,5 +1,6 @@
 using Proposly.Application.Abstractions;
 using Proposly.Domain.CompanyManagement.Repositories;
+using Proposly.Shared.Exceptions;
 
 namespace Proposly.Application.UserManagement.Commands.UpdateProfile;
 
@@ -17,7 +18,7 @@ public sealed class UpdateProfileCommandHandler : ICommandHandler<UpdateProfileC
     public async Task HandleAsync(UpdateProfileCommand command, CancellationToken cancellationToken = default)
     {
         var user = await _repository.GetByIdAsync(_currentUser.UserId, cancellationToken)
-            ?? throw new InvalidOperationException("Current user not found.");
+            ?? throw AppException.NotFound("current_user.not_found", "Current user not found.");
 
         user.UpdateProfile(command.FirstName, command.LastName, command.Email);
         await _repository.UpdateAsync(user, cancellationToken);

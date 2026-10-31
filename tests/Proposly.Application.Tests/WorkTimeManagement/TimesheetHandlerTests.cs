@@ -62,7 +62,7 @@ public class TimesheetHandlerTests
         OnPlan(tier);
         var handler = new UpsertWorkDayCommandHandler(_timesheets, _companies, _currentUser);
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+        var ex = await Assert.ThrowsAnyAsync<InvalidOperationException>(
             () => handler.HandleAsync(UpsertMarch2));
 
         Assert.Contains("Pro and Business", ex.Message);
@@ -75,7 +75,7 @@ public class TimesheetHandlerTests
         OnPlan(PlanTier.Pro, expiresAt: DateTime.UtcNow.AddDays(-1));
         var handler = new UpsertWorkDayCommandHandler(_timesheets, _companies, _currentUser);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => handler.HandleAsync(UpsertMarch2));
+        await Assert.ThrowsAnyAsync<InvalidOperationException>(() => handler.HandleAsync(UpsertMarch2));
     }
 
     // --- Recording ---
@@ -117,7 +117,7 @@ public class TimesheetHandlerTests
         _timesheets.GetForUserAsync(UserId, 2026, 3).Returns((Timesheet?)null);
         var handler = new SubmitTimesheetCommandHandler(_timesheets, _currentUser);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
+        await Assert.ThrowsAnyAsync<InvalidOperationException>(
             () => handler.HandleAsync(new SubmitTimesheetCommand(2026, 3)));
     }
 
@@ -206,7 +206,7 @@ public class TimesheetHandlerTests
         var handler = new ApproveTimesheetCommandHandler(
             _timesheets, _policies, _absences, _terms, _calendar, _currentUser);
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+        var ex = await Assert.ThrowsAnyAsync<InvalidOperationException>(
             () => handler.HandleAsync(new ApproveTimesheetCommand(Guid.NewGuid())));
 
         Assert.Contains("not found", ex.Message);

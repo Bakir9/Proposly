@@ -1,5 +1,6 @@
 using Proposly.Application.Abstractions;
 using Proposly.Domain.Chat.Repositories;
+using Proposly.Shared.Exceptions;
 
 namespace Proposly.Application.Chat.Commands.DeleteConversation;
 
@@ -12,7 +13,7 @@ public sealed class DeleteConversationCommandHandler(
     public async Task HandleAsync(DeleteConversationCommand command, CancellationToken ct = default)
     {
         var conversation = await conversations.GetByIdAsync(command.ConversationId, ct)
-            ?? throw new InvalidOperationException($"Conversation {command.ConversationId} not found.");
+            ?? throw AppException.NotFound("conversation.not_found", $"Conversation {command.ConversationId} not found.");
 
         conversation.EnsureDeletableBy(currentUser.UserId);
 

@@ -60,7 +60,7 @@ public sealed class CreateOfferCommandHandlerTests
 
         var cmd = new CreateOfferCommand(_clientId, "Proposal A", null, "EUR", null);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => _sut.HandleAsync(cmd));
+        await Assert.ThrowsAnyAsync<InvalidOperationException>(() => _sut.HandleAsync(cmd));
     }
 
     [Fact]

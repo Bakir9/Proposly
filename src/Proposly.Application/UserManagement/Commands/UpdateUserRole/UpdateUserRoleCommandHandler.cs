@@ -1,6 +1,7 @@
 using Proposly.Application.Abstractions;
 using Proposly.Domain.CompanyManagement.Enums;
 using Proposly.Domain.CompanyManagement.Repositories;
+using Proposly.Shared.Exceptions;
 
 namespace Proposly.Application.UserManagement.Commands.UpdateUserRole;
 
@@ -24,7 +25,7 @@ public sealed class UpdateUserRoleCommandHandler : ICommandHandler<UpdateUserRol
             throw new InvalidOperationException("Cannot transfer Owner role. The Owner is set at registration.");
 
         var user = await _userRepository.GetByIdAsync(command.UserId, ct)
-            ?? throw new InvalidOperationException($"User {command.UserId} not found.");
+            ?? throw AppException.NotFound("user.not_found", $"User {command.UserId} not found.");
 
         if (user.Role == UserRole.Owner)
             throw new InvalidOperationException("Cannot change the role of the company Owner.");

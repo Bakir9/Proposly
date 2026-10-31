@@ -3,6 +3,7 @@ using Proposly.Domain.CompanyManagement.Repositories;
 using Proposly.Domain.OfferManagement.Entities;
 using Proposly.Domain.OfferManagement.Repositories;
 using Proposly.Domain.OfferManagement.Services;
+using Proposly.Shared.Exceptions;
 
 namespace Proposly.Application.OfferManagement.Commands.CreateOffer;
 
@@ -28,10 +29,10 @@ public sealed class CreateOfferCommandHandler : ICommandHandler<CreateOfferComma
     public async Task<Guid> HandleAsync(CreateOfferCommand command, CancellationToken ct = default)
     {
         var client = await _clientRepository.GetByIdAsync(command.ClientId, ct)
-            ?? throw new InvalidOperationException($"Client {command.ClientId} not found.");
+            ?? throw AppException.NotFound("client.not_found", $"Client {command.ClientId} not found.");
 
         var company = await _companyRepository.GetByIdAsync(_currentUser.CompanyId, ct)
-            ?? throw new InvalidOperationException("Company not found.");
+            ?? throw AppException.NotFound("company.not_found", "Company not found.");
 
         var offer = Offer.Create(
             _currentUser.CompanyId,

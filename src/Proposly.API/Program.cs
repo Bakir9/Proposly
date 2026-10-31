@@ -98,8 +98,35 @@ app.UseExceptionHandler(exceptionHandlerApp =>
             await context.Response.WriteAsJsonAsync(new
             {
                 status = 422,
+                code = "validation_failed",
                 title = "Validation failed.",
                 errors = validationEx.Errors
+            });
+            return;
+        }
+
+        // AppException carries its own status and a stable code the frontend can branch on.
+        if (ex is Proposly.Shared.Exceptions.AppException appEx)
+        {
+            context.Response.StatusCode = appEx.StatusCode;
+            await context.Response.WriteAsJsonAsync(new
+            {
+                status = appEx.StatusCode,
+                code = appEx.Code,
+                title = appEx.Message
+            });
+            return;
+        }
+
+        // Permission failures used to fall through to the generic 500 and hide their reason.
+        if (ex is UnauthorizedAccessException)
+        {
+            context.Response.StatusCode = 403;
+            await context.Response.WriteAsJsonAsync(new
+            {
+                status = 403,
+                code = "forbidden",
+                title = ex.Message
             });
             return;
         }
@@ -108,8 +135,9 @@ app.UseExceptionHandler(exceptionHandlerApp =>
         await context.Response.WriteAsJsonAsync(new
         {
             status = context.Response.StatusCode,
-            title = ex is InvalidOperationException or ArgumentException
-                ? ex.Message
+            code = context.Response.StatusCode == 400 ? "bad_request" : "internal_error",
+            title = context.Response.StatusCode == 400
+                ? ex!.Message
                 : "An unexpected error occurred.",
             detail = ex?.Message
         });

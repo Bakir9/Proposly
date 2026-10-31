@@ -6,6 +6,7 @@ using Proposly.Domain.WorkTimeManagement.Entities;
 using Proposly.Domain.WorkTimeManagement.Enums;
 using Proposly.Domain.WorkTimeManagement.Repositories;
 using Proposly.Shared.ValueObjects;
+using Proposly.Shared.Exceptions;
 
 namespace Proposly.Application.Hr.Commands.UpdateWorker;
 
@@ -19,7 +20,7 @@ public sealed class UpdateWorkerCommandHandler(
     public async Task HandleAsync(UpdateWorkerCommand command, CancellationToken ct = default)
     {
         var user = await users.GetByIdAsync(command.UserId, ct)
-            ?? throw new InvalidOperationException($"Worker {command.UserId} not found.");
+            ?? throw AppException.NotFound("worker.not_found", $"Worker {command.UserId} not found.");
 
         // Name only — the email stays whatever the account has (placeholder or real).
         user.UpdateProfile(command.FirstName.Trim(), command.LastName.Trim(), user.Email);

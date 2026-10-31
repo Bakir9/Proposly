@@ -2,6 +2,7 @@
 using Proposly.Domain.OfferManagement.Repositories;
 using Proposly.Domain.ProjectManagement.Repositories;
 using Proposly.Shared.ValueObjects;
+using Proposly.Shared.Exceptions;
 
 namespace Proposly.Application.ProjectManagement.Commands.UpdateProject;
 
@@ -21,7 +22,7 @@ public sealed class UpdateProjectCommandHandler : ICommandHandler<UpdateProjectC
     public async Task HandleAsync(UpdateProjectCommand command, CancellationToken cancellationToken = default)
     {
         var project = await _repository.GetByIdForWriteAsync(command.ProjectId, cancellationToken)
-            ?? throw new InvalidOperationException($"Project {command.ProjectId} not found.");
+            ?? throw AppException.NotFound("project.not_found", $"Project {command.ProjectId} not found.");
 
         if (command.Status is not null && command.Status != project.Status.ToString())
         {
@@ -45,7 +46,7 @@ public sealed class UpdateProjectCommandHandler : ICommandHandler<UpdateProjectC
         if (command.ClientId.HasValue)
         {
             var client = await _clients.GetByIdAsync(command.ClientId.Value, cancellationToken)
-                ?? throw new InvalidOperationException($"Client {command.ClientId} not found.");
+                ?? throw AppException.NotFound("client.not_found", $"Client {command.ClientId} not found.");
 
             if (client.CompanyId != _currentUser.CompanyId)
                 throw new UnauthorizedAccessException("Client does not belong to your company.");

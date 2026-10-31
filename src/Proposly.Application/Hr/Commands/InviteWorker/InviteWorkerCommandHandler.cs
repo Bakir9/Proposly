@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using Proposly.Application.Abstractions;
 using Proposly.Domain.CompanyManagement.Enums;
 using Proposly.Domain.CompanyManagement.Repositories;
+using Proposly.Shared.Exceptions;
 
 namespace Proposly.Application.Hr.Commands.InviteWorker;
 
@@ -15,22 +16,22 @@ public sealed class InviteWorkerCommandHandler(
     public async Task HandleAsync(InviteWorkerCommand command, CancellationToken ct = default)
     {
         var user = await users.GetByIdAsync(command.UserId, ct)
-            ?? throw new InvalidOperationException($"Worker {command.UserId} not found.");
+            ?? throw AppException.NotFound("worker.not_found", $"Worker {command.UserId} not found.");
 
         if (!user.IsProfileOnly)
             throw new InvalidOperationException("This worker already has login access.");
 
         var company = await companies.GetByIdAsync(currentUser.CompanyId, ct)
-            ?? throw new InvalidOperationException("Company not found.");
+            ?? throw AppException.NotFound("company.not_found", "Company not found.");
 
         // Login access is what counts toward the plan — profile-only workers are free.
         var invitedCount = await users.CountInvitedByCompanyIdAsync(currentUser.CompanyId, ct);
         if (company.IsUserLimitReached(invitedCount))
-            throw new InvalidOperationException("User limit reached for your current plan. Upgrade to invite more users.");
+            throw AppException.Conflict("plan.user_limit_reached", "User limit reached for your current plan. Upgrade to invite more users.");
 
         var email = command.Email.ToLowerInvariant();
         if (await users.ExistsByEmailAsync(email, ct))
-            throw new InvalidOperationException($"Email '{command.Email}' is already registered.");
+            throw AppException.Conflict("email.already_registered", $"Email '{command.Email}' is already registered.");
 
         var role = Enum.Parse<UserRole>(command.Role, ignoreCase: true);
         var token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))

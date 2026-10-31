@@ -115,7 +115,7 @@ public class AbsenceHandlerTests
         _absences.GetOverlappingAsync(UserId, Start, End, Arg.Any<CancellationToken>())
             .Returns([Existing()]);
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+        var ex = await Assert.ThrowsAnyAsync<InvalidOperationException>(
             () => RequestHandler().HandleAsync(Request()));
 
         Assert.Contains("overlaps an existing", ex.Message);
@@ -127,7 +127,7 @@ public class AbsenceHandlerTests
     {
         WithEntitlement(entitled: 25m, used: 20m); // 5 remain, 10 requested
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+        var ex = await Assert.ThrowsAnyAsync<InvalidOperationException>(
             () => RequestHandler().HandleAsync(Request()));
 
         Assert.Contains("Only 5 vacation day(s) remain", ex.Message);
@@ -138,7 +138,7 @@ public class AbsenceHandlerTests
     {
         _absences.GetEntitlementAsync(UserId, 2026).Returns((AbsenceEntitlement?)null);
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+        var ex = await Assert.ThrowsAnyAsync<InvalidOperationException>(
             () => RequestHandler().HandleAsync(Request()));
 
         Assert.Contains("No vacation entitlement is set", ex.Message);
@@ -167,7 +167,7 @@ public class AbsenceHandlerTests
         var weekend = new RequestAbsenceCommand(
             AbsenceType.Vacation, new DateOnly(2026, 7, 11), new DateOnly(2026, 7, 12));
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+        var ex = await Assert.ThrowsAnyAsync<InvalidOperationException>(
             () => RequestHandler().HandleAsync(weekend));
 
         Assert.Contains("no working days", ex.Message);
@@ -180,7 +180,7 @@ public class AbsenceHandlerTests
         company.SetPlan(PlanTier.Starter, null, null, null);
         _companies.GetByIdAsync(CompanyId).Returns(company);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
+        await Assert.ThrowsAnyAsync<InvalidOperationException>(
             () => RequestHandler().HandleAsync(Request()));
     }
 
@@ -223,7 +223,7 @@ public class AbsenceHandlerTests
         // A member's query filter hides other employees' rows, so the lookup returns null.
         _absences.GetByIdAsync(Arg.Any<Guid>()).Returns((AbsenceRequest?)null);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
+        await Assert.ThrowsAnyAsync<InvalidOperationException>(
             () => new ApproveAbsenceCommandHandler(_absences, _timesheets, _currentUser)
                 .HandleAsync(new ApproveAbsenceCommand(Guid.NewGuid())));
     }

@@ -2,6 +2,7 @@ using Proposly.Application.Abstractions;
 using Proposly.Application.OfferManagement.Queries.GetOfferById;
 using Proposly.Application.OfferManagement.Responses;
 using Proposly.Domain.OfferManagement.Repositories;
+using Proposly.Shared.Exceptions;
 
 namespace Proposly.Application.OfferManagement.Commands.SendOfferEmail;
 
@@ -27,10 +28,10 @@ public sealed class SendOfferEmailCommandHandler : ICommandHandler<SendOfferEmai
     public async Task HandleAsync(SendOfferEmailCommand command, CancellationToken ct = default)
     {
         var offer = await _offerRepository.GetByIdAsync(command.OfferId, ct)
-            ?? throw new InvalidOperationException($"Offer {command.OfferId} not found.");
+            ?? throw AppException.NotFound("offer.not_found", $"Offer {command.OfferId} not found.");
 
         var client = await _clientRepository.GetByIdAsync(offer.ClientId, ct)
-            ?? throw new InvalidOperationException($"Client {offer.ClientId} not found.");
+            ?? throw AppException.NotFound("client.not_found", $"Client {offer.ClientId} not found.");
 
         if (string.IsNullOrWhiteSpace(client.Email))
             throw new InvalidOperationException("Client has no email address on file.");

@@ -1,6 +1,7 @@
 using Proposly.Application.Abstractions;
 using Proposly.Application.WorkTimeManagement.Services;
 using Proposly.Domain.WorkTimeManagement.Repositories;
+using Proposly.Shared.Exceptions;
 
 namespace Proposly.Application.WorkTimeManagement.Commands.UpdateNonWorkingDay;
 
@@ -20,7 +21,7 @@ public sealed class UpdateNonWorkingDayCommandHandler : ICommandHandler<UpdateNo
     public async Task HandleAsync(UpdateNonWorkingDayCommand command, CancellationToken ct = default)
     {
         var day = await _calendar.GetByIdAsync(command.Id, ct)
-            ?? throw new InvalidOperationException($"Non-working day {command.Id} not found.");
+            ?? throw AppException.NotFound("non_working_day.not_found", $"Non-working day {command.Id} not found.");
 
         // Changing whether a day costs the employee anything moves target hours and absence
         // counts for that month, so it cannot be done behind an approval.

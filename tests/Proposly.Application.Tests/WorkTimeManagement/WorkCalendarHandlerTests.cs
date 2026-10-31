@@ -60,7 +60,7 @@ public class WorkCalendarHandlerTests
         _calendar.GetByDateAsync(MayDay, Arg.Any<CancellationToken>()).Returns(Holiday());
         var handler = new CreateNonWorkingDayCommandHandler(_calendar, _currentUser);
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+        var ex = await Assert.ThrowsAnyAsync<InvalidOperationException>(
             () => handler.HandleAsync(new CreateNonWorkingDayCommand(
                 MayDay, "Betriebsurlaub", NonWorkingDayKind.CompanyClosure)));
 
@@ -104,7 +104,7 @@ public class WorkCalendarHandlerTests
 
         var handler = new UpdateNonWorkingDayCommandHandler(_calendar, _timesheets);
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+        var ex = await Assert.ThrowsAnyAsync<InvalidOperationException>(
             () => handler.HandleAsync(new UpdateNonWorkingDayCommand(
                 day.Id, "Renamed", NonWorkingDayKind.PublicHoliday, false)));
 
@@ -121,7 +121,7 @@ public class WorkCalendarHandlerTests
 
         var handler = new DeleteNonWorkingDayCommandHandler(_calendar, _absences, _timesheets);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
+        await Assert.ThrowsAnyAsync<InvalidOperationException>(
             () => handler.HandleAsync(new DeleteNonWorkingDayCommand(day.Id)));
 
         await _calendar.DidNotReceive().RemoveAsync(Arg.Any<NonWorkingDay>(), Arg.Any<CancellationToken>());
@@ -158,7 +158,7 @@ public class WorkCalendarHandlerTests
 
         var handler = new DeleteNonWorkingDayCommandHandler(_calendar, _absences, _timesheets);
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+        var ex = await Assert.ThrowsAnyAsync<InvalidOperationException>(
             () => handler.HandleAsync(new DeleteNonWorkingDayCommand(day.Id)));
 
         Assert.Contains("approved absence", ex.Message);
@@ -208,7 +208,7 @@ public class WorkCalendarHandlerTests
 
         var handler = new CreateEmploymentTermsCommandHandler(_terms, _currentUser);
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+        var ex = await Assert.ThrowsAnyAsync<InvalidOperationException>(
             () => handler.HandleAsync(new CreateEmploymentTermsCommand(
                 UserId, new DateOnly(2026, 1, 1), 38.5m, WeekDays.MondayToFriday, 25m)));
 

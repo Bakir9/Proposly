@@ -1,5 +1,6 @@
 using Proposly.Application.Abstractions;
 using Proposly.Domain.CalendarManagement.Repositories;
+using Proposly.Shared.Exceptions;
 
 namespace Proposly.Application.CalendarManagement.Commands.ProposeReschedule;
 
@@ -17,7 +18,7 @@ public sealed class ProposeRescheduleCommandHandler : ICommandHandler<ProposeRes
     public async Task HandleAsync(ProposeRescheduleCommand command, CancellationToken cancellationToken = default)
     {
         var termin = await _repository.GetByIdAsync(command.TerminId, cancellationToken)
-            ?? throw new InvalidOperationException("Termin not found.");
+            ?? throw AppException.NotFound("termin.not_found", "Termin not found.");
 
         termin.ProposeReschedule(_currentUser.UserId, command.ProposedStart, command.ProposedEnd, command.Message);
         await _repository.UpdateAsync(termin, cancellationToken);

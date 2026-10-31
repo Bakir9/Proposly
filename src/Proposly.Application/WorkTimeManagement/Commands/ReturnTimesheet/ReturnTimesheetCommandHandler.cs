@@ -1,5 +1,6 @@
 using Proposly.Application.Abstractions;
 using Proposly.Domain.WorkTimeManagement.Repositories;
+using Proposly.Shared.Exceptions;
 
 namespace Proposly.Application.WorkTimeManagement.Commands.ReturnTimesheet;
 
@@ -19,7 +20,7 @@ public sealed class ReturnTimesheetCommandHandler : ICommandHandler<ReturnTimesh
     public async Task HandleAsync(ReturnTimesheetCommand command, CancellationToken ct = default)
     {
         var timesheet = await _timesheets.GetByIdAsync(command.TimesheetId, ct)
-            ?? throw new InvalidOperationException($"Timesheet {command.TimesheetId} not found.");
+            ?? throw AppException.NotFound("timesheet.not_found", $"Timesheet {command.TimesheetId} not found.");
 
         timesheet.ReturnForCorrection(_currentUser.UserId, command.Reason);
 

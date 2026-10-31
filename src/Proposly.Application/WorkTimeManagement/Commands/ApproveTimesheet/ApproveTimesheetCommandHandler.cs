@@ -1,6 +1,7 @@
 using Proposly.Application.Abstractions;
 using Proposly.Application.WorkTimeManagement.Services;
 using Proposly.Domain.WorkTimeManagement.Repositories;
+using Proposly.Shared.Exceptions;
 
 namespace Proposly.Application.WorkTimeManagement.Commands.ApproveTimesheet;
 
@@ -34,7 +35,7 @@ public sealed class ApproveTimesheetCommandHandler : ICommandHandler<ApproveTime
         // Approvers can read every employee's rows through the query filter, so a plain lookup is
         // enough — no IgnoreQueryFilters(), which would also drop company isolation.
         var timesheet = await _timesheets.GetByIdAsync(command.TimesheetId, ct)
-            ?? throw new InvalidOperationException($"Timesheet {command.TimesheetId} not found.");
+            ?? throw AppException.NotFound("timesheet.not_found", $"Timesheet {command.TimesheetId} not found.");
 
         // Evaluated server-side rather than trusted from the client: the approver acknowledges
         // whatever the month actually breaches, not a list the browser sent back.

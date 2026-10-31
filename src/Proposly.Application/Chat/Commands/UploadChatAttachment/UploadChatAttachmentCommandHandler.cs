@@ -2,6 +2,7 @@ using Proposly.Application.Abstractions;
 using Proposly.Application.Chat.Responses;
 using Proposly.Domain.Chat.Entities;
 using Proposly.Domain.Chat.Repositories;
+using Proposly.Shared.Exceptions;
 
 namespace Proposly.Application.Chat.Commands.UploadChatAttachment;
 
@@ -14,7 +15,7 @@ public sealed class UploadChatAttachmentCommandHandler(
     public async Task<ChatAttachmentResponse> HandleAsync(UploadChatAttachmentCommand command, CancellationToken ct = default)
     {
         var conversation = await conversations.GetByIdAsync(command.ConversationId, ct)
-            ?? throw new InvalidOperationException($"Conversation {command.ConversationId} not found.");
+            ?? throw AppException.NotFound("conversation.not_found", $"Conversation {command.ConversationId} not found.");
 
         if (!conversation.IsParticipant(currentUser.UserId))
             throw new InvalidOperationException("Only participants can upload files in this conversation.");

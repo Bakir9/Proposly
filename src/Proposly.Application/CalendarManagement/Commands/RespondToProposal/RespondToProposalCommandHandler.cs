@@ -1,5 +1,6 @@
 using Proposly.Application.Abstractions;
 using Proposly.Domain.CalendarManagement.Repositories;
+using Proposly.Shared.Exceptions;
 
 namespace Proposly.Application.CalendarManagement.Commands.RespondToProposal;
 
@@ -17,7 +18,7 @@ public sealed class RespondToProposalCommandHandler : ICommandHandler<RespondToP
     public async Task HandleAsync(RespondToProposalCommand command, CancellationToken cancellationToken = default)
     {
         var termin = await _repository.GetByIdAsync(command.TerminId, cancellationToken)
-            ?? throw new InvalidOperationException("Termin not found.");
+            ?? throw AppException.NotFound("termin.not_found", "Termin not found.");
         if (termin.OrganizerId != _currentUser.UserId)
             throw new UnauthorizedAccessException("Only the organizer can respond to reschedule proposals.");
 

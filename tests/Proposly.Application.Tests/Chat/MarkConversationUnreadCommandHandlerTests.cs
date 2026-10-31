@@ -39,7 +39,7 @@ public sealed class MarkConversationUnreadCommandHandlerTests
         var conversation = Conversation.CreateDirect(_companyId, Guid.NewGuid(), Guid.NewGuid());
         _conversations.GetByIdAsync(conversation.Id).Returns(conversation);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
+        await Assert.ThrowsAnyAsync<InvalidOperationException>(
             () => _sut.HandleAsync(new MarkConversationUnreadCommand(conversation.Id)));
     }
 }

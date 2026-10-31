@@ -1,6 +1,7 @@
 using Proposly.Application.Abstractions;
 using Proposly.Application.WorkTimeManagement.Services;
 using Proposly.Domain.WorkTimeManagement.Repositories;
+using Proposly.Shared.Exceptions;
 
 namespace Proposly.Application.WorkTimeManagement.Commands.ApproveAbsence;
 
@@ -23,7 +24,7 @@ public sealed class ApproveAbsenceCommandHandler : ICommandHandler<ApproveAbsenc
     public async Task HandleAsync(ApproveAbsenceCommand command, CancellationToken ct = default)
     {
         var absence = await _absences.GetByIdAsync(command.AbsenceId, ct)
-            ?? throw new InvalidOperationException($"Absence {command.AbsenceId} not found.");
+            ?? throw AppException.NotFound("absence.not_found", $"Absence {command.AbsenceId} not found.");
 
         // Approve() refuses a request that is already decided, so a second approver racing the
         // first is told it has been handled rather than overwriting the decision.

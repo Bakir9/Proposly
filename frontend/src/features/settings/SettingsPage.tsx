@@ -97,7 +97,6 @@ export function SettingsPage() {
       queryClient.invalidateQueries({ queryKey: ['quarterly-report'] })
       toast.success('Settings saved.')
     },
-    onError: () => toast.error('Failed to save settings.'),
   })
 
   const hasChanges = settings

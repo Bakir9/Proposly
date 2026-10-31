@@ -233,17 +233,26 @@ validation. New commands must ship one. (19 existing id-only commands — delete
 status toggles — have none, since there is nothing beyond a `Guid` to validate.)
 
 **Error handling.** The terminal `app.UseExceptionHandler` block in `Program.cs` is the *only*
-place exceptions become HTTP responses:
+place exceptions become HTTP responses. Every body is `{ status, code, title, ... }` — `code` is a
+stable machine-readable identifier the frontend can branch on
+(`frontend/src/lib/api-errors.ts` → `getApiError` / `getApiErrorCode`):
 
 | Thrown | Response |
 |---|---|
-| `CommandValidationException` | 422 + `errors` dictionary |
-| `InvalidOperationException`, `ArgumentException` | 400 + `ex.Message` as title |
-| anything else | 500 + generic title |
+| `CommandValidationException` | 422, code `validation_failed` + `errors` dictionary |
+| `AppException` (Shared/Exceptions) | its own `StatusCode` + `Code` + message as title |
+| `UnauthorizedAccessException` | 403, code `forbidden` + `ex.Message` as title |
+| `InvalidOperationException`, `ArgumentException` | 400, code `bad_request` + `ex.Message` as title |
+| anything else | 500, code `internal_error` + generic title |
 
-Handlers signal "not found" by throwing `InvalidOperationException`; queries return `null` and the
-controller turns that into `NotFound()`. Do not add try/catch-to-status-code blocks in controllers
-and do not add competing exception middleware.
+Handlers signal expected failures by throwing `AppException` — `AppException.NotFound("project.not_found", …)`,
+`.Forbidden(…)`, `.Conflict(…)`, or the constructor for a 400 with a code. It derives from
+`InvalidOperationException`, so older throws and `Assert.ThrowsAnyAsync<InvalidOperationException>`
+tests keep working; plain `InvalidOperationException` is still acceptable for domain invariants.
+Codes follow `<entity>.<problem>` (`offer.not_found`, `plan.user_limit_reached`,
+`email.already_registered`). Queries return `null` and the controller turns that into `NotFound()`.
+Do not add try/catch-to-status-code blocks in controllers and do not add competing exception
+middleware.
 
 **Auditing and domain events are central.** `AppDbContext.SaveChangesAsync` stamps
 `CreatedAt`/`UpdatedAt` on `IAuditableEntity` and collects, clears, then dispatches domain events

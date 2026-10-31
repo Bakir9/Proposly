@@ -52,7 +52,7 @@ public sealed class InviteWorkerCommandHandlerTests
         var user = User.Create(_companyId, "a@b.c", "hash", "A", "B");
         _users.GetByIdAsync(user.Id).Returns(user);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
+        await Assert.ThrowsAnyAsync<InvalidOperationException>(
             () => _sut.HandleAsync(new InviteWorkerCommand(user.Id, "x@y.z", "Member")));
     }
 
@@ -64,7 +64,7 @@ public sealed class InviteWorkerCommandHandlerTests
         _users.GetByIdAsync(worker.Id).Returns(worker);
         _users.CountInvitedByCompanyIdAsync(_companyId).Returns(1);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
+        await Assert.ThrowsAnyAsync<InvalidOperationException>(
             () => _sut.HandleAsync(new InviteWorkerCommand(worker.Id, "x@y.z", "Member")));
 
         Assert.True(worker.IsProfileOnly);
@@ -78,7 +78,7 @@ public sealed class InviteWorkerCommandHandlerTests
         _users.GetByIdAsync(worker.Id).Returns(worker);
         _users.ExistsByEmailAsync("taken@test.at").Returns(true);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
+        await Assert.ThrowsAnyAsync<InvalidOperationException>(
             () => _sut.HandleAsync(new InviteWorkerCommand(worker.Id, "taken@test.at", "Member")));
     }
 
@@ -90,7 +90,7 @@ public sealed class InviteWorkerCommandHandlerTests
         _email.SendAsync(default!, default!, default!).ReturnsForAnyArgs(
             Task.FromException(new InvalidOperationException("SMTP down")));
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
+        await Assert.ThrowsAnyAsync<InvalidOperationException>(
             () => _sut.HandleAsync(new InviteWorkerCommand(worker.Id, "mujo@test.at", "Member")));
 
         Assert.True(worker.IsProfileOnly);

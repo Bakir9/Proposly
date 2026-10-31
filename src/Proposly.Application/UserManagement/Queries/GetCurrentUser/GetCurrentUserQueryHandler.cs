@@ -1,6 +1,7 @@
 using Proposly.Application.Abstractions;
 using Proposly.Application.UserManagement.Responses;
 using Proposly.Domain.CompanyManagement.Repositories;
+using Proposly.Shared.Exceptions;
 
 namespace Proposly.Application.UserManagement.Queries.GetCurrentUser;
 
@@ -18,7 +19,7 @@ public sealed class GetCurrentUserQueryHandler : IQueryHandler<GetCurrentUserQue
     public async Task<UserDetailResponse> HandleAsync(GetCurrentUserQuery query, CancellationToken ct = default)
     {
         var user = await _repository.GetByIdAsync(_currentUser.UserId, ct)
-            ?? throw new InvalidOperationException("Current user not found.");
+            ?? throw AppException.NotFound("current_user.not_found", "Current user not found.");
 
         return new UserDetailResponse(user.Id, user.FirstName, user.LastName, user.FullName, user.Email, user.Role.ToString(), user.CompanyId, user.CreatedAt);
     }

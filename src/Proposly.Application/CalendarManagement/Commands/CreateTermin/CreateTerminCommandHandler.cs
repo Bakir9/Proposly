@@ -2,6 +2,7 @@ using Proposly.Application.Abstractions;
 using Proposly.Domain.CalendarManagement.Entities;
 using Proposly.Domain.CalendarManagement.Repositories;
 using Proposly.Domain.CompanyManagement.Repositories;
+using Proposly.Shared.Exceptions;
 
 namespace Proposly.Application.CalendarManagement.Commands.CreateTermin;
 
@@ -22,7 +23,7 @@ public sealed class CreateTerminCommandHandler : ICommandHandler<CreateTerminCom
     {
         var users = await _userRepository.GetAllAsync(cancellationToken);
         var organizer = users.FirstOrDefault(u => u.Id == _currentUser.UserId)
-            ?? throw new InvalidOperationException("Current user not found.");
+            ?? throw AppException.NotFound("current_user.not_found", "Current user not found.");
 
         var termin = Termin.Create(
             _currentUser.CompanyId,

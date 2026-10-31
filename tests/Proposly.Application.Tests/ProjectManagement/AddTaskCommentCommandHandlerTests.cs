@@ -73,7 +73,7 @@ public sealed class AddTaskCommentCommandHandlerTests
     {
         _projects.GetByIdForWriteAsync(Arg.Any<Guid>()).Returns((Project?)null);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
+        await Assert.ThrowsAnyAsync<InvalidOperationException>(
             () => _sut.HandleAsync(new AddTaskCommentCommand(Guid.NewGuid(), Guid.NewGuid(), "body")));
     }
 
@@ -86,7 +86,7 @@ public sealed class AddTaskCommentCommandHandlerTests
         _projects.GetByIdForWriteAsync(project.Id).Returns(project);
         _users.GetByIdAsync(_userId).Returns((User?)null);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
+        await Assert.ThrowsAnyAsync<InvalidOperationException>(
             () => _sut.HandleAsync(new AddTaskCommentCommand(project.Id, task.Id, "body")));
     }
 
