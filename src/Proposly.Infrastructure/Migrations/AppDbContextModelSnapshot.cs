@@ -1147,8 +1147,14 @@ namespace Proposly.Infrastructure.Migrations
                     b.Property<Guid?>("MilestoneId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("ParentTaskId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid>("ProjectId")
                         .HasColumnType("uuid");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
 
                     b.Property<DateOnly?>("StartDate")
                         .HasColumnType("date");
@@ -1202,6 +1208,60 @@ namespace Proposly.Infrastructure.Migrations
                     b.HasIndex("TaskId");
 
                     b.ToTable("TaskComments", (string)null);
+                });
+
+            modelBuilder.Entity("Proposly.Domain.ProjectManagement.Entities.TaskTemplate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("TaskTemplates", (string)null);
+                });
+
+            modelBuilder.Entity("Proposly.Domain.ProjectManagement.Entities.TaskTemplateStep", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("EstimatedHours")
+                        .HasColumnType("numeric(9,2)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("TemplateId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TemplateId");
+
+                    b.ToTable("TaskTemplateSteps", (string)null);
                 });
 
             modelBuilder.Entity("Proposly.Domain.ProjectManagement.Entities.TimeEntry", b =>
@@ -2225,6 +2285,15 @@ namespace Proposly.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Proposly.Domain.ProjectManagement.Entities.TaskTemplateStep", b =>
+                {
+                    b.HasOne("Proposly.Domain.ProjectManagement.Entities.TaskTemplate", null)
+                        .WithMany("Steps")
+                        .HasForeignKey("TemplateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Proposly.Domain.ProjectManagement.Entities.TimeEntry", b =>
                 {
                     b.HasOne("Proposly.Domain.ProjectManagement.Entities.Project", null)
@@ -2422,6 +2491,11 @@ namespace Proposly.Infrastructure.Migrations
             modelBuilder.Entity("Proposly.Domain.ProjectManagement.Entities.ProjectTask", b =>
                 {
                     b.Navigation("Comments");
+                });
+
+            modelBuilder.Entity("Proposly.Domain.ProjectManagement.Entities.TaskTemplate", b =>
+                {
+                    b.Navigation("Steps");
                 });
 
             modelBuilder.Entity("Proposly.Domain.WorkTimeManagement.Entities.Timesheet", b =>

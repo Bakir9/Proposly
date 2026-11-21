@@ -32,6 +32,7 @@ const GROUP_BYS = [
   { id: 'milestone', label: 'Milestone' },
   { id: 'assignee', label: 'Assignee' },
   { id: 'status', label: 'Status' },
+  { id: 'parent', label: 'Parent task' },
 ] as const
 
 type StatusFilter = (typeof STATUS_FILTERS)[number]['id']
@@ -78,6 +79,17 @@ export function PlanTaskListTab({ project: p, canManage, onNewTask, onOpenTask }
 
   const memberIndex = useMemo(() => new Map(p.members.map((m, i) => [m.id, i])), [p.members])
   const taskById = useMemo(() => new Map(p.tasks.map(t => [t.id, t])), [p.tasks])
+  const stepCountByParent = useMemo(() => {
+    const out = new Map<string, { total: number; done: number }>()
+    for (const t of p.tasks) {
+      if (!t.parentTaskId) continue
+      const e = out.get(t.parentTaskId) ?? { total: 0, done: 0 }
+      e.total += 1
+      if (t.status === 'Done') e.done += 1
+      out.set(t.parentTaskId, e)
+    }
+    return out
+  }, [p.tasks])
   const loggedByTask = useMemo(() => {
     const out = new Map<string, number>()
     for (const e of p.timeEntries) if (e.taskId) out.set(e.taskId, (out.get(e.taskId) ?? 0) + e.hoursWorked)
@@ -104,6 +116,11 @@ export function PlanTaskListTab({ project: p, canManage, onNewTask, onOpenTask }
         add(t.milestoneId ?? 'none', m?.title ?? 'No milestone', t)
       } else if (groupBy === 'assignee') {
         add(t.assignedMemberId ?? 'none', t.assignedMemberName ?? 'Unassigned', t)
+      } else if (groupBy === 'parent') {
+        // A parent and its steps share one group; everything else lands under "Standalone".
+        const groupId = t.parentTaskId ?? (stepCountByParent.has(t.id) ? t.id : null)
+        if (groupId) add(groupId, taskById.get(groupId)?.title ?? 'Task group', t)
+        else add('none', 'Standalone tasks', t)
       } else {
         add(t.status, STATUS_CHIP[t.status].label, t)
       }
@@ -113,12 +130,15 @@ export function PlanTaskListTab({ project: p, canManage, onNewTask, onOpenTask }
       .map(([key, g]) => ({
         key,
         name: g.name,
-        rows: g.rows,
+        // In parent grouping the parent row leads and its steps follow in recipe order.
+        rows: groupBy === 'parent'
+          ? [...g.rows].sort((a, b) => Number(!!a.parentTaskId) - Number(!!b.parentTaskId) || a.sortOrder - b.sortOrder)
+          : g.rows,
         done: g.rows.filter(r => r.status === 'Done').length,
         estimate: g.rows.reduce((s, r) => s + (r.estimatedHours ?? 0), 0),
         logged: g.rows.reduce((s, r) => s + (loggedByTask.get(r.id) ?? 0), 0),
       }))
-  }, [visible, groupBy, p.milestones, loggedByTask])
+  }, [visible, groupBy, p.milestones, loggedByTask, taskById, stepCountByParent])
 
   const toggle = (id: string) =>
     setSelected(prev => {
@@ -311,8 +331,14 @@ export function PlanTaskListTab({ project: p, canManage, onNewTask, onOpenTask }
                       )}
                       <td className="px-2 py-3 font-semibold">
                         <button onClick={() => onOpenTask(t)} className="text-left hover:text-primary hover:underline">
+                          {t.parentTaskId && <span className="mr-1 font-normal text-muted-foreground">↳</span>}
                           {t.title}
                         </button>
+                        {stepCountByParent.has(t.id) && (
+                          <span className="ml-2 rounded-md bg-muted px-1.5 py-[2px] text-[11px] font-semibold text-muted-foreground">
+                            {stepCountByParent.get(t.id)!.done}/{stepCountByParent.get(t.id)!.total} steps
+                          </span>
+                        )}
                       </td>
                       <td className="px-2 py-3">
                         <span className={cn('whitespace-nowrap rounded-md px-2 py-[3px] text-xs font-semibold', chip.cls)}>{chip.label}</span>

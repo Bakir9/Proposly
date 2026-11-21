@@ -19,7 +19,9 @@ public sealed class ProjectTask : Entity<Guid>
         DateOnly? startDate,
         DateOnly? dueDate,
         Guid? milestoneId,
-        Guid? assignedMemberId)
+        Guid? assignedMemberId,
+        Guid? parentTaskId,
+        int sortOrder)
         : base(id)
     {
         ProjectId = projectId;
@@ -30,6 +32,8 @@ public sealed class ProjectTask : Entity<Guid>
         DueDate = dueDate;
         MilestoneId = milestoneId;
         AssignedMemberId = assignedMemberId;
+        ParentTaskId = parentTaskId;
+        SortOrder = sortOrder;
         Status = ProjectTaskStatus.Todo;
     }
 
@@ -41,12 +45,20 @@ public sealed class ProjectTask : Entity<Guid>
         DateOnly? startDate,
         DateOnly? dueDate,
         Guid? milestoneId = null,
-        Guid? assignedMemberId = null)
-        => new(Guid.NewGuid(), projectId, title, description, estimatedHours, startDate, dueDate, milestoneId, assignedMemberId);
+        Guid? assignedMemberId = null,
+        Guid? parentTaskId = null,
+        int sortOrder = 0)
+        => new(Guid.NewGuid(), projectId, title, description, estimatedHours, startDate, dueDate, milestoneId, assignedMemberId, parentTaskId, sortOrder);
 
     public Guid ProjectId { get; private set; }
     public Guid? MilestoneId { get; private set; }
     public Guid? AssignedMemberId { get; private set; }
+
+    /// <summary>Steps live one level below their parent task — a step cannot have steps.</summary>
+    public Guid? ParentTaskId { get; private set; }
+
+    /// <summary>Position among sibling steps; 0 for top-level tasks (the board has no fixed order).</summary>
+    public int SortOrder { get; private set; }
     public string Title { get; private set; } = string.Empty;
     public string? Description { get; private set; }
     public decimal? EstimatedHours { get; private set; }

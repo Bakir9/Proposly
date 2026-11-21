@@ -11,9 +11,11 @@ using Proposly.Application.ProjectManagement.Commands.AddProjectNote;
 using Proposly.Application.ProjectManagement.Commands.DeleteProjectNote;
 using Proposly.Application.ProjectManagement.Commands.UpdateProjectNote;
 using Proposly.Application.ProjectManagement.Commands.AddTaskDependency;
+using Proposly.Application.ProjectManagement.Commands.ApplyTaskTemplate;
 using Proposly.Application.ProjectManagement.Commands.RemoveTaskDependency;
 using Proposly.Application.ProjectManagement.Commands.CompleteMilestone;
 using Proposly.Application.ProjectManagement.Commands.CreateProject;
+using Proposly.Application.ProjectManagement.Commands.DeleteTask;
 using Proposly.Application.ProjectManagement.Commands.DeleteTaskComment;
 using Proposly.Application.ProjectManagement.Commands.EditTaskComment;
 using Proposly.Application.ProjectManagement.Commands.DeleteTimeEntry;
@@ -230,8 +232,20 @@ public sealed class ProjectsController : ControllerBase
         [FromServices] ICommandHandler<AddTaskCommand, Guid> handler,
         CancellationToken ct)
     {
-        var taskId = await handler.HandleAsync(new AddTaskCommand(id, body.Title, body.Description, body.EstimatedHours, body.StartDate, body.DueDate, body.MilestoneId, body.AssignedMemberId), ct);
+        var taskId = await handler.HandleAsync(new AddTaskCommand(id, body.Title, body.Description, body.EstimatedHours, body.StartDate, body.DueDate, body.MilestoneId, body.AssignedMemberId, body.ParentTaskId), ct);
         return CreatedAtAction(nameof(GetById), new { id }, taskId);
+    }
+
+    [HttpPost("{id:guid}/tasks/from-template")]
+    public async Task<ActionResult<Guid>> AddTasksFromTemplate(
+        Guid id,
+        [FromBody] ApplyTaskTemplateBody body,
+        [FromServices] ICommandHandler<ApplyTaskTemplateCommand, Guid> handler,
+        CancellationToken ct)
+    {
+        var parentTaskId = await handler.HandleAsync(
+            new ApplyTaskTemplateCommand(id, body.TemplateId, body.AssignedMemberId, body.StartDate, body.DueDate, body.MilestoneId), ct);
+        return CreatedAtAction(nameof(GetById), new { id }, parentTaskId);
     }
 
     [HttpPut("{id:guid}/tasks/{taskId:guid}")]
@@ -243,6 +257,17 @@ public sealed class ProjectsController : ControllerBase
         CancellationToken ct)
     {
         await handler.HandleAsync(new UpdateTaskCommand(id, taskId, body.Title, body.Description, body.EstimatedHours, body.ActualHours, body.StartDate, body.DueDate, body.MilestoneId, body.AssignedMemberId), ct);
+        return NoContent();
+    }
+
+    [HttpDelete("{id:guid}/tasks/{taskId:guid}")]
+    public async Task<IActionResult> DeleteTask(
+        Guid id,
+        Guid taskId,
+        [FromServices] ICommandHandler<DeleteTaskCommand> handler,
+        CancellationToken ct)
+    {
+        await handler.HandleAsync(new DeleteTaskCommand(id, taskId), ct);
         return NoContent();
     }
 
@@ -412,7 +437,8 @@ public record UpdateProjectBody(string Name, string? Description, DateOnly? Dead
 public record AddMemberBody(Guid UserId, string Name, string Role, decimal HourlyRate, string Currency);
 public record LogTimeBody(Guid MemberId, decimal HoursWorked, string? Description, DateOnly Date);
 public record AddExpenseBody(string Description, decimal Amount, string Currency, string Category, DateOnly Date);
-public record AddTaskBody(string Title, string? Description, decimal? EstimatedHours, DateOnly? StartDate, DateOnly? DueDate, Guid? MilestoneId, Guid? AssignedMemberId);
+public record AddTaskBody(string Title, string? Description, decimal? EstimatedHours, DateOnly? StartDate, DateOnly? DueDate, Guid? MilestoneId, Guid? AssignedMemberId, Guid? ParentTaskId = null);
+public record ApplyTaskTemplateBody(Guid TemplateId, Guid? AssignedMemberId, DateOnly? StartDate, DateOnly? DueDate, Guid? MilestoneId);
 public record UpdateTaskBody(string Title, string? Description, decimal? EstimatedHours, decimal? ActualHours, DateOnly? StartDate, DateOnly? DueDate, Guid? MilestoneId, Guid? AssignedMemberId);
 public record UpdateTaskStatusBody(string Status, decimal? ActualHours);
 public record AddMilestoneBody(string Title, DateOnly DueDate);

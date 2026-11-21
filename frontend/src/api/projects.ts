@@ -52,6 +52,10 @@ export interface ProjectTask {
   assignedMemberName: string | null
   comments: TaskComment[]
   blockedByTaskIds: string[]
+  /** Set when this task is a step of another task — one level only. */
+  parentTaskId: string | null
+  /** Position among sibling steps; 0 for top-level tasks. */
+  sortOrder: number
 }
 
 export interface ProjectNote {
@@ -319,11 +323,15 @@ export const deleteTimeEntry = (projectId: string, entryId: string) =>
 export const addExpense = (projectId: string, data: { description: string; amount: number; currency: string; category: string; date: string }) =>
   api.post<string>(`/projects/${projectId}/expenses`, data).then(r => r.data)
 
-export const addTask = (projectId: string, data: { title: string; description?: string; estimatedHours?: number; startDate?: string; dueDate?: string; milestoneId?: string; assignedMemberId?: string }) =>
+export const addTask = (projectId: string, data: { title: string; description?: string; estimatedHours?: number; startDate?: string; dueDate?: string; milestoneId?: string; assignedMemberId?: string; parentTaskId?: string }) =>
   api.post<string>(`/projects/${projectId}/tasks`, data).then(r => r.data)
 
 export const updateTask = (projectId: string, taskId: string, data: { title: string; description?: string; estimatedHours?: number; actualHours?: number; startDate?: string; dueDate?: string; milestoneId?: string; assignedMemberId?: string }) =>
   api.put(`/projects/${projectId}/tasks/${taskId}`, data)
+
+/** Deletes a task; a parent task takes its steps with it. */
+export const deleteTask = (projectId: string, taskId: string) =>
+  api.delete(`/projects/${projectId}/tasks/${taskId}`)
 
 export const updateTaskStatus = (projectId: string, taskId: string, status: string, actualHours?: number) =>
   api.put(`/projects/${projectId}/tasks/${taskId}/status`, { status, actualHours })
@@ -357,6 +365,36 @@ export const addTaskDependency = (projectId: string, taskId: string, blockingTas
 
 export const removeTaskDependency = (projectId: string, taskId: string, blockingTaskId: string) =>
   api.delete(`/projects/${projectId}/tasks/${taskId}/dependencies/${blockingTaskId}`)
+
+// ── Task templates: reusable task recipes (parent task + steps) ──────────────
+
+export interface TaskTemplateStep {
+  id: string
+  title: string
+  estimatedHours: number | null
+  sortOrder: number
+}
+
+export interface TaskTemplate {
+  id: string
+  name: string
+  description: string | null
+  totalEstimatedHours: number | null
+  steps: TaskTemplateStep[]
+}
+
+export const getTaskTemplates = () =>
+  api.get<TaskTemplate[]>('/tasktemplates').then(r => r.data)
+
+export const saveTaskTemplate = (data: { name: string; description?: string; steps: { title: string; estimatedHours?: number | null }[] }) =>
+  api.post<string>('/tasktemplates', data).then(r => r.data)
+
+export const deleteTaskTemplate = (templateId: string) =>
+  api.delete(`/tasktemplates/${templateId}`)
+
+/** Creates the template's parent task + one step task per template step; returns the parent task id. */
+export const applyTaskTemplate = (projectId: string, data: { templateId: string; assignedMemberId?: string; startDate?: string; dueDate?: string; milestoneId?: string }) =>
+  api.post<string>(`/projects/${projectId}/tasks/from-template`, data).then(r => r.data)
 
 export const addNote = (projectId: string, data: { title: string; content: string }) =>
   api.post<string>(`/projects/${projectId}/notes`, data).then(r => r.data)

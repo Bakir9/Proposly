@@ -265,9 +265,19 @@ public sealed class Project : AggregateRoot<Guid>, ITenantEntity, IAuditableEnti
         return expense;
     }
 
-    public ProjectTask AddTask(string title, string? description, decimal? estimatedHours, DateOnly? startDate, DateOnly? dueDate, Guid? milestoneId = null, Guid? assignedMemberId = null)
+    public ProjectTask AddTask(string title, string? description, decimal? estimatedHours, DateOnly? startDate, DateOnly? dueDate, Guid? milestoneId = null, Guid? assignedMemberId = null, Guid? parentTaskId = null)
     {
-        var task = ProjectTask.Create(Id, title, description, estimatedHours, startDate, dueDate, milestoneId, assignedMemberId);
+        if (parentTaskId.HasValue)
+        {
+            var parent = _tasks.FirstOrDefault(t => t.Id == parentTaskId.Value)
+                ?? throw new InvalidOperationException($"Parent task {parentTaskId} not found in project.");
+            if (parent.ParentTaskId.HasValue)
+                throw new InvalidOperationException("A step cannot have steps of its own — one level only.");
+        }
+
+        // Steps keep their recipe order; top-level tasks have none (the board sorts by status).
+        var sortOrder = parentTaskId.HasValue ? _tasks.Count(t => t.ParentTaskId == parentTaskId.Value) : 0;
+        var task = ProjectTask.Create(Id, title, description, estimatedHours, startDate, dueDate, milestoneId, assignedMemberId, parentTaskId, sortOrder);
         _tasks.Add(task);
         if (assignedMemberId.HasValue)
         {
@@ -277,6 +287,24 @@ public sealed class Project : AggregateRoot<Guid>, ITenantEntity, IAuditableEnti
         }
         Touch();
         return task;
+    }
+
+    /// <summary>Removes a task and, if it has steps, those steps with it. Dependency links onto the removed tasks are detached.</summary>
+    public void RemoveTask(Guid taskId)
+    {
+        var task = _tasks.FirstOrDefault(t => t.Id == taskId)
+            ?? throw new InvalidOperationException($"Task {taskId} not found in project.");
+
+        var toRemove = new List<ProjectTask> { task };
+        toRemove.AddRange(_tasks.Where(t => t.ParentTaskId == taskId));
+
+        foreach (var removed in toRemove)
+        {
+            foreach (var other in _tasks.Except(toRemove))
+                other.RemoveBlocker(removed.Id);
+            _tasks.Remove(removed);
+        }
+        Touch();
     }
 
     public void UpdateTask(Guid taskId, string title, string? description, decimal? estimatedHours, decimal? actualHours, DateOnly? startDate, DateOnly? dueDate, Guid? milestoneId, Guid? assignedMemberId)

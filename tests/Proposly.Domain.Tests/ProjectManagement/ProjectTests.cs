@@ -53,6 +53,88 @@ public class ProjectTests
         Assert.Equal("Implement login", task.Title);
     }
 
+    [Fact]
+    public void AddTask_WithParent_SetsParentTaskId()
+    {
+        var project = CreateProject();
+        var parent = project.AddTask("Prepare and send card reader", null, null, StartDate, Deadline);
+
+        var step = project.AddTask("Buy reader", null, 1m, StartDate, Deadline, parentTaskId: parent.Id);
+
+        Assert.Equal(parent.Id, step.ParentTaskId);
+        Assert.Null(parent.ParentTaskId);
+    }
+
+    [Fact]
+    public void AddTask_ParentNotInProject_Throws()
+    {
+        var project = CreateProject();
+
+        Assert.Throws<InvalidOperationException>(() =>
+            project.AddTask("Step", null, null, StartDate, Deadline, parentTaskId: Guid.NewGuid()));
+    }
+
+    [Fact]
+    public void AddTask_StepOfAStep_Throws()
+    {
+        var project = CreateProject();
+        var parent = project.AddTask("Parent", null, null, StartDate, Deadline);
+        var step = project.AddTask("Step", null, null, StartDate, Deadline, parentTaskId: parent.Id);
+
+        Assert.Throws<InvalidOperationException>(() =>
+            project.AddTask("Step of step", null, null, StartDate, Deadline, parentTaskId: step.Id));
+    }
+
+    [Fact]
+    public void AddTask_Steps_GetSequentialSortOrder()
+    {
+        var project = CreateProject();
+        var parent = project.AddTask("Parent", null, null, StartDate, Deadline);
+
+        var first = project.AddTask("Step 1", null, null, StartDate, Deadline, parentTaskId: parent.Id);
+        var second = project.AddTask("Step 2", null, null, StartDate, Deadline, parentTaskId: parent.Id);
+
+        Assert.Equal(0, first.SortOrder);
+        Assert.Equal(1, second.SortOrder);
+    }
+
+    // --- RemoveTask ---
+
+    [Fact]
+    public void RemoveTask_Parent_RemovesItsStepsToo()
+    {
+        var project = CreateProject();
+        var parent = project.AddTask("Parent", null, null, StartDate, Deadline);
+        project.AddTask("Step", null, null, StartDate, Deadline, parentTaskId: parent.Id);
+        var other = project.AddTask("Other", null, null, StartDate, Deadline);
+
+        project.RemoveTask(parent.Id);
+
+        var remaining = Assert.Single(project.Tasks);
+        Assert.Equal(other.Id, remaining.Id);
+    }
+
+    [Fact]
+    public void RemoveTask_DetachesDependenciesOnRemovedTask()
+    {
+        var project = CreateProject();
+        var blocker = project.AddTask("Blocker", null, null, StartDate, Deadline);
+        var blocked = project.AddTask("Blocked", null, null, StartDate, Deadline);
+        blocked.AddBlocker(blocker);
+
+        project.RemoveTask(blocker.Id);
+
+        Assert.Empty(blocked.BlockedBy);
+    }
+
+    [Fact]
+    public void RemoveTask_NonExistentTask_Throws()
+    {
+        var project = CreateProject();
+
+        Assert.Throws<InvalidOperationException>(() => project.RemoveTask(Guid.NewGuid()));
+    }
+
     // --- UpdateTask ---
 
     [Fact]

@@ -21,7 +21,13 @@ import {
   addTaskDependency,
   removeTaskDependency,
   deleteTimeEntry,
+  deleteTask,
+  getTaskTemplates,
+  saveTaskTemplate,
+  deleteTaskTemplate,
+  applyTaskTemplate,
 } from '@/api/projects'
+import { toast } from 'sonner'
 import {
   LineChart, Line, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts'
@@ -43,7 +49,7 @@ import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
 import { Dialog } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
-import { Pencil, Plus, UserPlus, Clock, Receipt, Flag, CheckCircle2, MessageSquare, Send, Trash2, CalendarDays, SquareCheck, Maximize2, Minimize2, Lock, X, TrendingUp, Search } from 'lucide-react'
+import { Pencil, Plus, UserPlus, Clock, Receipt, Flag, CheckCircle2, MessageSquare, Send, Trash2, CalendarDays, SquareCheck, Maximize2, Minimize2, Lock, X, TrendingUp, Search, ListChecks } from 'lucide-react'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { NotesTab } from './NotesTab'
 import { VelocityCapacityTab } from './VelocityCapacityTab'
@@ -250,6 +256,12 @@ export function ProjectDetailPage() {
   const [taskDue, setTaskDue] = useState('')
   const [taskMilestoneId, setTaskMilestoneId] = useState('')
   const [taskAssignedMemberId, setTaskAssignedMemberId] = useState('')
+  const [taskTemplateId, setTaskTemplateId] = useState('')
+
+  // Steps drafted in the new-task dialog — created right after the parent task.
+  const [draftSteps, setDraftSteps] = useState<{ title: string; hours: string }[]>([])
+  const [draftStepTitle, setDraftStepTitle] = useState('')
+  const [draftStepHours, setDraftStepHours] = useState('')
 
   // Edit task dialog
   const [editTaskOpen, setEditTaskOpen] = useState(false)
@@ -263,6 +275,11 @@ export function ProjectDetailPage() {
   const [editTaskMilestoneId, setEditTaskMilestoneId] = useState('')
   const [editTaskAssignedMemberId, setEditTaskAssignedMemberId] = useState('')
   const [editTaskStatus, setEditTaskStatus] = useState('')
+
+  // Steps (sub-tasks) inside the edit task dialog
+  const [newStepTitle, setNewStepTitle] = useState('')
+  const [newStepHours, setNewStepHours] = useState('')
+  const [confirmDeleteTask, setConfirmDeleteTask] = useState(false)
 
   // Member dialog
   const [memberOpen, setMemberOpen] = useState(false)
@@ -343,27 +360,126 @@ export function ProjectDetailPage() {
   // Delete time entry confirmation
   const [deleteTimeEntryId, setDeleteTimeEntryId] = useState<string | null>(null)
 
-  const mutAddTask = useMutation({
-    mutationFn: () => addTask(id!, {
-      title: taskTitle,
-      description: taskDesc || undefined,
-      estimatedHours: taskHours ? parseFloat(taskHours) : undefined,
+  // Company-wide task templates (parent task + steps) — admin/owner feature.
+  const { data: taskTemplates } = useQuery({
+    queryKey: ['task-templates'],
+    queryFn: getTaskTemplates,
+    enabled: canManage,
+  })
+
+  const resetTaskDialog = () => {
+    setTaskOpen(false)
+    setTaskTitle('')
+    setTaskDesc('')
+    setTaskHours('')
+    setTaskStart('')
+    setTaskDue('')
+    setTaskMilestoneId('')
+    setTaskAssignedMemberId('')
+    setTaskTemplateId('')
+    setDraftSteps([])
+    setDraftStepTitle('')
+    setDraftStepHours('')
+  }
+
+  const addDraftStep = () => {
+    if (!draftStepTitle.trim()) return
+    setDraftSteps(prev => [...prev, { title: draftStepTitle.trim(), hours: draftStepHours }])
+    setDraftStepTitle('')
+    setDraftStepHours('')
+  }
+
+  const mutApplyTemplate = useMutation({
+    mutationFn: () => applyTaskTemplate(id!, {
+      templateId: taskTemplateId,
+      assignedMemberId: taskAssignedMemberId || undefined,
       startDate: taskStart || undefined,
       dueDate: taskDue || undefined,
       milestoneId: taskMilestoneId || undefined,
-      assignedMemberId: taskAssignedMemberId || undefined,
     }),
+    onSuccess: () => { invalidate(); resetTaskDialog() },
+  })
+
+  const mutDeleteTemplate = useMutation({
+    mutationFn: (templateId: string) => deleteTaskTemplate(templateId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['task-templates'] })
+      setTaskTemplateId('')
+    },
+  })
+
+  const mutSaveTemplate = useMutation({
+    mutationFn: () => {
+      const steps = project!.tasks
+        .filter(t => t.parentTaskId === editingTask!.id)
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+      return saveTaskTemplate({
+        name: editingTask!.title,
+        description: stripHtml(editingTask!.description ?? '').slice(0, 1000) || undefined,
+        steps: steps.map(s => ({ title: s.title, estimatedHours: s.estimatedHours })),
+      })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['task-templates'] })
+      toast.success('Saved as template — reusable in every project.')
+    },
+  })
+
+  const mutAddStep = useMutation({
+    mutationFn: () => addTask(id!, {
+      title: newStepTitle,
+      estimatedHours: newStepHours ? parseFloat(newStepHours) : undefined,
+      assignedMemberId: editingTask!.assignedMemberId ?? undefined,
+      parentTaskId: editingTask!.id,
+    }),
+    onSuccess: () => { invalidate(); setNewStepTitle(''); setNewStepHours('') },
+  })
+
+  const mutToggleStep = useMutation({
+    mutationFn: (step: ProjectTask) =>
+      step.status === 'Done'
+        ? updateTaskStatus(id!, step.id, 'Todo')
+        : updateTaskStatus(id!, step.id, 'Done', step.actualHours ?? step.estimatedHours ?? 0),
+    onSuccess: invalidate,
+  })
+
+  const mutDeleteStep = useMutation({
+    mutationFn: (taskId: string) => deleteTask(id!, taskId),
+    onSuccess: invalidate,
+  })
+
+  const mutDeleteTask = useMutation({
+    mutationFn: () => deleteTask(id!, editingTask!.id),
     onSuccess: () => {
       invalidate()
-      setTaskOpen(false)
-      setTaskTitle('')
-      setTaskDesc('')
-      setTaskHours('')
-      setTaskStart('')
-      setTaskDue('')
-      setTaskMilestoneId('')
-      setTaskAssignedMemberId('')
+      setEditTaskOpen(false)
+      setEditingTask(null)
+      setConfirmDeleteTask(false)
     },
+  })
+
+  const mutAddTask = useMutation({
+    mutationFn: async () => {
+      const parentId = await addTask(id!, {
+        title: taskTitle,
+        description: taskDesc || undefined,
+        estimatedHours: taskHours ? parseFloat(taskHours) : undefined,
+        startDate: taskStart || undefined,
+        dueDate: taskDue || undefined,
+        milestoneId: taskMilestoneId || undefined,
+        assignedMemberId: taskAssignedMemberId || undefined,
+      })
+      // Sequential on purpose — parallel writes race over the same aggregate.
+      for (const s of draftSteps) {
+        await addTask(id!, {
+          title: s.title,
+          estimatedHours: s.hours ? parseFloat(s.hours) : undefined,
+          assignedMemberId: taskAssignedMemberId || undefined,
+          parentTaskId: parentId,
+        })
+      }
+    },
+    onSuccess: () => { invalidate(); resetTaskDialog() },
   })
 
   const mutTaskStatus = useMutation({
@@ -389,6 +505,9 @@ export function ProjectDetailPage() {
     setAddingDependency(false)
     setPendingBlockerId('')
     setDescExpanded(false)
+    setNewStepTitle('')
+    setNewStepHours('')
+    setConfirmDeleteTask(false)
     setEditTaskOpen(true)
   }
 
@@ -826,7 +945,8 @@ export function ProjectDetailPage() {
                   <>
                     <div className="grid grid-cols-3 gap-4">
                       {KANBAN_COLUMNS.map(col => {
-                        const colTasks = filteredTasks.filter(t => t.status === col.status)
+                        // Steps live inside their parent's card/modal — the board shows top-level tasks only.
+                        const colTasks = filteredTasks.filter(t => t.status === col.status && !t.parentTaskId)
                         const today = new Date(); today.setHours(0, 0, 0, 0)
                         return (
                           <div
@@ -873,6 +993,8 @@ export function ProjectDetailPage() {
                                 </div>
                               )}
                               {colTasks.map(task => {
+                                const taskSteps = p.tasks.filter(s => s.parentTaskId === task.id)
+                                const doneSteps = taskSteps.filter(s => s.status === 'Done').length
                                 const isBlocked = task.blockedByTaskIds.length > 0 && task.blockedByTaskIds.some(bid => {
                                   const blocker = p.tasks.find(t => t.id === bid)
                                   return blocker && blocker.status !== 'Done'
@@ -897,8 +1019,13 @@ export function ProjectDetailPage() {
                                     >
                                       <p className="text-sm font-medium line-through text-muted-foreground leading-snug">{task.title}</p>
                                       <div className="flex items-center justify-between mt-2">
-                                        <span className="text-[10px] text-muted-foreground">
+                                        <span className="flex items-center gap-2 text-[10px] text-muted-foreground">
                                           {task.completedAt ? `Closed ${dateAgo(task.completedAt)}` : 'Completed'}
+                                          {taskSteps.length > 0 && (
+                                            <span className="flex items-center gap-0.5">
+                                              <ListChecks className="h-3 w-3 shrink-0" />{doneSteps}/{taskSteps.length}
+                                            </span>
+                                          )}
                                         </span>
                                         {task.assignedMemberName && (
                                           <span
@@ -945,6 +1072,11 @@ export function ProjectDetailPage() {
                                       {task.estimatedHours && (
                                         <span className="flex items-center gap-1 text-muted-foreground">
                                           <Clock className="h-3 w-3 shrink-0" />{task.estimatedHours}h
+                                        </span>
+                                      )}
+                                      {taskSteps.length > 0 && (
+                                        <span className={`flex items-center gap-1 font-medium ${doneSteps === taskSteps.length ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}`}>
+                                          <ListChecks className="h-3 w-3 shrink-0" />{doneSteps}/{taskSteps.length}
                                         </span>
                                       )}
                                       {task.comments.length > 0 && (
@@ -1707,10 +1839,30 @@ export function ProjectDetailPage() {
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-3 border-b bg-muted/30 shrink-0">
               <div className="flex items-center gap-3 min-w-0">
-                <span className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 bg-blue-100 dark:bg-blue-950 dark:text-blue-400 px-2 py-1 rounded shrink-0">
-                  <SquareCheck className="h-3.5 w-3.5" /> Task
+                <span className="flex items-center justify-center w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-sm shrink-0">
+                  {editingTask.parentTaskId ? <ListChecks className="h-[18px] w-[18px]" /> : <SquareCheck className="h-[18px] w-[18px]" />}
                 </span>
-                <span className="text-xs text-muted-foreground truncate">{p.name}</span>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold leading-tight">{editingTask.parentTaskId ? 'Step' : 'Task'}</p>
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground truncate leading-tight mt-0.5">
+                    {editingTask.parentTaskId && (() => {
+                      const parent = p.tasks.find(t => t.id === editingTask.parentTaskId)
+                      return parent ? (
+                        <>
+                          <button
+                            className="truncate hover:text-foreground hover:underline"
+                            onClick={() => openEditTask(parent)}
+                            title={`Open parent task "${parent.title}"`}
+                          >
+                            ↳ {parent.title}
+                          </button>
+                          <span>·</span>
+                        </>
+                      ) : null
+                    })()}
+                    <span className="truncate">{p.name}</span>
+                  </div>
+                </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <Button size="sm" onClick={() => mutUpdateTask.mutate()} disabled={mutUpdateTask.isPending || !editTaskTitle.trim() || (editTaskStatus === 'Done' && (!editTaskActualHours || parseFloat(editTaskActualHours) <= 0))}>
@@ -1757,6 +1909,142 @@ export function ProjectDetailPage() {
                     editorClassName={descExpanded ? 'min-h-0' : 'min-h-[160px]'}
                   />
                 </div>
+
+                {/* Steps (sub-tasks) — only for top-level tasks, hidden when description is expanded */}
+                {!descExpanded && !editingTask.parentTaskId && (() => {
+                  const steps = p.tasks
+                    .filter(t => t.parentTaskId === editingTask.id)
+                    .sort((a, b) => a.sortOrder - b.sortOrder)
+                  const doneStepsCount = steps.filter(s => s.status === 'Done').length
+                  const loggedFor = (taskId: string) =>
+                    p.timeEntries.filter(e => e.taskId === taskId).reduce((s, e) => s + e.hoursWorked, 0)
+                  const stepsEstimate = steps.reduce((s, st) => s + (st.estimatedHours ?? 0), 0)
+                  const totalLogged = loggedFor(editingTask.id) + steps.reduce((s, st) => s + loggedFor(st.id), 0)
+                  const allDone = steps.length > 0 && doneStepsCount === steps.length
+                  return (
+                    <div className="rounded-xl border bg-muted/30 p-4 space-y-3">
+                      <div className="flex items-center gap-3">
+                        <span className={`flex items-center justify-center w-8 h-8 rounded-lg shrink-0 ${allDone ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400' : 'bg-primary/10 text-primary'}`}>
+                          <ListChecks className="h-4 w-4" />
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold leading-tight">Steps</p>
+                          <p className="text-xs text-muted-foreground leading-tight mt-0.5 truncate">
+                            {steps.length === 0
+                              ? 'Break this task into smaller steps.'
+                              : `${stepsEstimate.toLocaleString('de-AT', { maximumFractionDigits: 1 })}h estimated · ${totalLogged.toLocaleString('de-AT', { maximumFractionDigits: 1 })}h logged incl. steps`}
+                          </p>
+                        </div>
+                        {steps.length > 0 && (
+                          <span className={`text-xs font-semibold rounded-full px-2.5 py-1 shrink-0 tabular-nums ${allDone ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400' : 'bg-primary/10 text-primary'}`}>
+                            {doneStepsCount}/{steps.length} done
+                          </span>
+                        )}
+                        {canManage && steps.length > 0 && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs shrink-0"
+                            onClick={() => mutSaveTemplate.mutate()}
+                            disabled={mutSaveTemplate.isPending}
+                          >
+                            {mutSaveTemplate.isPending ? 'Saving…' : 'Save as template'}
+                          </Button>
+                        )}
+                      </div>
+
+                      {steps.length > 0 && (
+                        <div className="w-full bg-muted rounded-full h-1.5">
+                          <div
+                            className="h-1.5 rounded-full bg-emerald-500 transition-all"
+                            style={{ width: `${Math.round((doneStepsCount / steps.length) * 100)}%` }}
+                          />
+                        </div>
+                      )}
+
+                      {steps.length > 0 && (
+                        <div className="space-y-1.5">
+                          {steps.map((step, i) => {
+                            const stepLogged = loggedFor(step.id)
+                            const isDone = step.status === 'Done'
+                            return (
+                              <div
+                                key={step.id}
+                                className={`flex items-center gap-3 rounded-lg border px-3 py-2 shadow-sm group transition-colors ${isDone ? 'bg-muted/40 border-transparent' : 'bg-card hover:border-primary/40'}`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={isDone}
+                                  onChange={() => mutToggleStep.mutate(step)}
+                                  disabled={mutToggleStep.isPending}
+                                  aria-label={`Mark "${step.title}" ${isDone ? 'open' : 'done'}`}
+                                  className="h-4 w-4 shrink-0 accent-[color:hsl(var(--primary))]"
+                                />
+                                <span className={`flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold shrink-0 tabular-nums ${isDone ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400' : 'bg-primary/10 text-primary'}`}>
+                                  {i + 1}
+                                </span>
+                                <button
+                                  onClick={() => openEditTask(step)}
+                                  className={`flex-1 min-w-0 truncate text-left text-sm hover:text-primary hover:underline ${isDone ? 'line-through text-muted-foreground' : 'font-medium'}`}
+                                >
+                                  {step.title}
+                                </button>
+                                {step.assignedMemberName && (
+                                  <span
+                                    title={step.assignedMemberName}
+                                    className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-primary/20 text-primary font-semibold text-[9px] shrink-0"
+                                  >
+                                    {step.assignedMemberName.charAt(0).toUpperCase()}
+                                  </span>
+                                )}
+                                <span className="text-xs text-muted-foreground tabular-nums shrink-0 w-24 text-right">
+                                  {step.estimatedHours != null ? `${step.estimatedHours}h est` : '—'}
+                                  {stepLogged > 0 ? ` · ${stepLogged.toLocaleString('de-AT', { maximumFractionDigits: 1 })}h` : ''}
+                                </span>
+                                <button
+                                  title="Delete step"
+                                  onClick={() => mutDeleteStep.mutate(step.id)}
+                                  disabled={mutDeleteStep.isPending}
+                                  className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive shrink-0 p-0.5 rounded transition-opacity"
+                                >
+                                  <X className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+
+                      {/* Inline add-step */}
+                      <div className="flex items-center gap-2 rounded-lg border border-dashed bg-card px-3 py-1.5 focus-within:border-primary transition-colors">
+                        <Plus className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <input
+                          value={newStepTitle}
+                          onChange={e => setNewStepTitle(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter' && newStepTitle.trim() && !mutAddStep.isPending) mutAddStep.mutate()
+                          }}
+                          placeholder="Add a step… (Enter to add)"
+                          className="flex-1 min-w-0 bg-transparent border-0 outline-none text-sm py-1.5 placeholder:text-muted-foreground/60"
+                        />
+                        <Input
+                          type="number"
+                          step="0.5"
+                          min="0"
+                          value={newStepHours}
+                          onChange={e => setNewStepHours(e.target.value)}
+                          placeholder="h"
+                          className="w-16 h-7 text-xs"
+                        />
+                        {newStepTitle.trim() && (
+                          <Button size="sm" className="h-7 text-xs" onClick={() => mutAddStep.mutate()} disabled={mutAddStep.isPending}>
+                            {mutAddStep.isPending ? '…' : 'Add'}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })()}
 
                 {/* Discussion — hidden when description is expanded */}
                 {!descExpanded && <div className="space-y-4">
@@ -2002,6 +2290,40 @@ export function ProjectDetailPage() {
                     </div>
                   )}
                 </div>
+
+                {canManage && (
+                  <>
+                    <div className="w-full h-px bg-border" />
+                    {!confirmDeleteTask ? (
+                      <button
+                        className="text-xs text-muted-foreground hover:text-destructive underline"
+                        onClick={() => setConfirmDeleteTask(true)}
+                      >
+                        Delete task{p.tasks.some(t => t.parentTaskId === editingTask.id) ? ' incl. steps' : ''}…
+                      </button>
+                    ) : (
+                      <div className="space-y-2">
+                        <p className="text-xs text-destructive">
+                          Deletes this task{p.tasks.some(t => t.parentTaskId === editingTask.id) ? ' and all its steps' : ''} permanently.
+                        </p>
+                        <div className="flex gap-1">
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            className="flex-1 text-xs h-7"
+                            onClick={() => mutDeleteTask.mutate()}
+                            disabled={mutDeleteTask.isPending}
+                          >
+                            {mutDeleteTask.isPending ? '…' : 'Delete'}
+                          </Button>
+                          <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => setConfirmDeleteTask(false)}>
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -2011,7 +2333,7 @@ export function ProjectDetailPage() {
       {/* Azure DevOps–style new task modal */}
       {taskOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="fixed inset-0 bg-black/50" onClick={() => setTaskOpen(false)} />
+          <div className="fixed inset-0 bg-black/50" onClick={() => { setTaskOpen(false); setTaskTemplateId('') }} />
           <div
             className="relative z-50 bg-background w-full max-w-5xl flex flex-col rounded-lg shadow-2xl overflow-hidden border-l-4 border-l-slate-400"
             style={{ height: 'min(75vh, 700px)' }}
@@ -2019,18 +2341,27 @@ export function ProjectDetailPage() {
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-3 border-b bg-muted/30 shrink-0">
               <div className="flex items-center gap-3 min-w-0">
-                <span className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 bg-blue-100 dark:bg-blue-950 dark:text-blue-400 px-2 py-1 rounded shrink-0">
-                  <SquareCheck className="h-3.5 w-3.5" /> New Task
+                <span className="flex items-center justify-center w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-sm shrink-0">
+                  <SquareCheck className="h-[18px] w-[18px]" />
                 </span>
-                <span className="text-xs text-muted-foreground truncate">{p.name}</span>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold leading-tight">New Task</p>
+                  <p className="text-xs text-muted-foreground truncate leading-tight mt-0.5">{p.name}</p>
+                </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                <Button size="sm" onClick={() => mutAddTask.mutate()} disabled={mutAddTask.isPending || !taskTitle.trim()}>
-                  {mutAddTask.isPending ? 'Creating…' : 'Create Task'}
+                <Button
+                  size="sm"
+                  onClick={() => taskTemplateId ? mutApplyTemplate.mutate() : mutAddTask.mutate()}
+                  disabled={taskTemplateId ? mutApplyTemplate.isPending : (mutAddTask.isPending || !taskTitle.trim())}
+                >
+                  {taskTemplateId
+                    ? (mutApplyTemplate.isPending ? 'Creating…' : 'Create from Template')
+                    : (mutAddTask.isPending ? 'Creating…' : 'Create Task')}
                 </Button>
                 <button
                   className="text-muted-foreground hover:text-foreground text-xl leading-none w-7 h-7 flex items-center justify-center rounded hover:bg-muted"
-                  onClick={() => setTaskOpen(false)}
+                  onClick={() => { setTaskOpen(false); setTaskTemplateId('') }}
                 >
                   ×
                 </button>
@@ -2041,33 +2372,164 @@ export function ProjectDetailPage() {
             <div className="flex flex-1 overflow-hidden">
               {/* Left: main content */}
               <div className={`flex-1 flex flex-col min-w-0 p-6 ${descExpanded ? 'overflow-hidden gap-3' : 'overflow-y-auto gap-6'}`}>
-                <input
-                  value={taskTitle}
-                  onChange={e => setTaskTitle(e.target.value)}
-                  placeholder="Task title"
-                  autoFocus
-                  className="w-full text-xl font-semibold bg-transparent border-0 border-b border-transparent hover:border-border focus:border-primary focus:outline-none py-1 transition-colors placeholder:text-muted-foreground/50 shrink-0"
-                />
-
-                <div className={`flex flex-col gap-2 ${descExpanded ? 'flex-1 min-h-0' : ''}`}>
-                  <div className="flex items-center justify-between shrink-0">
-                    <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Description</p>
-                    <button
-                      onClick={() => setDescExpanded(v => !v)}
-                      title={descExpanded ? 'Collapse description' : 'Expand description'}
-                      className="text-muted-foreground hover:text-foreground p-1 rounded hover:bg-muted transition-colors"
+                {canManage && (taskTemplates?.length ?? 0) > 0 && (
+                  <div className="flex items-center gap-2 shrink-0">
+                    <ListChecks className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <Select
+                      value={taskTemplateId}
+                      onChange={e => setTaskTemplateId(e.target.value)}
+                      className="h-8 text-xs w-72"
                     >
-                      {descExpanded ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
-                    </button>
+                      <option value="">Start blank — or pick a template…</option>
+                      {taskTemplates!.map(t => (
+                        <option key={t.id} value={t.id}>
+                          {t.name}{t.totalEstimatedHours != null ? ` (${t.totalEstimatedHours}h)` : ''}
+                        </option>
+                      ))}
+                    </Select>
+                    {taskTemplateId && (
+                      <button
+                        title="Delete this template"
+                        onClick={() => mutDeleteTemplate.mutate(taskTemplateId)}
+                        disabled={mutDeleteTemplate.isPending}
+                        className="text-muted-foreground hover:text-destructive p-1 rounded hover:bg-muted"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    )}
                   </div>
-                  <RichTextEditor
-                    value={taskDesc}
-                    onChange={setTaskDesc}
-                    placeholder="Add a description…"
-                    className={descExpanded ? 'flex-1 min-h-0' : ''}
-                    editorClassName={descExpanded ? 'min-h-0' : 'min-h-[160px]'}
-                  />
-                </div>
+                )}
+
+                {taskTemplateId ? (() => {
+                  const tpl = taskTemplates?.find(t => t.id === taskTemplateId)
+                  if (!tpl) return null
+                  return (
+                    <div className="space-y-3">
+                      <p className="text-xl font-semibold py-1">{tpl.name}</p>
+                      {tpl.description && <p className="text-sm text-muted-foreground">{tpl.description}</p>}
+                      <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground border-b pb-2">
+                        Steps ({tpl.steps.length})
+                      </p>
+                      <div className="space-y-1.5">
+                        {tpl.steps.map(s => (
+                          <div key={s.id} className="flex items-center justify-between text-sm border rounded-md px-3 py-2 bg-muted/20">
+                            <span>{s.title}</span>
+                            <span className="text-xs text-muted-foreground tabular-nums">
+                              {s.estimatedHours != null ? `${s.estimatedHours}h` : '—'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Creates “{tpl.name}” with {tpl.steps.length} step{tpl.steps.length > 1 ? 's' : ''} as sub-tasks.
+                        Assignee, dates and milestone from the sidebar apply to the whole group.
+                      </p>
+                    </div>
+                  )
+                })() : (
+                  <>
+                    <input
+                      value={taskTitle}
+                      onChange={e => setTaskTitle(e.target.value)}
+                      placeholder="Task title"
+                      autoFocus
+                      className="w-full text-xl font-semibold bg-transparent border-0 border-b border-transparent hover:border-border focus:border-primary focus:outline-none py-1 transition-colors placeholder:text-muted-foreground/50 shrink-0"
+                    />
+
+                    <div className={`flex flex-col gap-2 ${descExpanded ? 'flex-1 min-h-0' : ''}`}>
+                      <div className="flex items-center justify-between shrink-0">
+                        <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Description</p>
+                        <button
+                          onClick={() => setDescExpanded(v => !v)}
+                          title={descExpanded ? 'Collapse description' : 'Expand description'}
+                          className="text-muted-foreground hover:text-foreground p-1 rounded hover:bg-muted transition-colors"
+                        >
+                          {descExpanded ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+                        </button>
+                      </div>
+                      <RichTextEditor
+                        value={taskDesc}
+                        onChange={setTaskDesc}
+                        placeholder="Add a description…"
+                        className={descExpanded ? 'flex-1 min-h-0' : ''}
+                        editorClassName={descExpanded ? 'min-h-0' : 'min-h-[160px]'}
+                      />
+                    </div>
+
+                    {/* Steps drafted before the task exists — created together with it */}
+                    {!descExpanded && (() => {
+                      const draftTotal = draftSteps.reduce((s, st) => s + (st.hours ? parseFloat(st.hours) : 0), 0)
+                      return (
+                        <div className="rounded-xl border bg-muted/30 p-4 space-y-3">
+                          <div className="flex items-center gap-3">
+                            <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10 text-primary shrink-0">
+                              <ListChecks className="h-4 w-4" />
+                            </span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold leading-tight">Steps</p>
+                              <p className="text-xs text-muted-foreground leading-tight mt-0.5">
+                                Break the task into smaller steps — they are created together with it.
+                              </p>
+                            </div>
+                            {draftSteps.length > 0 && (
+                              <span className="text-xs font-semibold text-primary bg-primary/10 rounded-full px-2.5 py-1 shrink-0 tabular-nums">
+                                {draftSteps.length} step{draftSteps.length > 1 ? 's' : ''}{draftTotal > 0 ? ` · ${draftTotal.toLocaleString('de-AT', { maximumFractionDigits: 1 })}h` : ''}
+                              </span>
+                            )}
+                          </div>
+
+                          {draftSteps.length > 0 && (
+                            <div className="space-y-1.5">
+                              {draftSteps.map((s, i) => (
+                                <div key={i} className="flex items-center gap-3 text-sm border rounded-lg px-3 py-2 bg-card shadow-sm">
+                                  <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary/10 text-primary text-[10px] font-bold shrink-0 tabular-nums">
+                                    {i + 1}
+                                  </span>
+                                  <span className="flex-1 min-w-0 truncate">{s.title}</span>
+                                  <span className="text-xs text-muted-foreground tabular-nums shrink-0">
+                                    {s.hours ? `${s.hours}h` : '—'}
+                                  </span>
+                                  <button
+                                    title="Remove step"
+                                    onClick={() => setDraftSteps(prev => prev.filter((_, j) => j !== i))}
+                                    className="text-muted-foreground hover:text-destructive shrink-0 p-0.5 rounded"
+                                  >
+                                    <X className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          <div className="flex items-center gap-2 rounded-lg border border-dashed bg-card px-3 py-1.5 focus-within:border-primary transition-colors">
+                            <Plus className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <input
+                              value={draftStepTitle}
+                              onChange={e => setDraftStepTitle(e.target.value)}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') { e.preventDefault(); addDraftStep() }
+                              }}
+                              placeholder="Add a step… (Enter to add)"
+                              className="flex-1 min-w-0 bg-transparent border-0 outline-none text-sm py-1.5 placeholder:text-muted-foreground/60"
+                            />
+                            <Input
+                              type="number"
+                              step="0.5"
+                              min="0"
+                              value={draftStepHours}
+                              onChange={e => setDraftStepHours(e.target.value)}
+                              placeholder="h"
+                              className="w-16 h-7 text-xs"
+                            />
+                            {draftStepTitle.trim() && (
+                              <Button size="sm" className="h-7 text-xs" onClick={addDraftStep}>Add</Button>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })()}
+                  </>
+                )}
               </div>
 
               {/* Right: details sidebar */}

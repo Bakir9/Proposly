@@ -12,8 +12,9 @@ public sealed class UpdateTaskStatusCommandValidator : AbstractValidator<UpdateT
             .Must(s => s is "Todo" or "InProgress" or "Done")
             .WithMessage("Invalid task status.");
 
+        // 0 is a legitimate value: checking off a template step that took no separate time.
         RuleFor(x => x.ActualHours)
-            .GreaterThan(0).WithMessage("Actual hours must be greater than zero.")
+            .GreaterThanOrEqualTo(0).WithMessage("Actual hours cannot be negative.")
             .When(x => x.ActualHours is not null);
     }
 }
