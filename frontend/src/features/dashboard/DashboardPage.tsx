@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
 import { useAuth } from '@/features/auth/AuthContext'
 import {
   getDashboardHome,
@@ -161,7 +162,18 @@ export function DashboardPage() {
         </section>
       )}
 
-      {/* KPI row */}
+      {/* KPI row — skeletons until the home payload is here, so the layout never pops in */}
+      {!k && (
+        <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(210px,1fr))]">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="flex flex-col gap-2 rounded-xl border bg-card px-[18px] py-4">
+              <Skeleton className="h-3 w-20" />
+              <Skeleton className="h-7 w-28" />
+              <Skeleton className="h-3 w-36" />
+            </div>
+          ))}
+        </div>
+      )}
       {k && (
         <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(210px,1fr))]">
           {money && (
@@ -196,6 +208,13 @@ export function DashboardPage() {
       <div className="flex flex-wrap items-start gap-4">
         {/* Left column */}
         <div className="flex min-w-0 flex-[999_1_560px] flex-col gap-4">
+          {!home && (
+            <>
+              <SectionSkeleton rows={4} />
+              <SectionSkeleton rows={3} />
+            </>
+          )}
+
           {/* Offers */}
           {money && home && (
             <section className="overflow-hidden rounded-xl border bg-card">
@@ -332,7 +351,31 @@ export function DashboardPage() {
 
         {/* Right column */}
         <aside className="flex min-w-0 flex-[1_1_340px] flex-col gap-4">
-          {/* Who's out */}
+          {/* Who's out — fully skeletoned until its data is here, like every other card */}
+          {!whosOut && (
+            <section className="flex flex-col gap-3.5 rounded-xl border bg-card px-5 py-[18px]">
+              <div className="flex items-center justify-between">
+                <Skeleton className="h-5 w-24" />
+                <Skeleton className="h-4 w-24" />
+              </div>
+              <Skeleton className="h-10 w-full rounded-[9px]" />
+              <Skeleton className="h-[72px] w-full rounded-[10px]" />
+              <div className="flex flex-col">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-3 border-b py-2 last:border-b-0">
+                    <Skeleton className="h-[34px] w-[34px] flex-none rounded-full" />
+                    <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                      <Skeleton className="h-3.5 w-32" />
+                      <Skeleton className="h-3 w-24" />
+                    </div>
+                    <Skeleton className="h-5 w-16 rounded-md" />
+                  </div>
+                ))}
+              </div>
+              <Skeleton className="h-3 w-56" />
+            </section>
+          )}
+          {whosOut && (
           <section aria-label="Who's out" className="flex flex-col gap-3.5 rounded-xl border bg-card px-5 py-[18px]">
             <div className="flex items-center justify-between gap-2">
               <h2 className="m-0 text-[17px] font-bold">Who's out</h2>
@@ -421,8 +464,23 @@ export function DashboardPage() {
                 : 'You see “Absent” only — absence reasons stay private.'}
             </span>
           </section>
+          )}
 
           {/* My time */}
+          {!home && (
+            <section className="flex flex-col gap-3 rounded-xl border bg-card px-5 py-[18px]">
+              <div className="flex items-center justify-between">
+                <Skeleton className="h-5 w-20" />
+                <Skeleton className="h-4 w-16" />
+              </div>
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="flex justify-between">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-4 w-20" />
+                </div>
+              ))}
+            </section>
+          )}
           {home && (
             <section className="flex flex-col gap-3 rounded-xl border bg-card px-5 py-[18px]">
               <div className="flex items-center justify-between">
@@ -472,6 +530,30 @@ export function DashboardPage() {
         </aside>
       </div>
     </div>
+  )
+}
+
+/** Placeholder for a left-column card (Offers / Projects) while the dashboard payload loads. */
+function SectionSkeleton({ rows }: { rows: number }) {
+  return (
+    <section className="overflow-hidden rounded-xl border bg-card">
+      <div className="flex items-center justify-between border-b px-5 py-4">
+        <Skeleton className="h-5 w-24" />
+        <Skeleton className="h-4 w-20" />
+      </div>
+      <div className="flex flex-col">
+        {Array.from({ length: rows }).map((_, i) => (
+          <div key={i} className="flex items-center gap-4 border-t px-5 py-3.5 first:border-t-0">
+            <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+              <Skeleton className="h-4 w-44" />
+              <Skeleton className="h-3 w-28" />
+            </div>
+            <Skeleton className="hidden h-3 w-32 sm:block" />
+            <Skeleton className="h-8 w-24 rounded-md" />
+          </div>
+        ))}
+      </div>
+    </section>
   )
 }
 
