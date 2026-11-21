@@ -45,8 +45,14 @@ export function ContractTab({
   function applySpread() {
     const total = Number(spread === '' ? wk : spread) || 0
     upd(x => {
-      const active = x.days.filter(d => d.on).length || 1
-      return { days: x.days.map(d => ({ ...d, h: d.on ? Math.round((total / active) * 100) / 100 : 0 })) }
+      const activeIdx = x.days.map((d, i) => (d.on ? i : -1)).filter(i => i >= 0)
+      if (activeIdx.length === 0) return {}
+      // Per-day values are rounded to 2 decimals, so the last active day absorbs the
+      // remainder — 40 h over 7 days is 6 × 5.71 + 5.74, never 39.97.
+      const per = Math.round((total / activeIdx.length) * 100) / 100
+      const last = activeIdx[activeIdx.length - 1]
+      const rest = Math.round((total - per * (activeIdx.length - 1)) * 100) / 100
+      return { days: x.days.map((d, i) => ({ ...d, h: d.on ? (i === last ? rest : per) : 0 })) }
     })
     setSpread('')
   }
