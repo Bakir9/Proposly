@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
@@ -57,7 +58,14 @@ export function AbsenceApprovalsPage() {
 
       {(data?.length ?? 0) === 0 ? (
         <div className="rounded-lg border p-8 text-center text-sm text-muted-foreground">
-          Nothing waiting for approval.
+          <p>Nothing waiting for approval.</p>
+          <p className="mt-1">
+            The request may already be decided —{' '}
+            <Link to="/absences" className="font-semibold text-primary hover:underline">
+              see all time off incl. history
+            </Link>
+            .
+          </p>
         </div>
       ) : (
         <div className="rounded-lg border overflow-x-auto">

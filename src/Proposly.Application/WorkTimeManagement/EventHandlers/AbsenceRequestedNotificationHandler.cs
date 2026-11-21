@@ -29,7 +29,8 @@ public sealed class AbsenceRequestedNotificationHandler(
         foreach (var approver in approvers)
         {
             await notifications.AddAsync(
-                Notification.Create(e.CompanyId, approver.Id, title, "/absences/approvals"), ct);
+                // The merged inbox — it opens the tab that actually has pending items.
+                Notification.Create(e.CompanyId, approver.Id, title, "/approvals"), ct);
         }
 
         await notifications.SaveChangesAsync(ct);

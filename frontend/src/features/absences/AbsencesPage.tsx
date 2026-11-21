@@ -4,9 +4,11 @@ import axios from 'axios'
 import { toast } from 'sonner'
 import {
   getAbsences, getEntitlement, previewAbsence, requestAbsence, cancelAbsence,
+  approveAbsence, rejectAbsence,
   ABSENCE_TYPE_LABELS, CONSUMES_ENTITLEMENT,
-  type AbsenceStatus, type AbsenceType,
+  type Absence, type AbsenceStatus, type AbsenceType,
 } from '@/api/absences'
+import { useAuth } from '@/features/auth/AuthContext'
 import { getApiErrorMessage } from '@/lib/api-errors'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,7 +16,7 @@ import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog } from '@/components/ui/dialog'
-import { CalendarOff, Plus, X, AlertTriangle } from 'lucide-react'
+import { CalendarOff, Plus, X, Check, AlertTriangle } from 'lucide-react'
 
 const STATUS_BADGE: Record<AbsenceStatus, string> = {
   Pending: 'bg-blue-500/15 text-blue-400 border-blue-500/20',
@@ -31,8 +33,11 @@ function today() {
 
 export function AbsencesPage() {
   const queryClient = useQueryClient()
+  const { user } = useAuth()
   const [year, setYear] = useState(new Date().getFullYear())
   const [requesting, setRequesting] = useState(false)
+  const [rejecting, setRejecting] = useState<Absence | null>(null)
+  const [rejectReason, setRejectReason] = useState('')
 
   const { data: absences, isLoading } = useQuery({
     queryKey: ['absences', year],
@@ -55,6 +60,27 @@ export function AbsencesPage() {
     onError: (e) => toast.error(getApiErrorMessage(e)),
   })
 
+  const approve = useMutation({
+    mutationFn: (id: string) => approveAbsence(id),
+    onSuccess: () => { toast.success('Time off approved.'); invalidate() },
+    onError: (e) => toast.error(getApiErrorMessage(e)),
+  })
+
+  const reject = useMutation({
+    mutationFn: (vars: { id: string; reason: string }) => rejectAbsence(vars.id, vars.reason),
+    onSuccess: () => {
+      toast.success('Request declined. The employee has been notified with your reason.')
+      setRejecting(null)
+      setRejectReason('')
+      invalidate()
+    },
+    onError: (e) => toast.error(getApiErrorMessage(e)),
+  })
+
+  // Admins see the whole team's absences here; everyone else only their own.
+  const myId = user?.userId
+  const hasOthers = (absences ?? []).some(a => a.userId !== myId)
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -64,7 +90,9 @@ export function AbsencesPage() {
             Time off
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Your vacation, sick leave and other absences.
+            {hasOthers
+              ? 'Your own and your team’s absences — pending requests can be decided right here.'
+              : 'Your vacation, sick leave and other absences.'}
           </p>
         </div>
 
@@ -113,17 +141,26 @@ export function AbsencesPage() {
           <table className="w-full text-sm">
             <thead className="bg-muted/50">
               <tr className="text-left">
+                {hasOthers && <th className="px-4 py-2 font-medium">Employee</th>}
                 <th className="px-4 py-2 font-medium">Type</th>
                 <th className="px-4 py-2 font-medium">From</th>
                 <th className="px-4 py-2 font-medium">To</th>
                 <th className="px-4 py-2 font-medium text-right">Days</th>
                 <th className="px-4 py-2 font-medium">Status</th>
-                <th className="px-4 py-2 font-medium w-28" />
+                <th className="px-4 py-2 font-medium w-48" />
               </tr>
             </thead>
             <tbody>
-              {absences!.map(row => (
+              {absences!.map(row => {
+                const isMine = row.userId === myId
+                return (
                 <tr key={row.id} className="border-t">
+                  {hasOthers && (
+                    <td className="px-4 py-2 font-medium whitespace-nowrap">
+                      {row.employeeName}
+                      {isMine && <span className="ml-1.5 text-[11px] font-semibold text-primary">(me)</span>}
+                    </td>
+                  )}
                   <td className="px-4 py-2 font-medium">{ABSENCE_TYPE_LABELS[row.type]}</td>
                   <td className="px-4 py-2 tabular-nums">
                     {row.startDate}{row.firstDayIsHalf && <span className="text-muted-foreground"> ½</span>}
@@ -136,24 +173,50 @@ export function AbsencesPage() {
                     <span className={`text-xs px-2 py-0.5 rounded-md border font-medium ${STATUS_BADGE[row.status]}`}>
                       {row.status}
                     </span>
+                    {row.approverName && row.status !== 'Pending' && row.status !== 'Cancelled' && (
+                      <p className="text-xs text-muted-foreground mt-1">by {row.approverName}</p>
+                    )}
                     {row.decisionReason && (
                       <p className="text-xs text-muted-foreground mt-1">{row.decisionReason}</p>
                     )}
                   </td>
-                  <td className="px-4 py-2 text-right">
-                    {(row.status === 'Pending' || row.status === 'Approved') && (
-                      <Button
-                        variant="ghost" size="sm" className="gap-1.5"
-                        disabled={cancel.isPending}
-                        onClick={() => cancel.mutate(row.id)}
-                      >
-                        <X className="h-3.5 w-3.5" />
-                        Cancel
-                      </Button>
-                    )}
+                  <td className="px-4 py-2">
+                    <div className="flex items-center justify-end gap-1.5">
+                      {/* Someone else's pending request: the admin decides it right here. */}
+                      {!isMine && row.status === 'Pending' && (
+                        <>
+                          <Button
+                            variant="outline" size="sm" className="gap-1.5"
+                            onClick={() => { setRejecting(row); setRejectReason('') }}
+                          >
+                            <X className="h-3.5 w-3.5" />
+                            Decline
+                          </Button>
+                          <Button
+                            size="sm" className="gap-1.5"
+                            disabled={approve.isPending}
+                            onClick={() => approve.mutate(row.id)}
+                          >
+                            <Check className="h-3.5 w-3.5" />
+                            Approve
+                          </Button>
+                        </>
+                      )}
+                      {(row.status === 'Approved' || (isMine && row.status === 'Pending')) && (
+                        <Button
+                          variant="ghost" size="sm" className="gap-1.5"
+                          disabled={cancel.isPending}
+                          onClick={() => cancel.mutate(row.id)}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                          Cancel
+                        </Button>
+                      )}
+                    </div>
                   </td>
                 </tr>
-              ))}
+                )
+              })}
             </tbody>
           </table>
         </div>
@@ -164,6 +227,34 @@ export function AbsencesPage() {
         onClose={() => setRequesting(false)}
         onDone={() => { setRequesting(false); invalidate() }}
       />
+
+      <Dialog
+        open={rejecting !== null}
+        onClose={() => setRejecting(null)}
+        title="Decline this request"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            {rejecting?.employeeName} will be notified with your reason. No allowance is used.
+          </p>
+          <Textarea
+            value={rejectReason}
+            onChange={e => setRejectReason(e.target.value)}
+            placeholder="Why is this being declined?"
+            rows={3}
+            maxLength={500}
+          />
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setRejecting(null)}>Cancel</Button>
+            <Button
+              disabled={rejectReason.trim() === '' || reject.isPending}
+              onClick={() => rejecting && reject.mutate({ id: rejecting.id, reason: rejectReason })}
+            >
+              Decline request
+            </Button>
+          </div>
+        </div>
+      </Dialog>
     </div>
   )
 }
