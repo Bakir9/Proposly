@@ -4,7 +4,6 @@ import { LayoutDashboard, FileText, FolderKanban, Users, LogOut, Building2, Sett
 import { useAuth } from '@/features/auth/AuthContext'
 import { useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
-import { Button } from './ui/button'
 import { getAvatarColor } from '@/features/profile/ProfilePage'
 import { TopBar } from './TopBar'
 import proposlyLogo from '@/assets/proposly.png'
@@ -126,13 +125,14 @@ export function AppShell() {
 
   const initials = user ? getInitials(user.fullName) : '?'
 
-  // Collapsed rail = 64px (icons only); the arrow button on the edge toggles back to the full
-  // 224px sidebar in normal flow. Icons keep their x-position — only labels fade in/out.
-  const fade = cn('transition-opacity duration-150', collapsed ? 'opacity-0' : 'opacity-100 delay-75')
-
+  // Narrow rail: icon on top, label underneath — the sidebar needs far less width this way.
+  // Collapsed (64px) drops the labels and keeps icons only.
   const itemClass = (active: boolean) =>
     cn(
-      'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors whitespace-nowrap',
+      'rounded-lg transition-colors',
+      collapsed
+        ? 'flex items-center justify-center p-2'
+        : 'flex w-full flex-col items-center gap-1 px-1 py-2 text-[10.5px] font-medium text-center leading-tight break-words',
       active
         ? 'bg-primary text-primary-foreground'
         : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
@@ -146,80 +146,72 @@ export function AppShell() {
         <aside
           className={cn(
             'h-full flex flex-col overflow-hidden border-r bg-card transition-[width] duration-200 ease-out',
-            collapsed ? 'w-16' : 'w-56'
+            collapsed ? 'w-16' : 'w-24'
           )}
         >
-        <div className="px-3.5 py-4 border-b">
-          <div className="flex items-center gap-3 whitespace-nowrap">
+        <div className="px-2 py-4 border-b">
+          <div className="flex flex-col items-center gap-1.5">
             <img src={proposlyLogo} alt="Proposly" className="h-9 w-9 object-contain rounded-xl shadow-sm shrink-0" />
-            <div className={cn('min-w-0', fade)}>
-              <p className="font-bold text-base leading-tight tracking-tight">Proposly</p>
-              <p className="text-[11px] text-muted-foreground leading-tight">Business Suite</p>
-            </div>
+            {!collapsed && <p className="font-bold text-[13px] leading-tight tracking-tight">Proposly</p>}
           </div>
         </div>
 
-        <nav className="flex-1 p-3 space-y-1 overflow-y-auto overflow-x-hidden">
+        <nav className="flex-1 p-2 space-y-1 overflow-y-auto overflow-x-hidden">
           {navGroups.map((g, gi) => (
             <div key={g.label} className="space-y-1">
-              {/* Collapsed: a short divider; expanded: the group heading. Same height, no jump. */}
-              <div className={cn('relative h-7', gi > 0 && 'mt-2')}>
+              {/* Collapsed: a short divider; expanded: a small centered group heading. */}
+              <div className={cn('relative h-6', gi > 0 && 'mt-1.5')}>
                 {gi > 0 && (
-                  <span className={cn('absolute left-3 right-3 top-1/2 border-t transition-opacity', collapsed ? 'opacity-100' : 'opacity-0')} />
+                  <span className={cn('absolute left-2 right-2 top-1/2 border-t transition-opacity', collapsed ? 'opacity-100' : 'opacity-0')} />
                 )}
-                <p className={cn('absolute inset-x-0 bottom-0.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70', fade)}>
-                  {g.label}
-                </p>
+                {!collapsed && (
+                  <p className="absolute inset-x-0 bottom-0 text-center text-[9.5px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                    {g.label}
+                  </p>
+                )}
               </div>
               {g.items.map(({ to, label, icon: Icon }) => (
                 <NavLink key={to} to={to} title={label} className={itemClass(activePath === to)}>
                   <span className="relative shrink-0">
-                    <Icon className="h-4 w-4" />
+                    <Icon className="h-5 w-5" />
                     {to === '/chat' && chatUnread > 0 && (
                       <span
                         className={cn(
-                          'absolute -right-1 -top-1 h-2 w-2 rounded-full transition-opacity',
-                          collapsed ? 'opacity-100' : 'opacity-0',
-                          activePath === to ? 'bg-primary-foreground' : 'bg-primary ring-2 ring-card'
+                          'absolute -right-2.5 -top-1.5 min-w-4 h-4 px-1 rounded-full text-[9px] font-bold flex items-center justify-center',
+                          activePath === to
+                            ? 'bg-primary-foreground text-primary'
+                            : 'bg-primary text-primary-foreground ring-2 ring-card'
                         )}
-                      />
+                      >
+                        {chatUnread > 99 ? '99+' : chatUnread}
+                      </span>
                     )}
                   </span>
-                  <span className={cn('flex-1', fade)}>{label}</span>
-                  {to === '/chat' && chatUnread > 0 && (
-                    <span
-                      className={cn(
-                        'min-w-5 h-5 px-1.5 rounded-full text-[11px] font-semibold flex items-center justify-center',
-                        fade,
-                        activePath === to
-                          ? 'bg-primary-foreground text-primary'
-                          : 'bg-primary text-primary-foreground'
-                      )}
-                    >
-                      {chatUnread > 99 ? '99+' : chatUnread}
-                    </span>
-                  )}
+                  {!collapsed && <span>{label}</span>}
                 </NavLink>
               ))}
             </div>
           ))}
         </nav>
 
-        <div className="p-3 border-t space-y-1">
+        <div className="p-2 border-t space-y-1">
           <div
             title="EU-hosted · DSGVO-konform"
-            className="flex items-center gap-2 rounded-md bg-green-100 px-2.5 py-2 text-xs text-green-800 whitespace-nowrap overflow-hidden dark:bg-green-950/40 dark:text-green-400"
+            className={cn(
+              'rounded-md bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-400',
+              collapsed ? 'flex items-center justify-center p-2' : 'flex flex-col items-center gap-0.5 px-1 py-1.5'
+            )}
           >
             <ShieldCheck className="h-4 w-4 shrink-0" />
-            <span className={fade}>EU-hosted · DSGVO-konform</span>
+            {!collapsed && <span className="text-[9px] font-semibold leading-tight">EU · DSGVO</span>}
           </div>
           <NavLink
             to="/settings"
             title="Settings"
             className={({ isActive }) => itemClass(isActive)}
           >
-            <Settings className="h-4 w-4 shrink-0" />
-            <span className={fade}>Settings</span>
+            <Settings className="h-5 w-5 shrink-0" />
+            {!collapsed && <span>Settings</span>}
           </NavLink>
 
           <NavLink
@@ -227,22 +219,21 @@ export function AppShell() {
             title="My Profile"
             className={({ isActive }) => itemClass(isActive)}
           >
-            <div className={`${avatarColor} w-5 h-5 -ml-0.5 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0`}>
+            <div className={`${avatarColor} w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0`}>
               {initials}
             </div>
-            <span className={fade}>My Profile</span>
+            {!collapsed && <span>Profile</span>}
           </NavLink>
 
-          <Button
-            variant="ghost"
-            size="sm"
+          <button
+            type="button"
             title="Sign out"
-            className="w-full justify-start gap-3 text-muted-foreground whitespace-nowrap"
+            className={itemClass(false)}
             onClick={handleLogout}
           >
-            <LogOut className="h-4 w-4 shrink-0" />
-            <span className={fade}>Sign out</span>
-          </Button>
+            <LogOut className="h-5 w-5 shrink-0" />
+            {!collapsed && <span>Sign out</span>}
+          </button>
         </div>
         </aside>
 
