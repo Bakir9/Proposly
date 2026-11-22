@@ -8,6 +8,7 @@ using Proposly.API.Middleware;
 using Proposly.API.Services;
 using Proposly.Infrastructure;
 using Scalar.AspNetCore;
+using Proposly.API.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,6 +25,8 @@ builder.Services.AddCors(options =>
 builder.Services.AddControllers()
     .AddJsonOptions(o =>
         o.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()));
+builder.Services.AddSignalR();
+builder.Services.AddScoped<IChatNotifier, SignalRChatNotifier>();
 builder.Services.AddOpenApi();
 builder.Services.AddMemoryCache();
 builder.Services.AddHealthChecks();
@@ -154,5 +157,6 @@ app.UseMiddleware<TenantMiddleware>();
 app.UseAuthorization();
 app.MapHealthChecks("/health");
 app.MapControllers();
+app.MapHub<ChatHub>("/hubs/chat");
 
 app.Run();

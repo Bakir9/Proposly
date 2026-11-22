@@ -29,6 +29,17 @@ public static class JwtExtensions
                     RoleClaimType = ClaimTypes.Role,
                     NameClaimType = ClaimTypes.NameIdentifier
                 };
+                options.Events = new JwtBearerEvents
+                {
+                    OnMessageReceived = context =>
+                    {
+                        var token = context.Request.Query["access_token"];
+                        if (!string.IsNullOrEmpty(token) &&
+                            context.HttpContext.Request.Path.StartsWithSegments("/hub"))
+                            context.Token = token;
+                        return Task.CompletedTask;
+                    }
+                };
             });
 
         return services;

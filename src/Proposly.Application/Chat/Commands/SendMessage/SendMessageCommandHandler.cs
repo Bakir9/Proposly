@@ -11,6 +11,7 @@ public sealed class SendMessageCommandHandler(
     IConversationRepository conversations,
     IChatMessageRepository messages,
     IUserRepository users,
+    IChatNotifier notifier,
     ICurrentUserService currentUser) : ICommandHandler<SendMessageCommand, ChatMessageResponse>
 {
     public async Task<ChatMessageResponse> HandleAsync(SendMessageCommand command, CancellationToken ct = default)
@@ -48,7 +49,7 @@ public sealed class SendMessageCommandHandler(
 
         await messages.SaveChangesAsync(ct);
 
-        return new ChatMessageResponse(
+        var response = new ChatMessageResponse(
             message.Id,
             message.ConversationId,
             message.AuthorUserId,
@@ -56,5 +57,13 @@ public sealed class SendMessageCommandHandler(
             message.Body,
             message.CreatedAt,
             pending.Select(a => new ChatAttachmentResponse(a.Id, a.FileName, a.ContentType, a.SizeBytes)).ToList());
+
+        await notifier.MessageSentAsync(
+            conversation.Id,
+            conversation.Participants.Select(p => p.UserId).ToList(),
+            response,
+            ct);
+
+        return response;
     }
 }

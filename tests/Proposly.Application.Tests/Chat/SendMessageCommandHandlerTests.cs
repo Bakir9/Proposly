@@ -14,6 +14,7 @@ public sealed class SendMessageCommandHandlerTests
     private readonly IChatMessageRepository _messages = Substitute.For<IChatMessageRepository>();
     private readonly IUserRepository _users = Substitute.For<IUserRepository>();
     private readonly ICurrentUserService _currentUser = Substitute.For<ICurrentUserService>();
+    private readonly IChatNotifier _notifier = Substitute.For<IChatNotifier>();
     private readonly SendMessageCommandHandler _sut;
 
     private readonly Guid _companyId = Guid.NewGuid();
@@ -24,7 +25,7 @@ public sealed class SendMessageCommandHandlerTests
     {
         _currentUser.CompanyId.Returns(_companyId);
         _currentUser.UserId.Returns(_userId);
-        _sut = new SendMessageCommandHandler(_conversations, _messages, _users, _currentUser);
+        _sut = new SendMessageCommandHandler(_conversations, _messages, _users, _notifier, _currentUser);
     }
 
     private Conversation MakeConversation() => Conversation.CreateDirect(_companyId, _userId, _otherUserId);
