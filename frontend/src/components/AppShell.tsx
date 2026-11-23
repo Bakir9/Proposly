@@ -10,6 +10,8 @@ import proposlyLogo from '@/assets/proposly.png'
 import { NotificationTaskProvider } from '@/contexts/NotificationTaskContext'
 import { useChatUnread } from '@/features/chat/useChatUnread'
 import { ChatDock } from '@/features/chat/dock/ChatDock'
+import { ChatHubLink } from '@/features/chat/ChatHubLink'
+import { stopChatHub } from '@/lib/chat-hub'
 
 // Grouped navigation per the workspace redesign: Workspace · Sales · Delivery · People.
 // Old routes stay alive (e.g. /worktime, /worktime/approvals) — only the entries moved:
@@ -118,6 +120,7 @@ export function AppShell() {
   }, [])
 
   const handleLogout = () => {
+    stopChatHub() //close connection on logout
     logout()
     queryClient.clear()
     navigate('/login')
@@ -257,6 +260,7 @@ export function AppShell() {
       </main>
 
       {/* Floating chat dock — launcher, people panel, docked DM windows */}
+      <ChatHubLink />
       <ChatDock />
     </div>
     </NotificationTaskProvider>

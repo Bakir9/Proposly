@@ -8,7 +8,7 @@ export function useChatUnread() {
   const { data } = useQuery({
     queryKey: ['chat', 'unread', user?.userId],
     queryFn: getUnreadTotal,
-    refetchInterval: 30_000,
+    refetchInterval: 60_000,
     staleTime: 0,
     enabled: !!user && user.role !== 'SuperAdmin',
   })

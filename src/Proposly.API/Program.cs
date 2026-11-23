@@ -27,6 +27,8 @@ builder.Services.AddControllers()
         o.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()));
 builder.Services.AddSignalR();
 builder.Services.AddScoped<IChatNotifier, SignalRChatNotifier>();
+builder.Services.AddSingleton<ChatPresenceTracker>();
+builder.Services.AddSingleton<IPresenceTracker>(sp => sp.GetRequiredService<ChatPresenceTracker>());
 builder.Services.AddOpenApi();
 builder.Services.AddMemoryCache();
 builder.Services.AddHealthChecks();

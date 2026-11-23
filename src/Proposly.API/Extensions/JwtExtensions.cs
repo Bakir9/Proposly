@@ -34,8 +34,10 @@ public static class JwtExtensions
                     OnMessageReceived = context =>
                     {
                         var token = context.Request.Query["access_token"];
+                        // StartsWithSegments matches whole segments — "/hub" would NOT match
+                        // "/hubs/chat", and the WebSocket upgrade would run unauthenticated.
                         if (!string.IsNullOrEmpty(token) &&
-                            context.HttpContext.Request.Path.StartsWithSegments("/hub"))
+                            context.HttpContext.Request.Path.StartsWithSegments("/hubs"))
                             context.Token = token;
                         return Task.CompletedTask;
                     }

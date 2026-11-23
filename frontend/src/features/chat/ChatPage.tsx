@@ -16,7 +16,7 @@ export function ChatPage() {
   const { data: conversations = [], isLoading } = useQuery({
     queryKey: ['chat', 'conversations', filter, user?.userId],
     queryFn: () => getConversations(filter === 'all' ? undefined : filter),
-    refetchInterval: 10_000,
+    refetchInterval: 60_000,
     staleTime: 0,
   })
 

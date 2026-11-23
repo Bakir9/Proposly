@@ -56,7 +56,7 @@ export function Thread({ conversation, showHeader = true }: ThreadProps) {
     queryFn: ({ pageParam }) => getMessages(conversation.id, pageParam),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: page => (page.hasMore ? page.messages[0]?.id : undefined),
-    refetchInterval: 10_000,
+    refetchInterval: 60_000,
   })
 
   const messages = useMemo(() => {

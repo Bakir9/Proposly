@@ -38,7 +38,8 @@ export function ChatDock() {
   const { data: people = [] } = useQuery({
     queryKey: ['chat', 'presence'],
     queryFn: getPresence,
-    refetchInterval: 30_000,
+    // SignalR "presence:changed" keeps this live; the poll is only a safety net.
+    refetchInterval: 120_000,
     enabled,
   })
   const { data: directs = [] } = useQuery({
@@ -179,7 +180,7 @@ function ConnectedDockWindow({
     queryFn: ({ pageParam }) => getMessages(conversationId!, pageParam),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: page => (page.hasMore ? page.messages[0]?.id : undefined),
-    refetchInterval: 10_000,
+    refetchInterval: 60_000,
     enabled: !!conversationId,
   })
   const messages = useMemo(() => {

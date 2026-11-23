@@ -10,6 +10,7 @@ namespace Proposly.Application.Tests.Chat;
 public sealed class GetPresenceQueryHandlerTests
 {
     private readonly IUserRepository _users = Substitute.For<IUserRepository>();
+    private readonly IPresenceTracker _tracker = Substitute.For<IPresenceTracker>();
     private readonly ICurrentUserService _currentUser = Substitute.For<ICurrentUserService>();
     private readonly GetPresenceQueryHandler _sut;
 
@@ -19,7 +20,7 @@ public sealed class GetPresenceQueryHandlerTests
     public GetPresenceQueryHandlerTests()
     {
         _currentUser.UserId.Returns(_meId);
-        _sut = new GetPresenceQueryHandler(_users, _currentUser);
+        _sut = new GetPresenceQueryHandler(_users, _tracker, _currentUser);
     }
 
     private User Colleague(string first, DateTime? seenAgo = null)
@@ -70,5 +71,31 @@ public sealed class GetPresenceQueryHandlerTests
         var row = Assert.Single(result);
         Assert.StartsWith("Visible", row.Name);
         Assert.Equal(nameof(UserRole.Member), row.Role);
+    }
+
+    [Fact]
+    public async Task Live_socket_is_online_even_with_stale_heartbeat()
+    {
+        var colleague = Colleague("Lukas", DateTime.UtcNow.AddHours(-3)); // heartbeat long stale
+        _users.GetActiveAsync(Arg.Any<CancellationToken>()).Returns([colleague]);
+        _tracker.IsOnline(colleague.Id).Returns(true);
+
+        var result = await _sut.HandleAsync(new GetPresenceQuery());
+
+        Assert.Equal("online", Assert.Single(result).Presence);
+    }
+
+    [Fact]
+    public async Task Without_live_socket_heartbeat_decides_away_or_offline()
+    {
+        var away = Colleague("Away", DateTime.UtcNow.AddMinutes(-5));
+        var offline = Colleague("Gone", DateTime.UtcNow.AddHours(-1));
+        _users.GetActiveAsync(Arg.Any<CancellationToken>()).Returns([away, offline]);
+        _tracker.IsOnline(Arg.Any<Guid>()).Returns(false);
+
+        var result = await _sut.HandleAsync(new GetPresenceQuery());
+
+        Assert.Equal("away", result.Single(p => p.UserId == away.Id).Presence);
+        Assert.Equal("offline", result.Single(p => p.UserId == offline.Id).Presence);
     }
 }

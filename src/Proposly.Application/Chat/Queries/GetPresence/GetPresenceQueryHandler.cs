@@ -7,12 +7,14 @@ using Proposly.Domain.CompanyManagement.Repositories;
 namespace Proposly.Application.Chat.Queries.GetPresence;
 
 /// <summary>
-/// Colleagues of the current company (login-capable, enabled) with presence derived from the
-/// LastSeenAt heartbeat: online &lt; 2 min, away &lt; 15 min, else offline. The current user is
-/// excluded — the dock lists people to talk to.
+/// Colleagues of the current company (login-capable, enabled) with presence. A live chat
+/// socket (IPresenceTracker) is authoritative "online"; otherwise the LastSeenAt heartbeat
+/// decides: online &lt; 2 min, away &lt; 15 min, else offline. The current user is excluded —
+/// the dock lists people to talk to.
 /// </summary>
 public sealed class GetPresenceQueryHandler(
     IUserRepository users,
+    IPresenceTracker tracker,
     ICurrentUserService currentUser) : IQueryHandler<GetPresenceQuery, IReadOnlyList<PresenceResponse>>
 {
     private static readonly TimeSpan OnlineWindow = TimeSpan.FromMinutes(2);
@@ -29,10 +31,12 @@ public sealed class GetPresenceQueryHandler(
             .ToList();
     }
 
-    private static string PresenceOf(User user, DateTime now)
+    private string PresenceOf(User user, DateTime now)
     {
+        if (tracker.IsOnline(user.Id)) return "online";
         if (user.LastSeenAt is null) return "offline";
         var age = now - user.LastSeenAt.Value;
+        // The heartbeat still covers the gap right after an API restart, before sockets redial.
         if (age < OnlineWindow) return "online";
         if (age < AwayWindow) return "away";
         return "offline";
